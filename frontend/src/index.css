@@ -1,0 +1,80 @@
+@import '@fontsource/inter/400.css';
+@import '@fontsource/inter/500.css';
+@import '@fontsource/inter/600.css';
+@import '@fontsource/inter/700.css';
+@import '@fontsource-variable/jetbrains-mono';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+/* Theme transition */
+html {
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* Dark mode defaults */
+html.dark {
+  color-scheme: dark;
+}
+
+@layer base {
+  body {
+    @apply bg-surface-light text-slate-800 antialiased;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+
+  html.dark body {
+    @apply bg-surface-dark text-slate-100;
+  }
+}
+
+@layer components {
+  /* Skeleton shimmer */
+  .skeleton {
+    @apply relative overflow-hidden rounded-md bg-slate-200 dark:bg-slate-700;
+    background-size: 200% 100%;
+    background-image: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0.15) 50%,
+      transparent 100%
+    );
+    animation: shimmer 2s ease-in-out infinite;
+  }
+
+  html.dark .skeleton {
+    background-image: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0.06) 50%,
+      transparent 100%
+    );
+  }
+
+  /* Scrollbar styling for dark mode */
+  html.dark ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  html.dark ::-webkit-scrollbar-track {
+    @apply bg-surface-dark;
+  }
+  html.dark ::-webkit-scrollbar-thumb {
+    @apply rounded-full bg-slate-600;
+  }
+  html.dark ::-webkit-scrollbar-thumb:hover {
+    @apply bg-slate-500;
+  }
+
+  /* Focus visible ring */
+  .focus-ring {
+    @apply outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-surface-dark;
+  }
+}

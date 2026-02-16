@@ -1,0 +1,81 @@
+services:
+  backend:
+    build:
+      context: ./backend
+    container_name: deplyx-backend
+    env_file:
+      - .env
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    volumes:
+      - ./backend:/app
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    depends_on:
+      - neo4j
+      - postgres
+      - redis
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: deplyx-frontend
+    env_file:
+      - .env
+    command: npm run dev -- --host 0.0.0.0 --port 5173
+    volumes:
+      - ./frontend/src:/app/src
+      - ./frontend/public:/app/public
+      - ./frontend/index.html:/app/index.html
+    ports:
+      - "${FRONTEND_PORT:-5173}:5173"
+    depends_on:
+      - backend
+
+  worker:
+    build:
+      context: ./backend
+    container_name: deplyx-worker
+    env_file:
+      - .env
+    command: celery -A app.worker.celery_app worker --loglevel=info
+    volumes:
+      - ./backend:/app
+    depends_on:
+      - redis
+      - backend
+
+  neo4j:
+    image: neo4j:5
+    container_name: deplyx-neo4j
+    environment:
+      - NEO4J_AUTH=${NEO4J_USERNAME:-neo4j}/${NEO4J_PASSWORD:-deplyxneo4j}
+    ports:
+      - "${NEO4J_HTTP_PORT:-7474}:7474"
+      - "${NEO4J_BOLT_PORT:-7687}:7687"
+    volumes:
+      - neo4j_data:/data
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: deplyx-postgres
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB:-deplyx}
+      - POSTGRES_USER=${POSTGRES_USER:-deplyx}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-deplyx}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    container_name: deplyx-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+volumes:
+  neo4j_data:
+  pg_data:
+  redis_data:
