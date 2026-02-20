@@ -12,6 +12,10 @@ services:
       - POSTGRES_HOST=postgres
       - NEO4J_URI=bolt://neo4j:7687
       - REDIS_URL=redis://redis:6379/0
+      - LAB_NETWORK_NAME=lab_lab-net
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./lab:/lab:ro
     depends_on:
       postgres:
         condition: service_healthy
