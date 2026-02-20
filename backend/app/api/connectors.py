@@ -6,7 +6,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.rbac import Role, require_role
-from app.schemas.connector import ConnectorCreate, ConnectorRead, ConnectorUpdate
+from app.schemas.connector import (
+    ConnectorCreate,
+    ConnectorOperationRequest,
+    ConnectorOperationResult,
+    ConnectorRead,
+    ConnectorUpdate,
+)
 from app.services import connector_service
 
 router = APIRouter(prefix="/connectors", tags=["connectors"])
@@ -142,6 +148,32 @@ async def apply_connector_change(
         if result["error"] == "Connector not found":
             raise HTTPException(status_code=404, detail=result["error"])
         raise HTTPException(status_code=400, detail=result["error"])
+    return result
+
+
+@router.post("/{connector_id}/operations", response_model=ConnectorOperationResult)
+async def run_connector_operation(
+    connector_id: int,
+    body: ConnectorOperationRequest,
+    db: AsyncSession = Depends(get_db),
+    _=Depends(require_role(Role.ADMIN, Role.NETWORK, Role.SECURITY)),
+):
+    result = await connector_service.execute_connector_operation(
+        db,
+        connector_id,
+        body.operation,
+        body.input,
+        action=body.action,
+        context=body.context,
+        target=body.target,
+        normalize=True,
+    )
+
+    if not result.get("ok") and result.get("errors"):
+        first = result["errors"][0]
+        if first.get("code") == "not_found":
+            raise HTTPException(status_code=404, detail=first.get("message", "Connector not found"))
+
     return result
 
 

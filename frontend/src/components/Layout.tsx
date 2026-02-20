@@ -16,6 +16,7 @@ import {
   Search,
   Keyboard,
   Bell,
+  FlaskConical,
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAppStore } from '../store/useAppStore'
@@ -28,6 +29,7 @@ const operationsNav = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/changes', label: 'Changes', icon: GitPullRequest },
   { to: '/graph', label: 'Topology', icon: Network },
+  { to: '/lab', label: 'Lab', icon: FlaskConical },
 ]
 
 const configNav = [

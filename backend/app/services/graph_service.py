@@ -1,9 +1,6 @@
 from typing import Any
 
 from app.graph.neo4j_client import neo4j_client
-from app.utils.logging import get_logger
-
-logger = get_logger(__name__)
 
 
 # ── Device CRUD ────────────────────────────────────────────────────────

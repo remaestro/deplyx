@@ -13,13 +13,15 @@ import ReactFlow, {
 } from 'reactflow'
 import 'reactflow/dist/style.css'
 import dagre from 'dagre'
-import { useQuery, useMutation } from '@tanstack/react-query'
-import { RefreshCw, Download, X as XIcon, Layers, Zap, Search, Flame } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
+import { RefreshCw, X as XIcon, Layers, Zap, Search, Flame, Maximize2, ArrowRightLeft, ArrowDownUp, Network } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { apiClient } from '../api/client'
 import { useAppStore } from '../store/useAppStore'
-import { Button, EmptyState, Skeleton } from '../components/ui'
+import { EmptyState, Skeleton } from '../components/ui'
 import { TopologyNode, type TopologyNodeData } from '../components/topology/TopologyNode'
+
+type LayoutDirection = 'LR' | 'TB'
 
 const CUSTOM_NODE_TYPES = { topology: TopologyNode } as const
 
@@ -80,10 +82,11 @@ function layoutNodes(
   gNodes: GraphNode[],
   gEdges: GraphEdge[],
   heatmapMode: boolean,
+  layoutDir: LayoutDirection = 'LR',
 ): Node<TopologyNodeData>[] {
   const g = new dagre.graphlib.Graph()
   g.setDefaultEdgeLabel(() => ({}))
-  g.setGraph({ rankdir: 'LR', nodesep: 60, ranksep: 180, marginx: 40, marginy: 40 })
+  g.setGraph({ rankdir: layoutDir, nodesep: 60, ranksep: 180, marginx: 40, marginy: 40 })
 
   const nodeMap = new Map<string, GraphNode>()
   for (const gn of gNodes) {
@@ -133,20 +136,40 @@ function layoutNodes(
   return nodes
 }
 
-function toEdges(gEdges: GraphEdge[], isDark: boolean, hoverLabels: boolean): Edge[] {
-  const edgeColor = isDark ? '#475569' : '#94a3b8'
-  return gEdges.map((e, i) => ({
-    id: `e-${i}`,
-    source: e.source,
-    target: e.target,
-    label: hoverLabels ? '' : e.type,
-    type: 'smoothstep',
-    animated: e.type === 'CONNECTS_TO',
-    style: { stroke: edgeColor },
-    labelStyle: { fontSize: 9, fill: isDark ? '#94a3b8' : '#64748b' },
-    markerEnd: { type: MarkerType.ArrowClosed, width: 12, height: 12, color: edgeColor },
-    data: { edgeType: e.type },
-  }))
+/* Edge colour per relationship type so connections are distinguishable */
+const EDGE_TYPE_COLORS: Record<string, string> = {
+  CONNECTS_TO:   '#6366f1',   // indigo
+  HAS_INTERFACE: '#0891b2',   // cyan-600
+  HAS_VLAN:      '#7c3aed',   // violet-600
+  HAS_RULE:      '#dc2626',   // red-600
+  RUNS:          '#059669',   // emerald-600
+  ROUTES_TO:     '#2563eb',   // blue-600
+}
+
+function toEdges(gEdges: GraphEdge[], isDark: boolean, _hoverLabels: boolean): Edge[] {
+  const fallbackColor = isDark ? '#94a3b8' : '#334155'
+  return gEdges.map((e, i) => {
+    const eType = e.type ?? ''
+    const color = EDGE_TYPE_COLORS[eType] ?? fallbackColor
+    return {
+      id: `e-${i}`,
+      source: e.source,
+      target: e.target,
+      label: eType.replace(/_/g, ' ') || undefined,
+      type: 'smoothstep',
+      animated: eType === 'CONNECTS_TO',
+      style: { stroke: color, strokeWidth: 2.5, opacity: 0.85 },
+      labelStyle: { fontSize: 9, fill: color, fontWeight: 700 },
+      labelBgStyle: {
+        fill: isDark ? '#0f172a' : '#ffffff',
+        fillOpacity: 0.92,
+      },
+      labelBgPadding: [5, 3] as [number, number],
+      labelBgBorderRadius: 4,
+      markerEnd: { type: MarkerType.ArrowClosed, width: 16, height: 16, color },
+      data: { edgeType: eType },
+    }
+  })
 }
 
 /* Heatmap mode: map criticality to warm gradient colors */
@@ -195,6 +218,7 @@ function GraphPageInner() {
   const [hiddenTypes, setHiddenTypes] = useState<Set<string>>(new Set())
   const [heatmapMode, setHeatmapMode] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
+  const [layoutDir, setLayoutDir] = useState<LayoutDirection>('LR')
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; nodeId: string } | null>(null)
   const reactFlowInstance = useReactFlow()
 
@@ -216,17 +240,26 @@ function GraphPageInner() {
     queryKey: ['graph-impact', selectedImpactChangeId],
     queryFn: () => apiClient.get(`/changes/${selectedImpactChangeId}/impact`).then((r) => r.data),
     enabled: !!selectedImpactChangeId,
+    retry: false,
   })
 
-  const seedMut = useMutation({
-    mutationFn: () => apiClient.post('/graph/seed'),
-    onSuccess: () => refetch(),
-  })
+  /* Clear stale impact selection when the referenced change no longer exists */
+  useEffect(() => {
+    if (
+      selectedImpactChangeId &&
+      changes.length > 0 &&
+      !changes.some((c) => c.id === selectedImpactChangeId)
+    ) {
+      setSelectedImpactChangeId('')
+    }
+  }, [changes, selectedImpactChangeId, setSelectedImpactChangeId])
 
   // All node types present for layer toggle
   const nodeTypes = useMemo(() => {
     const types = new Set<string>()
-    for (const n of topology?.nodes ?? []) types.add(n.type)
+    for (const n of topology?.nodes ?? []) {
+      if (n.type) types.add(n.type)
+    }
     return Array.from(types).sort()
   }, [topology])
 
@@ -242,9 +275,9 @@ function GraphPageInner() {
   const initialNodes = useMemo(
     () => {
       const filtered = (topology?.nodes ?? []).filter((n) => !hiddenTypes.has(n.type))
-      return layoutNodes(filtered, topology?.edges ?? [], heatmapMode)
+      return layoutNodes(filtered, topology?.edges ?? [], heatmapMode, layoutDir)
     },
-    [topology, hiddenTypes, heatmapMode],
+    [topology, hiddenTypes, heatmapMode, layoutDir],
   )
   const initialEdges = useMemo(
     () => toEdges(topology?.edges ?? [], isDark, true),
@@ -333,15 +366,17 @@ function GraphPageInner() {
       }
     })
 
-    const edgeColor = isDark ? '#475569' : '#94a3b8'
     const dimColor = isDark ? '#334155' : '#cbd5e1'
     const highlightedEdges = initialEdges.map((edge) => {
       if (!impactEnabled) {
+        // Keep per-type colour from initialEdges — just ensure opacity is full
+        const edgeType = edge.data?.edgeType as string | undefined
+        const color = (edgeType && EDGE_TYPE_COLORS[edgeType]) ?? (isDark ? '#94a3b8' : '#334155')
         return {
           ...edge,
-          style: { stroke: edgeColor, opacity: 1 },
-          markerEnd: { type: MarkerType.ArrowClosed, width: 12, height: 12, color: edgeColor },
-          animated: edge.label === 'CONNECTED_TO',
+          style: { stroke: color, strokeWidth: 2.5, opacity: 0.85 },
+          markerEnd: { type: MarkerType.ArrowClosed, width: 16, height: 16, color },
+          animated: edgeType === 'CONNECTS_TO',
         }
       }
 
@@ -443,12 +478,48 @@ function GraphPageInner() {
     setCenter('')
   }, [setSelectedImpactChangeId, setSelectedNodeId])
 
+  /* Fit the entire graph into view */
+  const fitAll = useCallback(() => {
+    reactFlowInstance.fitView({ duration: 400, padding: 0.15 })
+  }, [reactFlowInstance])
+
+  /* Toggle layout direction */
+  const toggleLayout = useCallback(() => {
+    setLayoutDir((d) => (d === 'LR' ? 'TB' : 'LR'))
+  }, [])
+
+  /* Keyboard shortcuts (F = fitView, L = toggle layout) */
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      // Skip if user is typing in an input/select/textarea
+      const tag = (e.target as HTMLElement).tagName
+      if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return
+      if (e.key === 'f' || e.key === 'F') {
+        e.preventDefault()
+        fitAll()
+      }
+      if (e.key === 'l' || e.key === 'L') {
+        e.preventDefault()
+        toggleLayout()
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [fitAll, toggleLayout])
+
+  /* Auto-fit when layout direction changes */
+  useEffect(() => {
+    // Small delay to let ReactFlow process the new positions
+    const timer = setTimeout(() => fitAll(), 100)
+    return () => clearTimeout(timer)
+  }, [layoutDir, fitAll])
+
   const selectedNode = topology?.nodes.find((n) => n.id === selectedNodeId)
 
   return (
     <div className="flex h-[calc(100vh-120px)] gap-3">
       {/* Graph canvas */}
-      <div className="relative flex-1 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 overflow-hidden">
+      <div className="relative flex-1 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 overflow-hidden">
         {/* Toolbar — top-left */}
         <GlassPanel className="absolute left-3 top-3 z-10 flex flex-wrap items-center gap-2 px-3 py-2">
           {/* Search with zoom-to-node */}
@@ -501,10 +572,34 @@ function GraphPageInner() {
           <button onClick={() => refetch()} className="rounded-btn border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors" title="Refresh">
             <RefreshCw className="h-3.5 w-3.5 text-slate-500 dark:text-slate-400" />
           </button>
-          <Button size="xs" onClick={() => seedMut.mutate()} loading={seedMut.isPending}>
-            <Download className="mr-1 h-3 w-3" />
-            Seed Data
-          </Button>
+
+          {/* Divider */}
+          <div className="h-5 w-px bg-slate-300 dark:bg-slate-600" />
+
+          {/* Fit entire graph */}
+          <button
+            onClick={fitAll}
+            className="rounded-btn border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1 text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-brand-50 dark:hover:bg-brand-900/20 hover:text-brand-600 dark:hover:text-brand-400 hover:border-brand-300 dark:hover:border-brand-700 transition-colors flex items-center gap-1"
+            title="Fit all nodes in view (F)"
+          >
+            <Maximize2 className="h-3.5 w-3.5" />
+            Fit All
+          </button>
+
+          {/* Layout direction toggle */}
+          <button
+            onClick={toggleLayout}
+            className="rounded-btn border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1 text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors flex items-center gap-1"
+            title={`Switch to ${layoutDir === 'LR' ? 'top-down' : 'left-right'} layout (L)`}
+          >
+            {layoutDir === 'LR' ? <ArrowDownUp className="h-3.5 w-3.5" /> : <ArrowRightLeft className="h-3.5 w-3.5" />}
+            {layoutDir === 'LR' ? 'Top–Down' : 'Left–Right'}
+          </button>
+
+          {/* Node/edge count badge */}
+          <span className="text-[10px] font-medium text-slate-400 dark:text-slate-500 tabular-nums">
+            {nodes.length} nodes · {edges.length} edges
+          </span>
         </GlassPanel>
 
         {/* Impact selector — top-center */}
@@ -604,7 +699,7 @@ function GraphPageInner() {
             <EmptyState
               icon={Layers}
               title="No topology data"
-              description='Click "Seed Data" to populate a demo network topology.'
+              description='No discovered topology yet. Sync connectors to populate this view.'
             />
           </div>
         ) : (
@@ -621,11 +716,17 @@ function GraphPageInner() {
           >
             <MiniMap
               nodeColor={(n) => (n.data as TopologyNodeData)?.color ?? '#94a3b8'}
-              maskColor={isDark ? 'rgba(15,23,42,0.7)' : 'rgba(241,245,249,0.7)'}
+              nodeStrokeWidth={2}
+              maskColor={isDark ? 'rgba(15,23,42,0.6)' : 'rgba(241,245,249,0.6)'}
               style={{
                 backgroundColor: isDark ? '#1e293b' : '#f8fafc',
                 borderRadius: 8,
+                border: isDark ? '1px solid #334155' : '1px solid #cbd5e1',
+                width: 180,
+                height: 130,
               }}
+              zoomable
+              pannable
             />
             <Controls
               style={{
@@ -633,7 +734,7 @@ function GraphPageInner() {
                 overflow: 'hidden',
               }}
             />
-            <Background color={isDark ? '#334155' : '#cbd5e1'} gap={20} size={1} />
+            <Background color={isDark ? '#334155' : '#e2e8f0'} gap={20} size={1.5} />
           </ReactFlow>
         )}
 

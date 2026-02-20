@@ -8,7 +8,6 @@ import {
   ChevronRight,
   ChevronLeft,
   Shield,
-  Cloud,
   Server,
   Wifi,
   History,
@@ -55,21 +54,22 @@ const fadeUp = {
 /* Vendor icons mapping */
 const VENDOR_ICON: Record<string, typeof Shield> = {
   paloalto: Shield,
-  fortinet: Server,
+  fortinet: Shield,
+  checkpoint: Shield,
   cisco: Wifi,
-  aws: Cloud,
-  azure: Cloud,
   juniper: Server,
 }
 
 const VENDOR_COLOR: Record<string, string> = {
   paloalto: '#e53935',
   fortinet: '#e53935',
+  checkpoint: '#e8308c',
   cisco: '#1ba0d8',
-  aws: '#ff9900',
-  azure: '#0078d4',
   juniper: '#4caf50',
 }
+
+/* Connectors that use SSH (username/password) vs API key */
+const SSH_CONNECTORS = new Set(['cisco', 'juniper'])
 
 /* Mock sparkline data for sync history */
 function useSyncSparkline() {
@@ -157,6 +157,14 @@ export default function ConnectorsPage() {
           <Plus className="h-4 w-4" />
           Add Connector
         </Button>
+        <Button
+          variant="secondary"
+          onClick={() => connectors.forEach((c) => syncMut.mutate(c.id))}
+          disabled={syncMut.isPending || connectors.length === 0}
+        >
+          <RefreshCw className={`h-4 w-4 ${syncMut.isPending ? 'animate-spin' : ''}`} />
+          {syncMut.isPending ? 'Syncing…' : 'Sync All'}
+        </Button>
         {selectedIds.size > 0 && (
           <Button variant="secondary" size="sm" onClick={bulkSync}>
             <RefreshCw className="mr-1 h-3.5 w-3.5" />
@@ -210,7 +218,7 @@ export default function ConnectorsPage() {
                       </div>
                       <div className="flex items-center gap-1.5">
                         <StatusLED
-                          status={c.status === 'Active' ? 'active' : c.status === 'Error' ? 'error' : 'syncing'}
+                          status={c.status === 'active' ? 'active' : c.status === 'error' ? 'error' : 'syncing'}
                         />
                         <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400">{c.status}</span>
                       </div>
@@ -235,13 +243,14 @@ export default function ConnectorsPage() {
 
                     <div className="flex gap-2">
                       <Button
-                        variant="ghost"
+                        variant="secondary"
                         size="xs"
                         onClick={() => syncMut.mutate(c.id)}
                         disabled={syncMut.isPending}
+                        loading={syncMut.isPending && syncMut.variables === c.id}
                       >
-                        <RefreshCw className="h-3 w-3" />
-                        Sync Now
+                        <RefreshCw className={`h-3 w-3 ${syncMut.isPending && syncMut.variables === c.id ? 'animate-spin' : ''}`} />
+                        {syncMut.isPending && syncMut.variables === c.id ? 'Syncing…' : 'Sync Now'}
                       </Button>
                       <Button
                         variant="ghost"
@@ -376,9 +385,12 @@ function ConnectorWizard({
   const [type, setType] = useState('paloalto')
   const [host, setHost] = useState('')
   const [apiKey, setApiKey] = useState('')
+  const [username, setUsername] = useState('')
+  const [password, setPassword] = useState('')
 
+  const isSSH = SSH_CONNECTORS.has(type)
   const steps = ['Type & Name', 'Connection']
-  const canNext = step === 0 ? name.trim() !== '' : host.trim() !== ''
+  const canNext = step === 0 ? name.trim() !== '' : host.trim() !== '' && (isSSH ? username.trim() !== '' : true)
 
   return (
     <div className="space-y-6">
@@ -417,8 +429,9 @@ function ConnectorWizard({
               <Select id="wiz-type" value={type} onChange={(e) => setType(e.target.value)}>
                 <option value="paloalto">Palo Alto</option>
                 <option value="fortinet">Fortinet</option>
-                <option value="cisco">Cisco</option>
-                <option value="aws">AWS</option>
+                <option value="checkpoint">Check Point</option>
+                <option value="cisco">Cisco (SSH)</option>
+                <option value="juniper">Juniper (SSH)</option>
               </Select>
             </div>
           </motion.div>
@@ -426,13 +439,37 @@ function ConnectorWizard({
         {step === 1 && (
           <motion.div key="s1" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-4">
             <div>
-              <Label htmlFor="wiz-host">Host / Endpoint</Label>
-              <Input id="wiz-host" placeholder="Host" value={host} onChange={(e) => setHost(e.target.value)} />
+              <Label htmlFor="wiz-host">Host / IP Address</Label>
+              <Input id="wiz-host" placeholder={isSSH ? '10.100.0.20' : 'https://10.100.0.10'} value={host} onChange={(e) => setHost(e.target.value)} />
             </div>
-            <div>
-              <Label htmlFor="wiz-key">API Key</Label>
-              <Input id="wiz-key" type="password" placeholder="API key or token" value={apiKey} onChange={(e) => setApiKey(e.target.value)} />
-            </div>
+            {isSSH ? (
+              <>
+                <div>
+                  <Label htmlFor="wiz-user">Username</Label>
+                  <Input id="wiz-user" placeholder="admin" value={username} onChange={(e) => setUsername(e.target.value)} />
+                </div>
+                <div>
+                  <Label htmlFor="wiz-pass">Password</Label>
+                  <Input id="wiz-pass" type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} />
+                </div>
+              </>
+            ) : type === 'checkpoint' ? (
+              <>
+                <div>
+                  <Label htmlFor="wiz-user">Username</Label>
+                  <Input id="wiz-user" placeholder="admin" value={username} onChange={(e) => setUsername(e.target.value)} />
+                </div>
+                <div>
+                  <Label htmlFor="wiz-pass">Password</Label>
+                  <Input id="wiz-pass" type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} />
+                </div>
+              </>
+            ) : (
+              <div>
+                <Label htmlFor="wiz-key">API Key / Token</Label>
+                <Input id="wiz-key" type="password" placeholder="API key or token" value={apiKey} onChange={(e) => setApiKey(e.target.value)} />
+              </div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
@@ -451,7 +488,13 @@ function ConnectorWizard({
           <Button
             disabled={!canNext || loading}
             loading={loading}
-            onClick={() => onSubmit({ name, connector_type: type, config: { host, api_key: apiKey } })}
+            onClick={() => onSubmit({
+              name,
+              connector_type: type,
+              config: isSSH || type === 'checkpoint'
+                ? { host, username, password }
+                : { host, api_key: apiKey },
+            })}
           >
             Create
           </Button>

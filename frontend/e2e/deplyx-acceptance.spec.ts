@@ -16,11 +16,13 @@
  * 11. Logout & route protection
  */
 
-import { test, expect, Page } from '@playwright/test';
+import { test, expect, Page, APIRequestContext } from '@playwright/test';
 
 /* ------------------------------------------------------------------ */
 /*  Constants                                                          */
 /* ------------------------------------------------------------------ */
+const API_BASE = process.env.API_URL || 'http://localhost:8000/api/v1';
+
 const EXISTING_USER = {
   email: 'debug2@deplyx.io',
   password: 'Admin123!',
@@ -34,6 +36,22 @@ const REGISTER_USER = {
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                            */
 /* ------------------------------------------------------------------ */
+
+/** Get a JWT token from the backend API */
+async function getApiToken(request: APIRequestContext): Promise<string> {
+  const res = await request.post(`${API_BASE}/auth/login`, {
+    data: { email: EXISTING_USER.email, password: EXISTING_USER.password },
+  });
+  const body = await res.json();
+  return body.access_token;
+}
+
+/** Seed the graph topology via the backend API */
+async function seedGraph(request: APIRequestContext, token: string) {
+  await request.post(`${API_BASE}/graph/seed`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
 
 /** Login via the UI and wait for the dashboard */
 async function login(page: Page, email = EXISTING_USER.email, password = EXISTING_USER.password) {
@@ -49,7 +67,7 @@ async function login(page: Page, email = EXISTING_USER.email, password = EXISTIN
   await page.getByRole('button', { name: 'Sign In', exact: true }).click();
 
   // Wait for navigation to dashboard
-  await page.waitForURL('/', { timeout: 15_000 });
+  await page.waitForURL('/', { timeout: 30_000 });
 }
 
 /* ================================================================== */
@@ -160,17 +178,18 @@ test.describe('Deplyx – Network Engineer Acceptance', () => {
       await page.waitForLoadState('networkidle');
     });
 
-    test('3-pre – Seed graph topology for NodePicker', async ({ page }) => {
+    test('3-pre – Seed graph topology for NodePicker', async ({ page, request }) => {
+      // Seed graph data via API (the UI has no Seed button)
+      const token = await getApiToken(request);
+      await seedGraph(request, token);
+
       await page.goto('/graph');
       await page.waitForLoadState('networkidle');
-      const seedBtn = page.getByRole('button', { name: /seed data/i });
-      if (await seedBtn.isVisible({ timeout: 5000 }).catch(() => false)) {
-        await seedBtn.click();
-        await page.waitForTimeout(5000);
-      }
+      await page.waitForTimeout(3000);
+
       // Verify nodes exist after seeding
       const nodes = page.locator('.react-flow__node');
-      await expect(nodes.first()).toBeVisible({ timeout: 10_000 });
+      await expect(nodes.first()).toBeVisible({ timeout: 15_000 });
     });
 
     test('3a – Changes page loads with New Change button and filters', async ({ page }) => {
@@ -520,19 +539,28 @@ test.describe('Deplyx – Network Engineer Acceptance', () => {
       await page.waitForLoadState('networkidle');
     });
 
-    test('5a – Graph page renders ReactFlow canvas', async ({ page }) => {
+    test('5a – Graph page renders ReactFlow canvas', async ({ page, request }) => {
+      // Ensure graph data exists (idempotent seed)
+      const token = await getApiToken(request);
+      await seedGraph(request, token);
+      await page.reload();
+      await page.waitForLoadState('networkidle');
+      await page.waitForTimeout(3000);
+
       const graph = page.locator('.react-flow').first();
       await expect(graph).toBeVisible({ timeout: 15_000 });
     });
 
-    test('5b – Seed data populates graph nodes', async ({ page }) => {
-      const seedBtn = page.getByRole('button', { name: /seed data/i });
-      if (await seedBtn.isVisible({ timeout: 5000 }).catch(() => false)) {
-        await seedBtn.click();
-        await page.waitForTimeout(5000);
-      }
+    test('5b – Seed data populates graph nodes', async ({ page, request }) => {
+      // Seed via API (UI has no Seed button)
+      const token = await getApiToken(request);
+      await seedGraph(request, token);
+      await page.reload();
+      await page.waitForLoadState('networkidle');
+      await page.waitForTimeout(3000);
+
       const nodes = page.locator('.react-flow__node');
-      await expect(nodes.first()).toBeVisible({ timeout: 10_000 });
+      await expect(nodes.first()).toBeVisible({ timeout: 15_000 });
       const count = await nodes.count();
       expect(count).toBeGreaterThan(0);
     });

@@ -1,0 +1,132 @@
+# ==============================================================================
+# Deplyx Lab — Virtual Enterprise Network for Testing
+# ==============================================================================
+#
+# This Docker Compose creates an isolated virtual network with mock devices
+# that respond exactly like real network equipment. Your deplyx connectors
+# connect to each device separately (SSH or HTTPS API), just like production.
+#
+# Network: 10.100.0.0/24 (lab-net)
+#
+# Devices:
+#   10.100.0.10  — FW-DC1-01   (Fortinet FortiGate 60F)   — HTTPS API
+#   10.100.0.11  — PA-DC1-01   (Palo Alto PA-850)          — HTTPS XML/REST API
+#   10.100.0.12  — CP-MGMT-01  (Check Point R81.20)        — HTTPS Web API
+#   10.100.0.20  — SW-DC1-CORE (Cisco Catalyst 9300)       — SSH (NAPALM ios)
+#   10.100.0.21  — SW-DC2-CORE (Juniper EX4300)            — SSH (NAPALM junos)
+#
+# Deplyx main stack (outside this file):
+#   API/Frontend/Neo4j/Postgres/Redis run from the main compose at repo root.
+#
+# Usage:
+#   cd lab/
+#   docker compose up -d
+#   # All devices boot up, deplyx connects to each one separately
+#
+# ==============================================================================
+
+networks:
+  lab-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.100.0.0/24
+          gateway: 10.100.0.1
+
+services:
+  # ============================================================================
+  # MOCK NETWORK DEVICES — Each one is a separate "machine" on the network
+  # ============================================================================
+
+  # --- Fortinet FortiGate (REST API on HTTPS:443) ---
+  fw-dc1-01:
+    build: ./mock-fortinet
+    container_name: fw-dc1-01
+    hostname: FG-DC1-01
+    environment:
+      FORTINET_API_TOKEN: "fg-lab-token-001"
+      FORTINET_HOSTNAME: "FG-DC1-01"
+      FORTINET_SERIAL: "FGT60F0000000001"
+    labels:
+      deplyx.lab: "true"
+      deplyx.type: "fortinet"
+      deplyx.category: "Firewall"
+    networks:
+      lab-net:
+        ipv4_address: 10.100.0.10
+    restart: unless-stopped
+
+  # --- Palo Alto PAN-OS (XML + REST API on HTTPS:443) ---
+  pa-dc1-01:
+    build: ./mock-paloalto
+    container_name: pa-dc1-01
+    hostname: PA-DC1-01
+    environment:
+      PALOALTO_API_KEY: "pa-lab-apikey-001"
+      PALOALTO_HOSTNAME: "PA-DC1-01"
+      PALOALTO_SERIAL: "007200001234"
+    labels:
+      deplyx.lab: "true"
+      deplyx.type: "paloalto"
+      deplyx.category: "Firewall"
+    networks:
+      lab-net:
+        ipv4_address: 10.100.0.11
+    restart: unless-stopped
+
+  # --- Check Point Management (Web API on HTTPS:443) ---
+  cp-mgmt-01:
+    build: ./mock-checkpoint
+    container_name: cp-mgmt-01
+    hostname: CP-MGMT-01
+    environment:
+      CHECKPOINT_USER: "admin"
+      CHECKPOINT_PASS: "Cp@ssw0rd!"
+      CHECKPOINT_HOSTNAME: "CP-MGMT-01"
+    labels:
+      deplyx.lab: "true"
+      deplyx.type: "checkpoint"
+      deplyx.category: "Firewall"
+    networks:
+      lab-net:
+        ipv4_address: 10.100.0.12
+    restart: unless-stopped
+
+  # --- Cisco Core Switch (SSH on port 22) ---
+  sw-dc1-core:
+    build: ./mock-cisco
+    container_name: sw-dc1-core
+    hostname: SW-DC1-CORE
+    environment:
+      CISCO_HOSTNAME: "SW-DC1-CORE"
+      SSH_USER: "admin"
+      SSH_PASS: "Cisco123!"
+      SSH_PORT: "22"
+    labels:
+      deplyx.lab: "true"
+      deplyx.type: "cisco-ios"
+      deplyx.category: "Switch"
+    networks:
+      lab-net:
+        ipv4_address: 10.100.0.20
+    restart: unless-stopped
+
+  # --- Juniper Core Switch (SSH on port 22) ---
+  sw-dc2-core:
+    build: ./mock-juniper
+    container_name: sw-dc2-core
+    hostname: SW-DC2-CORE
+    environment:
+      JUNIPER_HOSTNAME: "SW-DC2-CORE"
+      SSH_USER: "admin"
+      SSH_PASS: "Juniper123!"
+      SSH_PORT: "22"
+    labels:
+      deplyx.lab: "true"
+      deplyx.type: "juniper"
+      deplyx.category: "Switch"
+    networks:
+      lab-net:
+        ipv4_address: 10.100.0.21
+    restart: unless-stopped
+

@@ -300,6 +300,129 @@ export function RuleIcon({ size = defaults.size, color = defaults.color, classNa
   )
 }
 
+/* ── VPN Gateway ───────────────────────────────────────────────────── */
+export function VPNIcon({ size = defaults.size, color = defaults.color, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 64 64" fill="none" className={className}>
+      {/* Lock body */}
+      <rect x="14" y="30" width="36" height="26" rx="4" stroke={color} strokeWidth="2.5" fill="none" />
+      {/* Shackle */}
+      <path d="M20 30 L20 22 A12 12 0 0 1 44 22 L44 30" stroke={color} strokeWidth="2.5" fill="none" strokeLinecap="round" />
+      {/* Keyhole */}
+      <circle cx="32" cy="42" r="4" stroke={color} strokeWidth="2" fill="none" />
+      <line x1="32" y1="46" x2="32" y2="52" stroke={color} strokeWidth="2" strokeLinecap="round" />
+      {/* Tunnel arrows */}
+      <polyline points="4,32 10,28 10,36 4,32" stroke={color} strokeWidth="1.5" fill={color} opacity="0.5" />
+      <polyline points="60,32 54,28 54,36 60,32" stroke={color} strokeWidth="1.5" fill={color} opacity="0.5" />
+    </svg>
+  )
+}
+
+/* ── IDS / Snort ───────────────────────────────────────────────────── */
+export function IDSIcon({ size = defaults.size, color = defaults.color, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 64 64" fill="none" className={className}>
+      {/* Eye outline */}
+      <path d="M6 32 C14 14 50 14 58 32 C50 50 14 50 6 32 Z" stroke={color} strokeWidth="2.5" fill="none" />
+      {/* Iris */}
+      <circle cx="32" cy="32" r="8" stroke={color} strokeWidth="2" fill="none" />
+      {/* Pupil */}
+      <circle cx="32" cy="32" r="3" fill={color} opacity="0.6" />
+      {/* Alert mark */}
+      <path d="M44 10 L48 20 L40 20 Z" stroke={color} strokeWidth="1.5" fill="none" strokeLinejoin="round" />
+      <circle cx="44" cy="22" r="1" fill={color} opacity="0.7" />
+    </svg>
+  )
+}
+
+/* ── LDAP / Directory ──────────────────────────────────────────────── */
+export function LDAPIcon({ size = defaults.size, color = defaults.color, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 64 64" fill="none" className={className}>
+      {/* Root node */}
+      <circle cx="32" cy="10" r="6" stroke={color} strokeWidth="2" fill="none" />
+      {/* Branch lines */}
+      <line x1="32" y1="16" x2="32" y2="30" stroke={color} strokeWidth="1.5" />
+      <line x1="32" y1="30" x2="14" y2="38" stroke={color} strokeWidth="1.5" />
+      <line x1="32" y1="30" x2="50" y2="38" stroke={color} strokeWidth="1.5" />
+      {/* Child nodes left */}
+      <circle cx="14" cy="44" r="5" stroke={color} strokeWidth="2" fill="none" />
+      <line x1="14" y1="49" x2="8" y2="57" stroke={color} strokeWidth="1.5" />
+      <line x1="14" y1="49" x2="20" y2="57" stroke={color} strokeWidth="1.5" />
+      {/* Child nodes right */}
+      <circle cx="50" cy="44" r="5" stroke={color} strokeWidth="2" fill="none" />
+      <line x1="50" y1="49" x2="44" y2="57" stroke={color} strokeWidth="1.5" />
+      <line x1="50" y1="49" x2="56" y2="57" stroke={color} strokeWidth="1.5" />
+    </svg>
+  )
+}
+
+/* ── Web Server / Nginx ────────────────────────────────────────────── */
+export function WebServerIcon({ size = defaults.size, color = defaults.color, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 64 64" fill="none" className={className}>
+      {/* Globe outline */}
+      <circle cx="32" cy="32" r="24" stroke={color} strokeWidth="2.5" fill="none" />
+      {/* Horizontal lines */}
+      <line x1="8" y1="24" x2="56" y2="24" stroke={color} strokeWidth="1.5" opacity="0.5" />
+      <line x1="8" y1="40" x2="56" y2="40" stroke={color} strokeWidth="1.5" opacity="0.5" />
+      {/* Vertical meridian */}
+      <line x1="32" y1="8" x2="32" y2="56" stroke={color} strokeWidth="1.5" opacity="0.5" />
+      {/* Oval paths (curved) */}
+      <path d="M32 8 C20 20 20 44 32 56" stroke={color} strokeWidth="1.5" fill="none" opacity="0.5" />
+      <path d="M32 8 C44 20 44 44 32 56" stroke={color} strokeWidth="1.5" fill="none" opacity="0.5" />
+    </svg>
+  )
+}
+
+/* ── Database / PostgreSQL ─────────────────────────────────────────── */
+export function DatabaseIcon({ size = defaults.size, color = defaults.color, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 64 64" fill="none" className={className}>
+      {/* Top cap */}
+      <ellipse cx="32" cy="14" rx="20" ry="7" stroke={color} strokeWidth="2.5" fill="none" />
+      {/* Bottom cap */}
+      <ellipse cx="32" cy="50" rx="20" ry="7" stroke={color} strokeWidth="2.5" fill="none" />
+      {/* Sides */}
+      <line x1="12" y1="14" x2="12" y2="50" stroke={color} strokeWidth="2.5" />
+      <line x1="52" y1="14" x2="52" y2="50" stroke={color} strokeWidth="2.5" />
+      {/* Middle shelf */}
+      <path d="M12 32 C12 36 52 36 52 32" stroke={color} strokeWidth="1.5" fill="none" opacity="0.5" />
+    </svg>
+  )
+}
+
+/* ── Cache / Redis ─────────────────────────────────────────────────── */
+export function CacheIcon({ size = defaults.size, color = defaults.color, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 64 64" fill="none" className={className}>
+      {/* Box */}
+      <rect x="10" y="10" width="44" height="44" rx="6" stroke={color} strokeWidth="2.5" fill="none" />
+      {/* Lightning bolt */}
+      <path d="M36 12 L26 34 L34 34 L28 52 L42 28 L34 28 Z"
+        stroke={color} strokeWidth="2" fill="none" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
+/* ── Monitoring / Prometheus+Grafana ───────────────────────────────── */
+export function MonitoringIcon({ size = defaults.size, color = defaults.color, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 64 64" fill="none" className={className}>
+      {/* Screen */}
+      <rect x="6" y="10" width="52" height="36" rx="4" stroke={color} strokeWidth="2.5" fill="none" />
+      {/* Chart bars */}
+      <rect x="14" y="28" width="6" height="12" rx="1" fill={color} opacity="0.4" />
+      <rect x="24" y="20" width="6" height="20" rx="1" fill={color} opacity="0.6" />
+      <rect x="34" y="24" width="6" height="16" rx="1" fill={color} opacity="0.5" />
+      <rect x="44" y="18" width="6" height="22" rx="1" fill={color} opacity="0.7" />
+      {/* Stand */}
+      <line x1="32" y1="46" x2="32" y2="56" stroke={color} strokeWidth="2.5" />
+      <line x1="18" y1="56" x2="46" y2="56" stroke={color} strokeWidth="2.5" strokeLinecap="round" />
+    </svg>
+  )
+}
+
 /* ── Generic fallback ──────────────────────────────────────────────── */
 export function GenericNodeIcon({ size = defaults.size, color = defaults.color, className }: IconProps) {
   return (
@@ -335,6 +458,24 @@ export function getTopologyIcon(
     if (t === 'rack') return ServerIcon
     if (t === 'patch_panel') return SwitchIcon
     return GenericNodeIcon
+  }
+
+  // Lab catalog icon_type values
+  switch (nodeType) {
+    case 'firewall': return FirewallIcon
+    case 'switch': return SwitchIcon
+    case 'router': return RouterIcon
+    case 'wireless_controller': return WirelessControllerIcon
+    case 'wireless_ap': return WirelessAPIcon
+    case 'vpn': return VPNIcon
+    case 'ids': return IDSIcon
+    case 'ldap': return LDAPIcon
+    case 'webserver': return WebServerIcon
+    case 'database': return DatabaseIcon
+    case 'cache': return CacheIcon
+    case 'monitoring': return MonitoringIcon
+    case 'application': return ApplicationIcon
+    case 'server': return ServerIcon
   }
 
   switch (nodeType) {

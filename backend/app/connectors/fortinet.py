@@ -4,6 +4,7 @@ Uses the FortiOS REST API to sync devices, interfaces, and firewall policies int
 """
 
 from typing import Any
+import re
 
 import requests
 import urllib3
@@ -14,6 +15,10 @@ from app.utils.logging import get_logger
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 logger = get_logger(__name__)
+
+
+def _safe_id(value: str) -> str:
+    return re.sub(r"[^A-Za-z0-9_-]+", "-", value.strip()).strip("-") or "unknown"
 
 
 class FortinetConnector(BaseConnector):
@@ -28,6 +33,7 @@ class FortinetConnector(BaseConnector):
 
     async def sync(self) -> dict[str, Any]:
         synced: dict[str, int] = {"devices": 0, "interfaces": 0, "rules": 0}
+        device_id: str | None = None
 
         try:
             # System info
@@ -60,6 +66,8 @@ class FortinetConnector(BaseConnector):
                         "status": iface.get("status", "up"),
                         "speed": iface.get("speed", ""),
                     })
+                    if device_id:
+                        await neo4j_client.create_relationship("Device", device_id, "HAS_INTERFACE", "Interface", iface_id)
                     synced["interfaces"] += 1
 
             # Firewall policies
@@ -79,6 +87,33 @@ class FortinetConnector(BaseConnector):
                         "id": rule_id, "name": policy.get("name", f"Policy {pid}"),
                         "source": src, "destination": dst, "action": action,
                     })
+
+                    if not device_id:
+                        device_id = f"FG-HOST-{_safe_id(self.host)}"
+                        await neo4j_client.merge_node("Device", device_id, {
+                            "id": device_id,
+                            "type": "firewall",
+                            "vendor": "fortinet",
+                            "hostname": self.host,
+                            "criticality": "critical",
+                        })
+                        synced["devices"] = max(1, synced["devices"])
+
+                    await neo4j_client.create_relationship("Device", device_id, "HAS_RULE", "Rule", rule_id)
+
+                    for dst_entry in policy.get("dstaddr", []):
+                        dst_name = str(dst_entry.get("name", "any"))
+                        if dst_name.lower() in {"any", "all"}:
+                            continue
+                        app_id = f"APP-{_safe_id(dst_name)}"
+                        await neo4j_client.merge_node("Application", app_id, {
+                            "id": app_id,
+                            "name": dst_name,
+                            "label": dst_name,
+                            "criticality": "medium",
+                        })
+                        await neo4j_client.create_relationship("Rule", rule_id, "PROTECTS", "Application", app_id)
+
                     synced["rules"] += 1
 
         except requests.RequestException as e:

@@ -82,6 +82,36 @@ class Neo4jClient:
         rows = await self.run_write(cypher, {"from_id": from_id, "to_id": to_id, "props": props or {}})
         return rows[0] if rows else {}
 
+    async def delete_relationship(
+        self,
+        from_label: str,
+        from_id: str,
+        rel_type: str,
+        to_label: str,
+        to_id: str,
+        rel_props_filter: dict[str, Any] | None = None,
+    ) -> int:
+        if rel_props_filter:
+            cypher = (
+                f"MATCH (a:{from_label} {{id: $from_id}})-[r:{rel_type}]->(b:{to_label} {{id: $to_id}}) "
+                "WHERE all(k IN keys($filter) WHERE r[k] = $filter[k]) "
+                "DELETE r "
+                "RETURN count(r) as deleted"
+            )
+            rows = await self.run_write(
+                cypher,
+                {"from_id": from_id, "to_id": to_id, "filter": rel_props_filter},
+            )
+            return int(rows[0]["deleted"]) if rows else 0
+
+        cypher = (
+            f"MATCH (a:{from_label} {{id: $from_id}})-[r:{rel_type}]->(b:{to_label} {{id: $to_id}}) "
+            "DELETE r "
+            "RETURN count(r) as deleted"
+        )
+        rows = await self.run_write(cypher, {"from_id": from_id, "to_id": to_id})
+        return int(rows[0]["deleted"]) if rows else 0
+
     # ── Graph traversal ────────────────────────────────────────────────
 
     async def get_neighbors(

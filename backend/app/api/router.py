@@ -5,6 +5,7 @@ from app.api.changes import router as changes_router
 from app.api.connectors import router as connectors_router
 from app.api.dashboard import router as dashboard_router
 from app.api.graph import router as graph_router
+from app.api.lab import router as lab_router
 from app.api.policies import router as policies_router
 from app.api.risk import router as risk_router
 from app.api.simulation import router as simulation_router
@@ -75,6 +76,7 @@ router.include_router(workflow_router)
 router.include_router(connectors_router)
 router.include_router(simulation_router)
 router.include_router(policies_router)
+router.include_router(lab_router)
 
 api_router = APIRouter()
 api_router.include_router(router)

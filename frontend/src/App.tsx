@@ -8,6 +8,7 @@ import GraphPage from './pages/GraphPage'
 import ConnectorsPage from './pages/ConnectorsPage'
 import PoliciesPage from './pages/PoliciesPage'
 import AuditLogPage from './pages/AuditLogPage'
+import LabPage from './pages/LabPage'
 import { useAppStore } from './store/useAppStore'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -34,6 +35,7 @@ function App() {
         <Route path="/connectors" element={<ConnectorsPage />} />
         <Route path="/policies" element={<PoliciesPage />} />
         <Route path="/audit-log" element={<AuditLogPage />} />
+        <Route path="/lab" element={<LabPage />} />
       </Route>
     </Routes>
   )

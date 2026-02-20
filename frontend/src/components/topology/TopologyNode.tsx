@@ -41,46 +41,47 @@ function TopologyNodeInner({ data, selected }: NodeProps<TopologyNodeData>) {
   return (
     <div
       className={`
-        relative flex flex-col items-center gap-1 px-3 py-2
-        rounded-xl border-2 transition-shadow
-        bg-white dark:bg-slate-800/90 backdrop-blur-sm
+        relative flex flex-col items-center gap-1 px-3 py-2.5
+        rounded-xl border-[2.5px] transition-shadow
+        backdrop-blur-sm
         ${selected ? 'ring-2 ring-brand-500 ring-offset-1' : ''}
         ${impactRing}
       `}
       style={{
         borderColor: data.color,
-        boxShadow: `0 2px 12px ${data.color}30`,
+        backgroundColor: `${data.color}14`,
+        boxShadow: `0 3px 16px ${data.color}40, 0 1px 4px rgba(0,0,0,0.08)`,
         minWidth: 110,
       }}
     >
       {/* Criticality dot — top-right */}
       {critColor && (
         <span
-          className="absolute -top-1 -right-1 h-3 w-3 rounded-full border-2 border-white dark:border-slate-800"
+          className="absolute -top-1.5 -right-1.5 h-3.5 w-3.5 rounded-full border-2 border-white dark:border-slate-800"
           style={{ backgroundColor: critColor }}
           title={`Criticality: ${data.criticality}`}
         />
       )}
 
       {/* Icon */}
-      <IconComponent size={28} color={data.color} />
+      <IconComponent size={30} color={data.color} />
 
       {/* Label */}
       <div className="text-center leading-tight">
         <div
-          className="text-[10px] font-bold uppercase tracking-wider"
-          style={{ color: data.color, opacity: 0.8 }}
+          className="text-[10px] font-extrabold uppercase tracking-wider"
+          style={{ color: data.color }}
         >
           {data.deviceSubType || data.nodeType}
         </div>
-        <div className="text-[11px] font-semibold text-slate-700 dark:text-slate-200 max-w-[120px] truncate">
+        <div className="text-[11px] font-bold text-slate-800 dark:text-slate-100 max-w-[120px] truncate">
           {data.label}
         </div>
       </div>
 
       {/* Vendor / model subtitle */}
       {(data.vendor || data.model) && (
-        <div className="text-[9px] text-slate-400 dark:text-slate-500 truncate max-w-[120px]">
+        <div className="text-[9px] text-slate-500 dark:text-slate-400 font-medium truncate max-w-[120px]">
           {[data.vendor, data.model].filter(Boolean).join(' ')}
         </div>
       )}

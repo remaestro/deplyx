@@ -8,6 +8,7 @@ Uses the PAN-OS REST/XML API to:
 """
 
 from typing import Any
+import re
 
 import requests
 import urllib3
@@ -18,6 +19,10 @@ from app.utils.logging import get_logger
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 logger = get_logger(__name__)
+
+
+def _safe_id(value: str) -> str:
+    return re.sub(r"[^A-Za-z0-9_-]+", "-", value.strip()).strip("-") or "unknown"
 
 
 class PaloAltoConnector(BaseConnector):
@@ -33,6 +38,7 @@ class PaloAltoConnector(BaseConnector):
     async def sync(self) -> dict[str, Any]:
         """Fetch system info, interfaces, and security rules from PAN-OS and upsert into Neo4j."""
         synced: dict[str, int] = {"devices": 0, "interfaces": 0, "rules": 0}
+        device_id: str | None = None
 
         try:
             # Fetch system info
@@ -71,6 +77,8 @@ class PaloAltoConnector(BaseConnector):
                         await neo4j_client.merge_node("Interface", iface_id, {
                             "id": iface_id, "name": name, "status": "up",
                         })
+                        if device_id:
+                            await neo4j_client.create_relationship("Device", device_id, "HAS_INTERFACE", "Interface", iface_id)
                         synced["interfaces"] += 1
 
             # Fetch security rules
@@ -96,6 +104,34 @@ class PaloAltoConnector(BaseConnector):
                         "destination": dst[0] if isinstance(dst, list) else str(dst),
                         "action": action if isinstance(action, str) else "allow",
                     })
+
+                    if not device_id:
+                        device_id = f"PA-HOST-{_safe_id(self.host)}"
+                        await neo4j_client.merge_node("Device", device_id, {
+                            "id": device_id,
+                            "type": "firewall",
+                            "vendor": "paloalto",
+                            "hostname": self.host,
+                            "criticality": "critical",
+                        })
+                        synced["devices"] = max(1, synced["devices"])
+
+                    await neo4j_client.create_relationship("Device", device_id, "HAS_RULE", "Rule", rule_id)
+
+                    destinations = dst if isinstance(dst, list) else [str(dst)]
+                    for dst_name in destinations:
+                        dst_value = str(dst_name)
+                        if dst_value.lower() in {"any", "all"}:
+                            continue
+                        app_id = f"APP-{_safe_id(dst_value)}"
+                        await neo4j_client.merge_node("Application", app_id, {
+                            "id": app_id,
+                            "name": dst_value,
+                            "label": dst_value,
+                            "criticality": "medium",
+                        })
+                        await neo4j_client.create_relationship("Rule", rule_id, "PROTECTS", "Application", app_id)
+
                     synced["rules"] += 1
 
         except requests.RequestException as e:

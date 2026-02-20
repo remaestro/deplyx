@@ -4,6 +4,7 @@ Syncs gateways and access-layer rules into the graph.
 """
 
 from typing import Any
+import re
 
 import requests
 
@@ -12,6 +13,22 @@ from app.graph.neo4j_client import neo4j_client
 from app.utils.logging import get_logger
 
 logger = get_logger(__name__)
+
+
+def _safe_id(value: str) -> str:
+    return re.sub(r"[^A-Za-z0-9_-]+", "-", value.strip()).strip("-") or "unknown"
+
+
+def _names(items: Any) -> list[str]:
+    if not isinstance(items, list):
+        return []
+    names: list[str] = []
+    for item in items:
+        if isinstance(item, dict):
+            name = item.get("name")
+            if isinstance(name, str) and name:
+                names.append(name)
+    return names
 
 
 class CheckPointConnector(BaseConnector):
@@ -35,9 +52,22 @@ class CheckPointConnector(BaseConnector):
 
     async def sync(self) -> dict[str, Any]:
         synced: dict[str, int] = {"gateways": 0, "rules": 0}
+        policy_device_id = f"CP-MGMT-{_safe_id(self.host)}"
         try:
             sid = self._login()
             headers = {"X-chkp-sid": sid, "Content-Type": "application/json"}
+
+            await neo4j_client.merge_node(
+                "Device",
+                policy_device_id,
+                {
+                    "id": policy_device_id,
+                    "type": "firewall",
+                    "vendor": "checkpoint",
+                    "hostname": self.host,
+                    "criticality": "critical",
+                },
+            )
 
             gateways_resp = requests.post(
                 f"{self.base_url}/show-simple-gateways",
@@ -62,6 +92,7 @@ class CheckPointConnector(BaseConnector):
                         "criticality": "critical",
                     },
                 )
+                await neo4j_client.create_relationship("Device", policy_device_id, "CONNECTED_TO", "Device", gateway_id)
                 synced["gateways"] += 1
 
             rules_resp = requests.post(
@@ -78,19 +109,43 @@ class CheckPointConnector(BaseConnector):
                 if rule.get("type") != "access-rule":
                     continue
                 rule_id = f"CP-RULE-{rule.get('uid', idx)}"
+                source_names = _names(rule.get("source"))
+                destination_names = _names(rule.get("destination"))
+                service_names = _names(rule.get("service"))
+                source = source_names[0] if source_names else "any"
+                destination = destination_names[0] if destination_names else "any"
+                port = service_names[0] if service_names else "any"
                 await neo4j_client.merge_node(
                     "Rule",
                     rule_id,
                     {
                         "id": rule_id,
                         "name": rule.get("name", rule_id),
-                        "source": "any",
-                        "destination": "any",
-                        "port": "any",
+                        "source": source,
+                        "destination": destination,
+                        "port": port,
                         "protocol": "any",
                         "action": (rule.get("action", {}) or {}).get("name", "allow"),
                     },
                 )
+                await neo4j_client.create_relationship("Device", policy_device_id, "HAS_RULE", "Rule", rule_id)
+
+                for dst_name in destination_names:
+                    if dst_name.lower() in {"any", "all"}:
+                        continue
+                    app_id = f"APP-{_safe_id(dst_name)}"
+                    await neo4j_client.merge_node(
+                        "Application",
+                        app_id,
+                        {
+                            "id": app_id,
+                            "name": dst_name,
+                            "label": dst_name,
+                            "criticality": "medium",
+                        },
+                    )
+                    await neo4j_client.create_relationship("Rule", rule_id, "PROTECTS", "Application", app_id)
+
                 synced["rules"] += 1
 
             requests.post(f"{self.base_url}/logout", headers=headers, verify=self.verify_ssl, timeout=15)

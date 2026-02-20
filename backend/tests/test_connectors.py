@@ -187,3 +187,40 @@ async def test_validate_simulate_apply_endpoints(client: AsyncClient, monkeypatc
     apply = await client.post(f"/api/v1/connectors/{connector_id}/apply", json=payload, headers=headers)
     assert apply.status_code == 200
     assert apply.json()["applied"] is True
+
+
+@pytest.mark.asyncio
+async def test_operations_endpoint_returns_v2_contract(client: AsyncClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    headers = await _register_admin(client, email="operations-v2-admin@deplyx.io")
+
+    monkeypatch.setitem(connector_service.CONNECTOR_CLASSES, "paloalto", FakeConnector)
+
+    created = await client.post(
+        "/api/v1/connectors",
+        json={
+            "name": "Operations V2 Connector",
+            "connector_type": "paloalto",
+            "config": {"host": "demo.local"},
+            "sync_mode": "on-demand",
+            "sync_interval_minutes": 30,
+        },
+        headers=headers,
+    )
+    connector_id = created.json()["id"]
+
+    payload = {
+        "operation": "validate",
+        "action": "validate_rule",
+        "input": {"rule_name": "allow-web"},
+    }
+
+    res = await client.post(f"/api/v1/connectors/{connector_id}/operations", json=payload, headers=headers)
+    assert res.status_code == 200
+    body = res.json()
+    assert body["contract_version"] == "2.0"
+    assert body["operation"] == "validate"
+    assert body["connector_type"] == "paloalto"
+    assert body["ok"] is True
+    assert body["status"] == "success"
+    assert isinstance(body["data"], dict)
+    assert body["data"]["valid"] is True

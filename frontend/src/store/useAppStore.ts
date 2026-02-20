@@ -50,7 +50,6 @@ function applyThemeToDOM(theme: Theme) {
 export const useAppStore = create<AppState>((set, get) => {
   const storedToken = localStorage.getItem('deplyx_token')
   const storedUser = localStorage.getItem('deplyx_user')
-  const storedImpactChangeId = localStorage.getItem('deplyx_graph_change_id')
   const storedTheme = (localStorage.getItem('deplyx_theme') as Theme) ?? 'dark'
   const storedCollapsed = localStorage.getItem('deplyx_sidebar_collapsed') === 'true'
 
@@ -69,17 +68,14 @@ export const useAppStore = create<AppState>((set, get) => {
     logout: () => {
       localStorage.removeItem('deplyx_token')
       localStorage.removeItem('deplyx_user')
-      localStorage.removeItem('deplyx_graph_change_id')
+      localStorage.removeItem('deplyx_graph_change_id') // legacy cleanup
       set({ token: null, user: null, isAuthenticated: false })
     },
 
     selectedNodeId: null,
     setSelectedNodeId: (id) => set({ selectedNodeId: id }),
-    selectedImpactChangeId: storedImpactChangeId ?? '',
-    setSelectedImpactChangeId: (id) => {
-      localStorage.setItem('deplyx_graph_change_id', id)
-      set({ selectedImpactChangeId: id })
-    },
+    selectedImpactChangeId: '',
+    setSelectedImpactChangeId: (id) => set({ selectedImpactChangeId: id }),
 
     sidebarOpen: true,
     setSidebarOpen: (open) => set({ sidebarOpen: open }),
