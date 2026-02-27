@@ -1,0 +1,43 @@
+<div class="section-title">
+  App Health
+  {% if health.backend.ok and health.frontend.ok %}
+    <div class="dot ok"></div>
+  {% else %}
+    <div class="dot critical"></div>
+  {% endif %}
+  <span class="spinner"></span>
+</div>
+<div class="grid grid-2">
+  <!-- Backend -->
+  <div class="probe">
+    <div class="probe-header">
+      <span class="probe-name">Backend API</span>
+      <span class="probe-status">{% if health.backend.ok %}✅{% else %}❌{% endif %}</span>
+    </div>
+    <div class="probe-detail">{{ health.backend.url }}</div>
+    <div class="probe-detail" style="margin-top:4px;">
+      Status: <strong>{{ health.backend.status }}</strong> &nbsp;·&nbsp;
+      Latency: <span class="probe-latency {{ 'fast' if health.backend.latency_ms >= 0 and health.backend.latency_ms < 200 else 'slow' if health.backend.latency_ms < 1000 else 'down' }}">
+        {% if health.backend.latency_ms >= 0 %}{{ health.backend.latency_ms }}ms{% else %}DOWN{% endif %}
+      </span>
+    </div>
+    {% if health.backend.body %}
+    <div class="probe-detail" style="margin-top:6px; font-family:monospace; font-size:11px;">{{ health.backend.body }}</div>
+    {% endif %}
+  </div>
+
+  <!-- Frontend -->
+  <div class="probe">
+    <div class="probe-header">
+      <span class="probe-name">Frontend</span>
+      <span class="probe-status">{% if health.frontend.ok %}✅{% else %}❌{% endif %}</span>
+    </div>
+    <div class="probe-detail">{{ health.frontend.url }}</div>
+    <div class="probe-detail" style="margin-top:4px;">
+      Status: <strong>{{ health.frontend.status }}</strong> &nbsp;·&nbsp;
+      Latency: <span class="probe-latency {{ 'fast' if health.frontend.latency_ms >= 0 and health.frontend.latency_ms < 200 else 'slow' if health.frontend.latency_ms < 1000 else 'down' }}">
+        {% if health.frontend.latency_ms >= 0 %}{{ health.frontend.latency_ms }}ms{% else %}DOWN{% endif %}
+      </span>
+    </div>
+  </div>
+</div>

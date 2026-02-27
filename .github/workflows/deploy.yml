@@ -62,6 +62,19 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      # ── Ops dashboard image ─────────────────────────────────
+      - name: Build & push ops
+        uses: docker/build-push-action@v5
+        with:
+          context: ./ops
+          file: ./ops/Dockerfile
+          push: true
+          tags: |
+            ${{ env.IMAGE_PREFIX }}-ops:latest
+            ${{ env.IMAGE_PREFIX }}-ops:${{ steps.vars.outputs.sha_short }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
   deploy:
     name: Deploy to VPS
     needs: build-and-push
@@ -81,7 +94,7 @@ jobs:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
-          source: "docker-compose.prod.yml,deploy/vps/nginx.prod.conf,lab/"
+          source: "docker-compose.prod.yml,deploy/vps/nginx.prod.conf,lab/,ops/"
           target: /opt/deplyx
           overwrite: true
 
@@ -101,25 +114,43 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           script_stop: true
+          command_timeout: 10m
+          debug: true
           script: |
-            set -e
+            set -ex
             cd /opt/deplyx
+            pwd && ls -la
 
             echo "── Logging into GitHub Container Registry ──"
             echo "${{ secrets.GH_PAT }}" | docker login ghcr.io -u ${{ github.repository_owner }} --password-stdin
 
-            echo "── Pulling new images ──"
+            echo "── Pulling new images (tag: ${{ steps.vars.outputs.sha_short }}) ──"
             export IMAGE_TAG="${{ steps.vars.outputs.sha_short }}"
             docker compose -f docker-compose.prod.yml pull backend frontend
 
-            echo "── Recreating app containers (infra untouched) ──"
+            echo "── Starting infrastructure containers ──"
             IMAGE_TAG="${{ steps.vars.outputs.sha_short }}" \
             docker compose -f docker-compose.prod.yml --env-file .env.production up -d \
-              --no-deps --force-recreate \
+              postgres neo4j redis
+
+            echo "── Waiting for postgres to be healthy ──"
+            for i in $(seq 1 30); do
+              if docker compose -f docker-compose.prod.yml ps postgres | grep -q healthy; then
+                echo "Postgres healthy!"
+                break
+              fi
+              echo "  Waiting for postgres... ($i/30)"
+              sleep 2
+            done
+
+            echo "── Starting app containers ──"
+            IMAGE_TAG="${{ steps.vars.outputs.sha_short }}" \
+            docker compose -f docker-compose.prod.yml --env-file .env.production up -d \
+              --force-recreate \
               backend frontend worker lab-api
 
             echo "── Waiting for health check ──"
-            sleep 15
+            sleep 10
             for i in 1 2 3 4 5 6; do
               if curl -sf http://localhost/health > /dev/null 2>&1; then
                 echo "Backend healthy!"
@@ -130,7 +161,8 @@ jobs:
             done
 
             echo "── Container status ──"
-            docker compose -f docker-compose.prod.yml ps --format "table {{.Name}}\t{{.Status}}"
+            docker compose -f docker-compose.prod.yml ps
+            docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
 
             echo "── Cleaning old images ──"
             docker image prune -f --filter "until=24h" > /dev/null 2>&1 || true

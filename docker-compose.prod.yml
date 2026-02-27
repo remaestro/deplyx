@@ -133,6 +133,27 @@ services:
     networks:
       - deplyx
 
+  ops:
+    image: ghcr.io/remaestro/deplyx-ops:${IMAGE_TAG:-latest}
+    build:
+      context: ./ops
+      dockerfile: Dockerfile
+    container_name: deplyx-ops
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    environment:
+      - OPS_TOKEN=${OPS_TOKEN:-changeme}
+      - BACKEND_URL=http://backend:8000
+      - FRONTEND_URL=http://frontend:8080
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    depends_on:
+      - backend
+      - frontend
+    networks:
+      - deplyx
+
 volumes:
   neo4j_data:
   pg_data:

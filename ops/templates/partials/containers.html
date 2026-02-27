@@ -1,0 +1,46 @@
+<div class="section-title">
+  Containers
+  <span class="spinner"></span>
+</div>
+<div class="card" style="padding:0; overflow-x:auto;">
+  <table class="ctable">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Status</th>
+        <th>Health</th>
+        <th>CPU</th>
+        <th>RAM</th>
+        <th>Image</th>
+        <th>Started</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for c in containers %}
+      <tr>
+        <td style="font-weight:600; {% if c.is_deplyx %}color:var(--blue){% elif c.is_lab %}color:var(--purple){% endif %}">
+          {{ c.name }}
+        </td>
+        <td>
+          <span class="badge badge-{{ c.status }}">{{ c.status }}</span>
+        </td>
+        <td>
+          {% if c.health == 'healthy' %}
+            <span class="badge badge-healthy">healthy</span>
+          {% elif c.health == 'unhealthy' %}
+            <span class="badge badge-unhealthy">unhealthy</span>
+          {% else %}
+            <span class="badge badge-na">{{ c.health }}</span>
+          {% endif %}
+        </td>
+        <td>{{ c.cpu_pct }}%</td>
+        <td>{{ c.mem_mb }} MB</td>
+        <td style="font-size:11px; color:var(--muted); max-width:250px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+          {{ c.image }}
+        </td>
+        <td style="font-size:11px; color:var(--muted);">{{ c.started }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>

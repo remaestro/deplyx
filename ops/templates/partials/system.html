@@ -1,0 +1,42 @@
+<div class="section-title">
+  System
+  <div class="dot {{ system.load_status }}"></div>
+  <span class="spinner"></span>
+</div>
+<div class="grid grid-4">
+  <div class="card">
+    <div class="card-label">CPU</div>
+    <div class="card-value">{{ system.cpu_percent }}%</div>
+    <div class="card-sub">{{ system.cpu_count }} cores</div>
+    <div class="gauge"><div class="gauge-fill {{ 'critical' if system.cpu_percent > 90 else 'warning' if system.cpu_percent > 70 else 'ok' }}" style="width:{{ system.cpu_percent }}%"></div></div>
+  </div>
+  <div class="card">
+    <div class="card-label">Load Average</div>
+    <div class="card-value">{{ system.load_1 }}</div>
+    <div class="card-sub">5m: {{ system.load_5 }} · 15m: {{ system.load_15 }}</div>
+    <div class="gauge"><div class="gauge-fill {{ system.load_status }}" style="width:{{ [system.load_1 / (system.cpu_count * 2) * 100, 100] | min }}%"></div></div>
+  </div>
+  <div class="card">
+    <div class="card-label">RAM</div>
+    <div class="card-value">{{ system.ram_percent }}%</div>
+    <div class="card-sub">{{ system.ram_used_gb }} / {{ system.ram_total_gb }} GB</div>
+    <div class="gauge"><div class="gauge-fill {{ system.ram_status }}" style="width:{{ system.ram_percent }}%"></div></div>
+  </div>
+  <div class="card">
+    <div class="card-label">Swap</div>
+    <div class="card-value">{{ system.swap_percent }}%</div>
+    <div class="card-sub">{{ system.swap_used_gb }} / {{ system.swap_total_gb }} GB</div>
+    <div class="gauge"><div class="gauge-fill {{ 'critical' if system.swap_percent > 80 else 'warning' if system.swap_percent > 50 else 'ok' }}" style="width:{{ system.swap_percent }}%"></div></div>
+  </div>
+  <div class="card">
+    <div class="card-label">Disk</div>
+    <div class="card-value">{{ system.disk_percent }}%</div>
+    <div class="card-sub">{{ system.disk_used_gb }} / {{ system.disk_total_gb }} GB</div>
+    <div class="gauge"><div class="gauge-fill {{ system.disk_status }}" style="width:{{ system.disk_percent }}%"></div></div>
+  </div>
+  <div class="card">
+    <div class="card-label">Uptime</div>
+    <div class="card-value">{{ system.uptime_days }}d</div>
+    <div class="card-sub">{{ system.uptime_hours }}h since last boot</div>
+  </div>
+</div>
