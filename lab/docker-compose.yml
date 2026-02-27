@@ -1,28 +1,43 @@
 # ==============================================================================
-# Deplyx Lab — Virtual Enterprise Network for Testing
+# Deplyx Lab — Full Enterprise Network Topology (20 devices)
 # ==============================================================================
-#
-# This Docker Compose creates an isolated virtual network with mock devices
-# that respond exactly like real network equipment. Your deplyx connectors
-# connect to each device separately (SSH or HTTPS API), just like production.
 #
 # Network: 10.100.0.0/24 (lab-net)
 #
-# Devices:
-#   10.100.0.10  — FW-DC1-01   (Fortinet FortiGate 60F)   — HTTPS API
-#   10.100.0.11  — PA-DC1-01   (Palo Alto PA-850)          — HTTPS XML/REST API
-#   10.100.0.12  — CP-MGMT-01  (Check Point R81.20)        — HTTPS Web API
-#   10.100.0.20  — SW-DC1-CORE (Cisco Catalyst 9300)       — SSH (NAPALM ios)
-#   10.100.0.21  — SW-DC2-CORE (Juniper EX4300)            — SSH (NAPALM junos)
+# Firewalls:
+#   10.100.0.10  — fw-edge-01      (Fortinet FortiGate 60F)     — HTTPS API
+#   10.100.0.11  — fw-dmz-01       (Palo Alto PA-850)           — HTTPS XML/REST
+#   10.100.0.12  — sec-gw-01       (Check Point R81.20)         — HTTPS Web API
 #
-# Deplyx main stack (outside this file):
-#   API/Frontend/Neo4j/Postgres/Redis run from the main compose at repo root.
+# Switches:
+#   10.100.0.20  — sw-core-01      (Cisco Catalyst 9300)        — SSH
+#   10.100.0.21  — sw-dist-01      (Juniper EX4300)             — SSH
+#   10.100.0.22  — sw-dc-01        (Cisco Nexus 9000)           — SSH
+#   10.100.0.23  — sw-access-01    (Aruba CX 6300)              — SSH
+#
+# Routers:
+#   10.100.0.30  — rt-wan-01       (Cisco ISR 4451)             — SSH
+#   10.100.0.31  — rt-core-01      (VyOS 1.4)                   — SSH
+#
+# Wireless:
+#   10.100.0.40  — wlc-01          (Cisco WLC 9800)             — SSH
+#   10.100.0.41  — ap-campus-01    (Aruba AP-515)               — SSH
+#
+# Security:
+#   10.100.0.50  — vpn-remote-01   (StrongSwan VPN)             — SSH
+#   10.100.0.51  — ids-dmz-01      (Snort 3 IDS)               — SSH
+#   10.100.0.52  — ldap-idm-01     (OpenLDAP)                   — SSH
+#
+# Applications:
+#   10.100.0.60  — web-gw-01       (Nginx 1.25)                 — SSH + HTTP
+#   10.100.0.61  — db-main-01      (PostgreSQL 16)              — SSH
+#   10.100.0.62  — cache-main-01   (Redis 7)                    — SSH
+#   10.100.0.63  — search-obs-01   (Elasticsearch 8)            — SSH + HTTP
+#   10.100.0.64  — grafana-obs-01  (Grafana 10)                 — SSH + HTTP
+#   10.100.0.65  — prom-core-01    (Prometheus 2)               — SSH + HTTP
 #
 # Usage:
-#   cd lab/
-#   docker compose up -d
-#   # All devices boot up, deplyx connects to each one separately
-#
+#   cd lab/ && docker compose up -d --build
 # ==============================================================================
 
 networks:
@@ -34,71 +49,78 @@ networks:
           gateway: 10.100.0.1
 
 services:
-  # ============================================================================
-  # MOCK NETWORK DEVICES — Each one is a separate "machine" on the network
-  # ============================================================================
 
-  # --- Fortinet FortiGate (REST API on HTTPS:443) ---
-  fw-dc1-01:
+  # ═══════════════════════════════════════════════════════════════════════════
+  # FIREWALLS
+  # ═══════════════════════════════════════════════════════════════════════════
+
+  fw-edge-01:
     build: ./mock-fortinet
-    container_name: fw-dc1-01
-    hostname: FG-DC1-01
+    container_name: fw-edge-01
+    hostname: FG-EDGE-01
     environment:
       FORTINET_API_TOKEN: "fg-lab-token-001"
-      FORTINET_HOSTNAME: "FG-DC1-01"
+      FORTINET_HOSTNAME: "FG-EDGE-01"
       FORTINET_SERIAL: "FGT60F0000000001"
     labels:
       deplyx.lab: "true"
       deplyx.type: "fortinet"
       deplyx.category: "Firewall"
+      deplyx.zone: "EDGE"
+      deplyx.user_name: "fw-edge-01"
     networks:
       lab-net:
         ipv4_address: 10.100.0.10
     restart: unless-stopped
 
-  # --- Palo Alto PAN-OS (XML + REST API on HTTPS:443) ---
-  pa-dc1-01:
+  fw-dmz-01:
     build: ./mock-paloalto
-    container_name: pa-dc1-01
-    hostname: PA-DC1-01
+    container_name: fw-dmz-01
+    hostname: PA-DMZ-01
     environment:
       PALOALTO_API_KEY: "pa-lab-apikey-001"
-      PALOALTO_HOSTNAME: "PA-DC1-01"
+      PALOALTO_HOSTNAME: "PA-DMZ-01"
       PALOALTO_SERIAL: "007200001234"
     labels:
       deplyx.lab: "true"
       deplyx.type: "paloalto"
       deplyx.category: "Firewall"
+      deplyx.zone: "DMZ"
+      deplyx.user_name: "fw-dmz-01"
     networks:
       lab-net:
         ipv4_address: 10.100.0.11
     restart: unless-stopped
 
-  # --- Check Point Management (Web API on HTTPS:443) ---
-  cp-mgmt-01:
+  sec-gw-01:
     build: ./mock-checkpoint
-    container_name: cp-mgmt-01
-    hostname: CP-MGMT-01
+    container_name: sec-gw-01
+    hostname: CP-SEC-GW-01
     environment:
       CHECKPOINT_USER: "admin"
       CHECKPOINT_PASS: "Cp@ssw0rd!"
-      CHECKPOINT_HOSTNAME: "CP-MGMT-01"
+      CHECKPOINT_HOSTNAME: "CP-SEC-GW-01"
     labels:
       deplyx.lab: "true"
       deplyx.type: "checkpoint"
       deplyx.category: "Firewall"
+      deplyx.zone: "SEC"
+      deplyx.user_name: "sec-gw-01"
     networks:
       lab-net:
         ipv4_address: 10.100.0.12
     restart: unless-stopped
 
-  # --- Cisco Core Switch (SSH on port 22) ---
-  sw-dc1-core:
+  # ═══════════════════════════════════════════════════════════════════════════
+  # SWITCHES
+  # ═══════════════════════════════════════════════════════════════════════════
+
+  sw-core-01:
     build: ./mock-cisco
-    container_name: sw-dc1-core
-    hostname: SW-DC1-CORE
+    container_name: sw-core-01
+    hostname: SW-CORE-01
     environment:
-      CISCO_HOSTNAME: "SW-DC1-CORE"
+      CISCO_HOSTNAME: "SW-CORE-01"
       SSH_USER: "admin"
       SSH_PASS: "Cisco123!"
       SSH_PORT: "22"
@@ -106,18 +128,19 @@ services:
       deplyx.lab: "true"
       deplyx.type: "cisco-ios"
       deplyx.category: "Switch"
+      deplyx.zone: "CORE"
+      deplyx.user_name: "sw-core-01"
     networks:
       lab-net:
         ipv4_address: 10.100.0.20
     restart: unless-stopped
 
-  # --- Juniper Core Switch (SSH on port 22) ---
-  sw-dc2-core:
+  sw-dist-01:
     build: ./mock-juniper
-    container_name: sw-dc2-core
-    hostname: SW-DC2-CORE
+    container_name: sw-dist-01
+    hostname: SW-DIST-01
     environment:
-      JUNIPER_HOSTNAME: "SW-DC2-CORE"
+      JUNIPER_HOSTNAME: "SW-DIST-01"
       SSH_USER: "admin"
       SSH_PASS: "Juniper123!"
       SSH_PORT: "22"
@@ -125,8 +148,327 @@ services:
       deplyx.lab: "true"
       deplyx.type: "juniper"
       deplyx.category: "Switch"
+      deplyx.zone: "CORE"
+      deplyx.user_name: "sw-dist-01"
     networks:
       lab-net:
         ipv4_address: 10.100.0.21
+    restart: unless-stopped
+
+  sw-dc-01:
+    build: ./mock-cisco-nxos
+    container_name: sw-dc-01
+    hostname: NXOS-DC-01
+    environment:
+      NXOS_HOSTNAME: "NXOS-DC-01"
+      SSH_USER: "admin"
+      SSH_PASS: "Cisco123!"
+      SSH_PORT: "22"
+    labels:
+      deplyx.lab: "true"
+      deplyx.type: "cisco-nxos"
+      deplyx.category: "Switch"
+      deplyx.zone: "DC"
+      deplyx.user_name: "sw-dc-01"
+    networks:
+      lab-net:
+        ipv4_address: 10.100.0.22
+    restart: unless-stopped
+
+  sw-access-01:
+    build: ./mock-aruba-switch
+    container_name: sw-access-01
+    hostname: SW-ACCESS-01
+    environment:
+      ARUBA_HOSTNAME: "SW-ACCESS-01"
+      SSH_USER: "admin"
+      SSH_PASS: "Aruba123!"
+      SSH_PORT: "22"
+    labels:
+      deplyx.lab: "true"
+      deplyx.type: "aruba-switch"
+      deplyx.category: "Switch"
+      deplyx.zone: "CAMPUS"
+      deplyx.user_name: "sw-access-01"
+    networks:
+      lab-net:
+        ipv4_address: 10.100.0.23
+    restart: unless-stopped
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # ROUTERS
+  # ═══════════════════════════════════════════════════════════════════════════
+
+  rt-wan-01:
+    build: ./mock-router
+    container_name: rt-wan-01
+    hostname: RT-WAN-01
+    environment:
+      ROUTER_HOSTNAME: "RT-WAN-01"
+      ROUTER_VENDOR: "cisco"
+      SSH_USER: "admin"
+      SSH_PASS: "Cisco123!"
+      SSH_PORT: "22"
+    labels:
+      deplyx.lab: "true"
+      deplyx.type: "cisco-router"
+      deplyx.category: "Router"
+      deplyx.zone: "EDGE"
+      deplyx.user_name: "rt-wan-01"
+    networks:
+      lab-net:
+        ipv4_address: 10.100.0.30
+    restart: unless-stopped
+
+  rt-core-01:
+    build: ./mock-vyos
+    container_name: rt-core-01
+    hostname: RT-CORE-01
+    environment:
+      VYOS_HOSTNAME: "RT-CORE-01"
+      SSH_USER: "vyos"
+      SSH_PASS: "VyOS123!"
+      SSH_PORT: "22"
+    labels:
+      deplyx.lab: "true"
+      deplyx.type: "vyos"
+      deplyx.category: "Router"
+      deplyx.zone: "CORE"
+      deplyx.user_name: "rt-core-01"
+    networks:
+      lab-net:
+        ipv4_address: 10.100.0.31
+    restart: unless-stopped
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # WIRELESS
+  # ═══════════════════════════════════════════════════════════════════════════
+
+  wlc-01:
+    build: ./mock-wlc
+    container_name: wlc-01
+    hostname: WLC-01
+    environment:
+      WLC_HOSTNAME: "WLC-01"
+      SSH_USER: "admin"
+      SSH_PASS: "Wireless123!"
+      SSH_PORT: "22"
+    labels:
+      deplyx.lab: "true"
+      deplyx.type: "cisco-wlc"
+      deplyx.category: "Wireless"
+      deplyx.zone: "WLAN"
+      deplyx.user_name: "wlc-01"
+    networks:
+      lab-net:
+        ipv4_address: 10.100.0.40
+    restart: unless-stopped
+
+  ap-campus-01:
+    build: ./mock-aruba-ap
+    container_name: ap-campus-01
+    hostname: AP-CAMPUS-01
+    environment:
+      AP_HOSTNAME: "AP-CAMPUS-01"
+      SSH_USER: "admin"
+      SSH_PASS: "Aruba123!"
+      SSH_PORT: "22"
+    labels:
+      deplyx.lab: "true"
+      deplyx.type: "aruba-ap"
+      deplyx.category: "Wireless"
+      deplyx.zone: "WLAN"
+      deplyx.user_name: "ap-campus-01"
+    networks:
+      lab-net:
+        ipv4_address: 10.100.0.41
+    restart: unless-stopped
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # SECURITY
+  # ═══════════════════════════════════════════════════════════════════════════
+
+  vpn-remote-01:
+    build: ./mock-vpn
+    container_name: vpn-remote-01
+    hostname: VPN-REMOTE-01
+    environment:
+      VPN_HOSTNAME: "VPN-REMOTE-01"
+      SSH_USER: "admin"
+      SSH_PASS: "VPN123!"
+      SSH_PORT: "22"
+    labels:
+      deplyx.lab: "true"
+      deplyx.type: "strongswan-vpn"
+      deplyx.category: "Security"
+      deplyx.zone: "SEC"
+      deplyx.user_name: "vpn-remote-01"
+    networks:
+      lab-net:
+        ipv4_address: 10.100.0.50
+    restart: unless-stopped
+
+  ids-dmz-01:
+    build: ./mock-snort
+    container_name: ids-dmz-01
+    hostname: IDS-DMZ-01
+    environment:
+      IDS_HOSTNAME: "IDS-DMZ-01"
+      SSH_USER: "admin"
+      SSH_PASS: "Snort123!"
+      SSH_PORT: "22"
+    labels:
+      deplyx.lab: "true"
+      deplyx.type: "snort-ids"
+      deplyx.category: "Security"
+      deplyx.zone: "DMZ"
+      deplyx.user_name: "ids-dmz-01"
+    networks:
+      lab-net:
+        ipv4_address: 10.100.0.51
+    restart: unless-stopped
+
+  ldap-idm-01:
+    build: ./mock-ldap
+    container_name: ldap-idm-01
+    hostname: LDAP-IDM-01
+    environment:
+      LDAP_HOSTNAME: "LDAP-IDM-01"
+      SSH_USER: "admin"
+      SSH_PASS: "LDAP123!"
+      SSH_PORT: "22"
+    labels:
+      deplyx.lab: "true"
+      deplyx.type: "openldap"
+      deplyx.category: "Security"
+      deplyx.zone: "IDM"
+      deplyx.user_name: "ldap-idm-01"
+    networks:
+      lab-net:
+        ipv4_address: 10.100.0.52
+    restart: unless-stopped
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # APPLICATIONS
+  # ═══════════════════════════════════════════════════════════════════════════
+
+  web-gw-01:
+    build: ./mock-nginx
+    container_name: web-gw-01
+    hostname: WEB-GW-01
+    environment:
+      APP_HOSTNAME: "WEB-GW-01"
+      SSH_USER: "admin"
+      SSH_PASS: "App123!"
+      SSH_PORT: "22"
+    labels:
+      deplyx.lab: "true"
+      deplyx.type: "nginx"
+      deplyx.category: "Application"
+      deplyx.zone: "DMZ"
+      deplyx.user_name: "web-gw-01"
+    networks:
+      lab-net:
+        ipv4_address: 10.100.0.60
+    restart: unless-stopped
+
+  db-main-01:
+    build: ./mock-postgres
+    container_name: db-main-01
+    hostname: DB-MAIN-01
+    environment:
+      APP_HOSTNAME: "DB-MAIN-01"
+      SSH_USER: "admin"
+      SSH_PASS: "App123!"
+      SSH_PORT: "22"
+    labels:
+      deplyx.lab: "true"
+      deplyx.type: "postgres"
+      deplyx.category: "Application"
+      deplyx.zone: "DATA"
+      deplyx.user_name: "db-main-01"
+    networks:
+      lab-net:
+        ipv4_address: 10.100.0.61
+    restart: unless-stopped
+
+  cache-main-01:
+    build: ./mock-redis-node
+    container_name: cache-main-01
+    hostname: CACHE-MAIN-01
+    environment:
+      APP_HOSTNAME: "CACHE-MAIN-01"
+      SSH_USER: "admin"
+      SSH_PASS: "App123!"
+      SSH_PORT: "22"
+    labels:
+      deplyx.lab: "true"
+      deplyx.type: "redis"
+      deplyx.category: "Application"
+      deplyx.zone: "DATA"
+      deplyx.user_name: "cache-main-01"
+    networks:
+      lab-net:
+        ipv4_address: 10.100.0.62
+    restart: unless-stopped
+
+  search-obs-01:
+    build: ./mock-elasticsearch
+    container_name: search-obs-01
+    hostname: ES-OBS-01
+    environment:
+      APP_HOSTNAME: "ES-OBS-01"
+      SSH_USER: "admin"
+      SSH_PASS: "App123!"
+      SSH_PORT: "22"
+    labels:
+      deplyx.lab: "true"
+      deplyx.type: "elasticsearch"
+      deplyx.category: "Application"
+      deplyx.zone: "OBS"
+      deplyx.user_name: "search-obs-01"
+    networks:
+      lab-net:
+        ipv4_address: 10.100.0.63
+    restart: unless-stopped
+
+  grafana-obs-01:
+    build: ./mock-grafana
+    container_name: grafana-obs-01
+    hostname: MON-OBS-01
+    environment:
+      APP_HOSTNAME: "MON-OBS-01"
+      SSH_USER: "admin"
+      SSH_PASS: "App123!"
+      SSH_PORT: "22"
+    labels:
+      deplyx.lab: "true"
+      deplyx.type: "grafana"
+      deplyx.category: "Application"
+      deplyx.zone: "OBS"
+      deplyx.user_name: "grafana-obs-01"
+    networks:
+      lab-net:
+        ipv4_address: 10.100.0.64
+    restart: unless-stopped
+
+  prom-core-01:
+    build: ./mock-prometheus
+    container_name: prom-core-01
+    hostname: PROM-CORE-01
+    environment:
+      APP_HOSTNAME: "PROM-CORE-01"
+      SSH_USER: "admin"
+      SSH_PASS: "App123!"
+      SSH_PORT: "22"
+    labels:
+      deplyx.lab: "true"
+      deplyx.type: "prometheus"
+      deplyx.category: "Application"
+      deplyx.zone: "OBS"
+      deplyx.user_name: "prom-core-01"
+    networks:
+      lab-net:
+        ipv4_address: 10.100.0.65
     restart: unless-stopped
 
