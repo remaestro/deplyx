@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect } from 'react'
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate } from 'react-router-dom'
 import {
@@ -11,9 +11,11 @@ import {
   LayoutGrid,
   Columns3,
   CheckSquare,
+  Check,
   Trash2,
   ChevronRight,
   ChevronLeft,
+  ChevronDown,
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { formatDistanceToNow } from 'date-fns'
@@ -575,27 +577,78 @@ function CreateChangeWizard({
   const [mwEnd, setMwEnd] = useState('')
   const [targetNodeIds, setTargetNodeIds] = useState<string[]>([])
   const [targetComponentType, setTargetComponentType] = useState('all')
+  const [componentSearch, setComponentSearch] = useState('')
+  const [componentDropdownOpen, setComponentDropdownOpen] = useState(false)
+  const componentDropdownRef = useRef<HTMLDivElement>(null)
 
-  const ACTION_OPTIONS = [
-    { value: 'add_rule', label: 'Add Rule' },
-    { value: 'remove_rule', label: 'Remove Rule' },
-    { value: 'modify_rule', label: 'Modify Rule' },
-    { value: 'disable_rule', label: 'Disable Rule' },
-    { value: 'change_vlan', label: 'Change VLAN Assignment' },
-    { value: 'disable_port', label: 'Disable Port' },
-    { value: 'enable_port', label: 'Enable Port' },
-    { value: 'shutdown_interface', label: 'Shutdown Interface' },
-    { value: 'reboot_device', label: 'Reboot Device' },
-    { value: 'decommission', label: 'Decommission' },
-    { value: 'firmware_upgrade', label: 'Firmware Upgrade' },
-    { value: 'config_change', label: 'Config Change' },
-    { value: 'delete_vlan', label: 'Delete VLAN' },
-    { value: 'modify_vlan', label: 'Modify VLAN' },
-    { value: 'modify_sg', label: 'Modify Security Group' },
-    { value: 'delete_sg', label: 'Delete Security Group' },
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (componentDropdownRef.current && !componentDropdownRef.current.contains(e.target as Node)) {
+        setComponentDropdownOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  // Human-readable labels for device types synced from lab machines
+  const TYPE_LABELS: Record<string, string> = {
+    firewall: 'Firewall',
+    router: 'Router',
+    switch: 'Switch',
+    wlc: 'Wireless Controller',
+    access_point: 'Access Point',
+    vpn_gateway: 'VPN Gateway',
+    ids: 'IDS / IPS',
+    directory: 'Directory Service',
+    reverse_proxy: 'Reverse Proxy / Load Balancer',
+    database: 'Database',
+    cache: 'Cache',
+    search_engine: 'Search Engine',
+    monitoring: 'Monitoring / Dashboards',
+    metrics: 'Metrics',
+  }
+
+  const ALL_ACTION_OPTIONS = [
+    // Firewall
+    { value: 'add_rule', label: 'Add Rule', types: ['firewall'] },
+    { value: 'remove_rule', label: 'Remove Rule', types: ['firewall'] },
+    { value: 'modify_rule', label: 'Modify Rule', types: ['firewall'] },
+    { value: 'disable_rule', label: 'Disable Rule', types: ['firewall'] },
+    { value: 'modify_sg', label: 'Modify Security Group', types: ['firewall'] },
+    { value: 'delete_sg', label: 'Delete Security Group', types: ['firewall'] },
+    // Switch
+    { value: 'change_vlan', label: 'Change VLAN Assignment', types: ['switch'] },
+    { value: 'delete_vlan', label: 'Delete VLAN', types: ['switch'] },
+    { value: 'modify_vlan', label: 'Modify VLAN', types: ['switch'] },
+    // Switch / Router / WLC
+    { value: 'disable_port', label: 'Disable Port', types: ['switch', 'router', 'wlc'] },
+    { value: 'enable_port', label: 'Enable Port', types: ['switch', 'router', 'wlc'] },
+    { value: 'shutdown_interface', label: 'Shutdown Interface', types: ['switch', 'router', 'wlc'] },
+    // Router / VPN
+    { value: 'modify_routing', label: 'Modify Routing', types: ['router', 'vpn_gateway'] },
+    { value: 'modify_acl', label: 'Modify ACL', types: ['router', 'firewall'] },
+    // Wireless
+    { value: 'modify_ssid', label: 'Modify SSID', types: ['wlc', 'access_point'] },
+    { value: 'disable_ssid', label: 'Disable SSID', types: ['wlc', 'access_point'] },
+    // Security
+    { value: 'update_signatures', label: 'Update Signatures', types: ['ids'] },
+    { value: 'modify_vpn_tunnel', label: 'Modify VPN Tunnel', types: ['vpn_gateway'] },
+    { value: 'modify_policy', label: 'Modify Policy', types: ['directory', 'ids'] },
+    // Application
+    { value: 'modify_config', label: 'Modify Configuration', types: ['reverse_proxy', 'database', 'cache', 'search_engine', 'monitoring', 'metrics'] },
+    { value: 'restart_service', label: 'Restart Service', types: ['reverse_proxy', 'database', 'cache', 'search_engine', 'monitoring', 'metrics', 'directory'] },
+    { value: 'scale_service', label: 'Scale Service', types: ['reverse_proxy', 'database', 'cache', 'search_engine'] },
+    { value: 'rotate_credentials', label: 'Rotate Credentials', types: ['database', 'cache', 'directory', 'monitoring'] },
+    // Universal
+    { value: 'config_change', label: 'Config Change', types: [] },
+    { value: 'firmware_upgrade', label: 'Firmware Upgrade', types: [] },
+    { value: 'reboot_device', label: 'Reboot Device', types: [] },
+    { value: 'decommission', label: 'Decommission', types: [] },
   ]
 
-  const { data: graphDevices = [] } = useQuery<{ id: string; props?: Record<string, unknown> }[]>({
+  const { data: graphDevices = [] } = useQuery<Record<string, unknown>[]>({
     queryKey: ['change-wizard-graph-devices'],
     queryFn: () => apiClient.get('/graph/devices').then((r) => r.data),
     staleTime: 15_000,
@@ -604,20 +657,25 @@ function CreateChangeWizard({
   const deviceOptions = useMemo(() => {
     return graphDevices
       .map((item) => {
-        const props = item.props ?? {}
+        // API returns flat objects: { id, type, vendor, hostname, display_name, ... }
+        const id = typeof item.id === 'string' ? item.id : String(item.id ?? '')
         const displayName =
-          (typeof props.display_name === 'string' && props.display_name.trim()) ||
-          (typeof props.name === 'string' && props.name.trim()) ||
-          (typeof props.hostname === 'string' && props.hostname.trim()) ||
-          item.id
-        const type = typeof props.type === 'string' ? props.type : 'unknown'
-        return { id: item.id, name: displayName, type }
+          (typeof item.display_name === 'string' && item.display_name.trim()) ||
+          (typeof item.name === 'string' && (item.name as string).trim()) ||
+          (typeof item.hostname === 'string' && (item.hostname as string).trim()) ||
+          id
+        const type = typeof item.type === 'string' ? item.type : 'unknown'
+        const vendor = typeof item.vendor === 'string' ? item.vendor : ''
+        return { id, name: displayName, type, vendor }
       })
       .sort((a, b) => a.name.localeCompare(b.name))
   }, [graphDevices])
 
   const componentTypes = useMemo(
-    () => Array.from(new Set(deviceOptions.map((d) => d.type))).sort(),
+    () =>
+      Array.from(new Set(deviceOptions.map((d) => d.type)))
+        .filter((t) => t !== 'unknown')
+        .sort((a, b) => (TYPE_LABELS[a] ?? a).localeCompare(TYPE_LABELS[b] ?? b)),
     [deviceOptions],
   )
 
@@ -626,12 +684,21 @@ function CreateChangeWizard({
     return deviceOptions.filter((device) => device.type === targetComponentType)
   }, [deviceOptions, targetComponentType])
 
-  // Reset action when changeType changes (if current action doesn't belong to new type)
+  // Filter actions based on selected component type
+  const filteredActionOptions = useMemo(() => {
+    if (targetComponentType === 'all') return ALL_ACTION_OPTIONS
+    const normalizedType = targetComponentType.toLowerCase()
+    return ALL_ACTION_OPTIONS.filter(
+      (a) => a.types.length === 0 || a.types.includes(normalizedType),
+    )
+  }, [targetComponentType])
+
+  // Reset action when component type changes and current action is no longer valid
   useEffect(() => {
-    if (!ACTION_OPTIONS.find((a) => a.value === action)) {
-      setAction(ACTION_OPTIONS[0]?.value ?? '')
+    if (action && !filteredActionOptions.find((a) => a.value === action)) {
+      setAction('')
     }
-  }, [changeType])
+  }, [filteredActionOptions, action])
 
   const steps = ['Basics', 'Plans', 'Window']
   const canNext =
@@ -710,37 +777,121 @@ function CreateChangeWizard({
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
                 <Label>Target Component Type</Label>
-                <Select value={targetComponentType} onChange={(e) => setTargetComponentType(e.target.value)}>
-                  <option value="all">All</option>
+                <Select value={targetComponentType} onChange={(e) => { setTargetComponentType(e.target.value); setTargetNodeIds([]) }}>
+                  <option value="all">All types</option>
                   {componentTypes.map((type) => (
-                    <option key={type} value={type}>{type}</option>
+                    <option key={type} value={type}>{TYPE_LABELS[type] ?? type}</option>
                   ))}
                 </Select>
               </div>
               <div>
                 <Label>Target Components</Label>
-                <select
-                  multiple
-                  value={targetNodeIds}
-                  onChange={(e) => {
-                    const selected = Array.from(e.target.selectedOptions).map((opt) => opt.value)
-                    setTargetNodeIds(selected)
-                  }}
-                  className="w-full min-h-[110px] rounded-input border border-slate-300 dark:border-slate-600 bg-white dark:bg-surface-dark-secondary px-3 py-2 text-sm text-slate-700 dark:text-slate-200 focus-ring"
-                >
-                  {filteredDeviceOptions.map((device) => (
-                    <option key={device.id} value={device.id}>
-                      {device.name}
-                    </option>
-                  ))}
-                </select>
+                <div ref={componentDropdownRef} className="relative">
+                  {/* Trigger */}
+                  <button
+                    type="button"
+                    onClick={() => setComponentDropdownOpen((o) => !o)}
+                    className="flex w-full items-center justify-between rounded-input border border-slate-300 dark:border-slate-600 bg-white dark:bg-surface-dark-secondary px-3 py-2 text-sm text-slate-700 dark:text-slate-200 focus:border-brand-500 dark:focus:border-brand-400 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:focus:ring-brand-400 transition-colors"
+                  >
+                    <span className="truncate">
+                      {targetNodeIds.length === 0
+                        ? 'Select components…'
+                        : `${targetNodeIds.length} selected`}
+                    </span>
+                    <ChevronDown className={`ml-2 h-4 w-4 shrink-0 text-slate-400 transition-transform ${componentDropdownOpen ? 'rotate-180' : ''}`} />
+                  </button>
+
+                  {/* Selected chips */}
+                  {targetNodeIds.length > 0 && (
+                    <div className="mt-1.5 flex flex-wrap gap-1">
+                      {targetNodeIds.slice(0, 3).map((id) => {
+                        const dev = filteredDeviceOptions.find((d) => d.id === id) ?? deviceOptions.find((d) => d.id === id)
+                        return (
+                          <span
+                            key={id}
+                            className="inline-flex items-center gap-1 rounded-full bg-brand-100 dark:bg-brand-900/30 px-2 py-0.5 text-xs font-medium text-brand-700 dark:text-brand-300"
+                          >
+                            {dev?.name ?? id}
+                            <button
+                              type="button"
+                              onClick={() => setTargetNodeIds((prev) => prev.filter((n) => n !== id))}
+                              className="ml-0.5 hover:text-brand-900 dark:hover:text-brand-100"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </span>
+                        )
+                      })}
+                      {targetNodeIds.length > 3 && (
+                        <span className="inline-flex items-center rounded-full bg-slate-100 dark:bg-slate-700 px-2 py-0.5 text-xs text-slate-500 dark:text-slate-400">
+                          +{targetNodeIds.length - 3} more
+                        </span>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Dropdown */}
+                  {componentDropdownOpen && (
+                    <div className="absolute z-30 mt-1 w-full rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-surface-dark-secondary shadow-lg">
+                      <div className="border-b border-slate-200 dark:border-slate-700 px-2 py-1.5">
+                        <div className="flex items-center gap-2">
+                          <Search className="h-4 w-4 text-slate-400" />
+                          <input
+                            autoFocus
+                            value={componentSearch}
+                            onChange={(e) => setComponentSearch(e.target.value)}
+                            placeholder="Search components…"
+                            className="w-full bg-transparent text-sm text-slate-700 dark:text-slate-200 placeholder:text-slate-400 focus:outline-none"
+                          />
+                          {componentSearch && (
+                            <button type="button" onClick={() => setComponentSearch('')} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
+                              <X className="h-3.5 w-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                      <ul className="max-h-48 overflow-y-auto py-1">
+                        {filteredDeviceOptions
+                          .filter((d) => d.name.toLowerCase().includes(componentSearch.toLowerCase()))
+                          .map((device) => {
+                            const isSelected = targetNodeIds.includes(device.id)
+                            return (
+                              <li
+                                key={device.id}
+                                onClick={() => {
+                                  setTargetNodeIds((prev) =>
+                                    isSelected ? prev.filter((n) => n !== device.id) : [...prev, device.id],
+                                  )
+                                }}
+                                className={`flex cursor-pointer items-center gap-2 px-3 py-1.5 text-sm transition-colors hover:bg-slate-50 dark:hover:bg-slate-700/50 ${
+                                  isSelected ? 'text-brand-600 dark:text-brand-400 font-medium' : 'text-slate-700 dark:text-slate-200'
+                                }`}
+                              >
+                                <span className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border ${
+                                  isSelected
+                                    ? 'border-brand-500 bg-brand-500 text-white'
+                                    : 'border-slate-300 dark:border-slate-600'
+                                }`}>
+                                  {isSelected && <Check className="h-3 w-3" />}
+                                </span>
+                                <span className="truncate">{device.name}</span>
+                              </li>
+                            )
+                          })}
+                        {filteredDeviceOptions.filter((d) => d.name.toLowerCase().includes(componentSearch.toLowerCase())).length === 0 && (
+                          <li className="px-3 py-2 text-xs text-slate-400 dark:text-slate-500">No components found</li>
+                        )}
+                      </ul>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
             <div>
               <Label>Action</Label>
               <Select value={action} onChange={(e) => setAction(e.target.value)}>
                 <option value="">Select an action…</option>
-                {ACTION_OPTIONS.map((a) => (
+                {filteredActionOptions.map((a) => (
                   <option key={a.value} value={a.value}>{a.label}</option>
                 ))}
               </Select>

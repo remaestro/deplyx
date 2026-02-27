@@ -286,16 +286,24 @@ class Neo4jClient:
 
     # ── Action-aware impact queries ────────────────────────────────────
 
-    async def get_rule_dependents(self, rule_id: str) -> list[dict[str, Any]]:
-        """Find apps/services that depend on a specific firewall rule via PROTECTS."""
+    async def get_rule_dependents(self, node_id: str) -> list[dict[str, Any]]:
+        """Find apps/services that depend on a specific firewall rule via PROTECTS.
+        Works when *node_id* is a Rule **or** a Device (traverses HAS_RULE first)."""
         cypher = """
         MATCH (r:Rule {id: $id})-[:PROTECTS]->(app)
         RETURN DISTINCT app.id as id, labels(app)[0] as label, properties(app) as props
         UNION
+        MATCH (d:Device {id: $id})-[:HAS_RULE]->(r:Rule)-[:PROTECTS]->(app)
+        RETURN DISTINCT app.id as id, labels(app)[0] as label, properties(app) as props
+        UNION
         MATCH (r:Rule {id: $id})<-[:HAS_RULE]-(fw:Device)-[:CONNECTED_TO*1..2]-(neighbor)
         RETURN DISTINCT neighbor.id as id, labels(neighbor)[0] as label, properties(neighbor) as props
+        UNION
+        MATCH (d:Device {id: $id})-[:CONNECTED_TO*1..2]-(neighbor)
+        WHERE neighbor <> d
+        RETURN DISTINCT neighbor.id as id, labels(neighbor)[0] as label, properties(neighbor) as props
         """
-        return await self.run_query(cypher, {"id": rule_id})
+        return await self.run_query(cypher, {"id": node_id})
 
     async def get_port_dependents(self, node_id: str) -> list[dict[str, Any]]:
         """Find what depends on a port/interface — follow cables, VLANs, connected devices."""
@@ -455,6 +463,48 @@ class Neo4jClient:
         LIMIT $limit
         """
         return await self.run_query(cypher, {"q": query, "limit": limit})
+
+    # ── Redundancy detection ────────────────────────────────────────────
+
+    async def get_redundant_protectors(
+        self,
+        app_ids: list[str],
+        exclude_node_ids: list[str] | None = None,
+    ) -> dict[str, list[dict[str, Any]]]:
+        """For each application id, find *other* rules and their parent
+        firewalls that also PROTECT it — excluding rules whose id OR
+        parent device id is in *exclude_node_ids* (handles both Rule
+        and Device targets).  Returns ``{app_id: [{rule_id, rule_display_name,
+        device_id, device_display_name, device_vendor}]}``."""
+        if not app_ids:
+            return {}
+        exclude = exclude_node_ids or []
+        cypher = """
+        UNWIND $app_ids AS aid
+        MATCH (rule:Rule)-[:PROTECTS]->(app {id: aid})
+        MATCH (fw:Device)-[:HAS_RULE]->(rule)
+        WHERE NOT rule.id IN $exclude
+          AND NOT fw.id IN $exclude
+        RETURN app.id                              AS app_id,
+               rule.id                             AS rule_id,
+               coalesce(rule.display_name, rule.id) AS rule_display_name,
+               fw.id                               AS device_id,
+               coalesce(fw.display_name, fw.hostname, fw.id) AS device_display_name,
+               fw.vendor                           AS device_vendor
+        ORDER BY app.id, fw.id
+        """
+        rows = await self.run_query(cypher, {"app_ids": app_ids, "exclude": exclude})
+        result: dict[str, list[dict[str, Any]]] = {}
+        for row in rows:
+            aid = row["app_id"]
+            result.setdefault(aid, []).append({
+                "rule_id": row["rule_id"],
+                "rule_display_name": row["rule_display_name"],
+                "device_id": row["device_id"],
+                "device_display_name": row["device_display_name"],
+                "device_vendor": row["device_vendor"],
+            })
+        return result
 
     # ── Clear all data ─────────────────────────────────────────────────
 

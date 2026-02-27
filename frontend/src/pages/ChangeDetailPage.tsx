@@ -122,6 +122,11 @@ type BlastRadius = {
   critical_services_at_risk: string[]
   redundancy_available: boolean
   redundancy_details: string
+  redundancy_per_application?: Record<string, {
+    has_alternate_protection: boolean
+    summary: string
+    alternate_protectors: { rule_id: string; rule_display_name: string; device_id: string; device_display_name: string; device_vendor: string }[]
+  }>
 }
 
 type ActionAnalysis = {
@@ -669,6 +674,28 @@ export default function ChangeDetailPage() {
                     )}
                     {impact.blast_radius.redundancy_details && (
                       <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">{impact.blast_radius.redundancy_details}</p>
+                    )}
+                    {impact.blast_radius.redundancy_per_application && Object.keys(impact.blast_radius.redundancy_per_application).length > 0 && (
+                      <div className="mt-3 space-y-2">
+                        <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Per-Application Redundancy</p>
+                        {Object.entries(impact.blast_radius.redundancy_per_application).map(([appId, info]) => (
+                          <div key={appId} className={`rounded-lg border p-2.5 text-sm ${
+                            info.has_alternate_protection
+                              ? 'border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/20'
+                              : 'border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20'
+                          }`}>
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className={`inline-block h-2 w-2 rounded-full ${info.has_alternate_protection ? 'bg-emerald-500' : 'bg-red-500'}`} />
+                              <span className="font-medium text-slate-800 dark:text-slate-200">{appId}</span>
+                            </div>
+                            <p className={`text-xs ${
+                              info.has_alternate_protection
+                                ? 'text-emerald-700 dark:text-emerald-300'
+                                : 'text-red-700 dark:text-red-300'
+                            }`}>{info.summary}</p>
+                          </div>
+                        ))}
+                      </div>
                     )}
                   </CardContent>
                 </Card>

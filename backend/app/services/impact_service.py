@@ -68,12 +68,16 @@ async def analyze_impact(
                 logger.info("[IMPACT-DIAG] Subgraph fetch: %.1fs (%d nodes, %d edges) — pruned to 4-hop neighborhood",
                             t_topo_done, len(topology.get('nodes', [])), len(topology.get('edges', [])))
 
+                # Include pre-computed redundancy data so the LLM can reason about it
+                redundancy_hint = graph_result.get("redundancy", {})
+
                 change_details = {
                     "action": action or "unknown",
                     "change_type": change_type or "unknown",
                     "environment": environment or "unknown",
                     "title": title or "",
                     "target_node_ids": target_node_ids,
+                    "redundancy_analysis": redundancy_hint,
                 }
                 t_llm = time.monotonic()
                 llm_result = await llm_service.analyze_with_llm(topology, change_details)
@@ -99,6 +103,12 @@ async def analyze_impact(
         )
     else:
         graph_result["llm_powered"] = False
+        # Enrich graph-only blast_radius with redundancy data
+        redundancy = graph_result.get("redundancy", {})
+        graph_result.setdefault("blast_radius", {})
+        graph_result["blast_radius"]["redundancy_available"] = redundancy.get("available", False)
+        graph_result["blast_radius"]["redundancy_details"] = redundancy.get("details", "")
+        graph_result["blast_radius"]["redundancy_per_application"] = redundancy.get("per_application", {})
         result = graph_result
 
     t_total = time.monotonic() - t0
@@ -156,6 +166,13 @@ def _build_llm_first_response(
     if not isinstance(max_criticality, str):
         max_criticality = _compute_max_criticality(directly_impacted + indirectly_impacted)
 
+    # Merge graph-computed redundancy into LLM blast_radius
+    redundancy = graph_result.get("redundancy", {})
+    if redundancy:
+        blast_radius["redundancy_available"] = redundancy.get("available", blast_radius.get("redundancy_available", False))
+        blast_radius["redundancy_details"] = redundancy.get("details", blast_radius.get("redundancy_details", ""))
+        blast_radius["redundancy_per_application"] = redundancy.get("per_application", {})
+
     return {
         "directly_impacted": directly_impacted,
         "indirectly_impacted": indirectly_impacted,
@@ -169,6 +186,7 @@ def _build_llm_first_response(
         "risk_assessment": risk_assessment,
         "blast_radius": blast_radius,
         "action_analysis": action_analysis,
+        "redundancy": redundancy,
         "llm_powered": True,
     }
 
@@ -210,6 +228,11 @@ async def _graph_based_analysis(
     critical_paths = await _build_critical_paths(target_node_ids, action, depth)
     max_criticality = _compute_max_criticality(directly_impacted + indirectly_impacted)
 
+    # ── Redundancy detection ──────────────────────────────────────────
+    redundancy = await _detect_redundancy(
+        affected_applications, target_node_ids, action,
+    )
+
     return {
         "directly_impacted": directly_impacted,
         "indirectly_impacted": indirectly_impacted,
@@ -220,6 +243,7 @@ async def _graph_based_analysis(
         "max_criticality": max_criticality,
         "traversal_strategy": _strategy_name(action),
         "critical_paths": critical_paths,
+        "redundancy": redundancy,
     }
 
 
@@ -297,6 +321,70 @@ def _classify_impacted(
         services.append(entry)
     elif label == "VLAN":
         vlans.append(entry)
+
+
+async def _detect_redundancy(
+    affected_apps: list[dict[str, Any]],
+    target_node_ids: list[str],
+    action: str | None,
+) -> dict[str, Any]:
+    """Check whether impacted applications have alternate protection paths
+    from devices *other* than the change targets."""
+    RULE_ACTIONS = {"add_rule", "remove_rule", "modify_rule", "disable_rule"}
+    if not affected_apps:
+        return {"available": False, "details": "No affected applications to check.", "per_application": {}}
+    if not action or action.lower() not in RULE_ACTIONS:
+        return {"available": False, "details": "Redundancy analysis not applicable for this action type.", "per_application": {}}
+
+    app_ids = [a["id"] for a in affected_apps if a.get("id")]
+    if not app_ids:
+        return {"available": False, "details": "No affected applications to check.", "per_application": {}}
+
+    protectors_map = await neo4j_client.get_redundant_protectors(app_ids, exclude_node_ids=target_node_ids)
+
+    per_app: dict[str, dict[str, Any]] = {}
+    any_redundancy = False
+    fully_covered = True
+    details_parts: list[str] = []
+
+    for app in affected_apps:
+        aid = app.get("id", "")
+        alt = protectors_map.get(aid, [])
+        has_alt = len(alt) > 0
+        if has_alt:
+            any_redundancy = True
+            alt_summary = "; ".join(
+                f"{p['device_display_name']} via rule {p['rule_display_name']}"
+                for p in alt
+            )
+            per_app[aid] = {
+                "has_alternate_protection": True,
+                "alternate_protectors": alt,
+                "summary": f"Still protected by: {alt_summary}",
+            }
+            details_parts.append(f"{aid} is still protected by {len(alt)} other rule(s) ({alt_summary}).")
+        else:
+            fully_covered = False
+            per_app[aid] = {
+                "has_alternate_protection": False,
+                "alternate_protectors": [],
+                "summary": "No alternate protection — single point of failure.",
+            }
+            details_parts.append(f"{aid} has NO alternate protection — becomes fully exposed.")
+
+    if any_redundancy and fully_covered:
+        headline = "Partial redundancy: all affected applications have alternate protection from other firewalls, but this change still reduces defense-in-depth."
+    elif any_redundancy:
+        headline = "Mixed redundancy: some applications have alternate protection, but others will be fully exposed."
+    else:
+        headline = "No redundancy: all affected applications lose their only protection path."
+
+    return {
+        "available": any_redundancy,
+        "fully_covered": fully_covered if any_redundancy else False,
+        "details": headline + " " + " ".join(details_parts),
+        "per_application": per_app,
+    }
 
 
 def _compute_max_criticality(items: list[dict[str, Any]]) -> str:

@@ -119,7 +119,15 @@ Rules:
 - For 'reboot_device'/'decommission', trace ALL connected paths (full blast radius)
 - For 'change_vlan'/'delete_vlan', find all devices and apps on that VLAN
 - For 'disable_port', trace through the port's device to downstream dependencies
-- Consider redundancy: if an alternate path exists, note it
+- **REDUNDANCY IS CRITICAL**: The change details may include a `redundancy_analysis` \
+  object with pre-computed data showing which affected applications still have \
+  alternate protection from other firewalls/rules. You MUST use this data to:
+  * Set `blast_radius.redundancy_available` accurately (true if ANY app has alt protection)
+  * Write a detailed `blast_radius.redundancy_details` explaining which apps are still \
+    protected by which other firewalls/rules, and which apps become fully exposed
+  * Factor redundancy into your `risk_assessment.severity` — an app with alternate \
+    protection is less critical than one that becomes a single point of failure
+  * Mention redundancy in `risk_assessment.factors` and `mitigations`
 - Be specific about WHY each path is critical for this particular action
 - Return ONLY valid JSON, no markdown fences, no comments
 """
