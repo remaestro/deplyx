@@ -56,9 +56,17 @@ def http(method: str, url: str, body=None, headers=None):
     req = urllib.request.Request(url, data=data, headers=h, method=method)
     try:
         with urllib.request.urlopen(req, timeout=30) as r:
-            return r.status, json.loads(r.read().decode() or "{}")
+            text = r.read().decode() or "{}"
+            try:
+                return r.status, json.loads(text)
+            except json.JSONDecodeError:
+                return r.status, {"raw": text}
     except urllib.error.HTTPError as e:
-        return e.code, json.loads(e.read().decode() or "{}")
+        text = e.read().decode() or ""
+        try:
+            return e.code, json.loads(text)
+        except json.JSONDecodeError:
+            return e.code, {"raw": text[:500]}
 
 
 def main():
