@@ -21,6 +21,7 @@ pysnmp==7.1.16
 boto3==1.36.26
 azure-mgmt-network==28.1.0
 httpx==0.28.1
+setuptools>=75.0.0
 aiosqlite==0.21.0
 google-generativeai>=0.8.0
 docker==7.1.0
