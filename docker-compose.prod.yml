@@ -1,5 +1,6 @@
 services:
   backend:
+    image: ghcr.io/remaestro/deplyx-backend:${IMAGE_TAG:-latest}
     build:
       context: ./backend
       dockerfile: Dockerfile.prod
@@ -33,6 +34,7 @@ services:
       - deplyx
 
   frontend:
+    image: ghcr.io/remaestro/deplyx-frontend:${IMAGE_TAG:-latest}
     build:
       context: ./frontend
       dockerfile: Dockerfile.prod
@@ -51,6 +53,7 @@ services:
       - deplyx
 
   worker:
+    image: ghcr.io/remaestro/deplyx-backend:${IMAGE_TAG:-latest}
     build:
       context: ./backend
       dockerfile: Dockerfile.prod
@@ -70,6 +73,7 @@ services:
       - deplyx
 
   lab-api:
+    image: ghcr.io/remaestro/deplyx-backend:${IMAGE_TAG:-latest}
     build:
       context: ./backend
       dockerfile: Dockerfile.prod
