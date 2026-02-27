@@ -15,3 +15,21 @@ deploy/gcloud/env.backend.yaml
 # OS/Editor
 .DS_Store
 .vscode/settings.json
+
+# Binary / temp artifacts
+backend/test.db
+*.db
+frontend/playwright-report/data/
+frontend/playwright-report/trace/
+frontend/test-results/
+
+# Temp fix scripts (one-off lab maintenance)
+lab/fix_mock_ssh_exec.py
+lab/fix_mock_ssh_fallback.py
+lab/fix_mock_ssh_event.py
+lab/update_ssh_creds.py
+
+# Root-level one-off scripts
+create_all_connectors.py
+delete_all_connectors.py
+backend/tmp_smoke_pipeline.py

@@ -5,6 +5,9 @@ from pydantic import BaseModel, Field, model_validator
 
 
 class ChangeTypeEnum(StrEnum):
+    PREVENTIVE = "Preventive"
+    EVOLUTION = "Evolution"
+    CORRECTIVE = "Corrective"
     FIREWALL = "Firewall"
     SWITCH = "Switch"
     VLAN = "VLAN"
@@ -38,6 +41,8 @@ class ChangeActionEnum(StrEnum):
 
 
 class EnvironmentEnum(StrEnum):
+    PROD_LOWER = "prod"
+    PREPROD_LOWER = "pre-prod"
     PROD = "Prod"
     PREPROD = "Preprod"
     DC1 = "DC1"
@@ -89,6 +94,8 @@ class ImpactedComponentRead(BaseModel):
     graph_node_id: str
     component_type: str
     impact_level: str
+    display_name: str | None = None
+    label: str | None = None
 
     model_config = {"from_attributes": True}
 
@@ -107,6 +114,10 @@ class ChangeRead(BaseModel):
     status: str
     risk_score: float | None
     risk_level: str | None
+    analysis_stage: str
+    analysis_attempts: int
+    analysis_last_error: str | None
+    analysis_trace_id: str | None
     created_by: int
     reject_reason: str | None
     created_at: datetime
@@ -124,6 +135,8 @@ class ChangeListItem(BaseModel):
     status: str
     risk_score: float | None
     risk_level: str | None
+    analysis_stage: str
+    analysis_attempts: int
     created_by: int
     created_at: datetime
 

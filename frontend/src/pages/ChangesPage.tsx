@@ -32,7 +32,6 @@ import {
   Label,
   Badge,
 } from '../components/ui'
-import NodePicker from '../components/NodePicker'
 
 type ChangeItem = {
   id: string
@@ -219,6 +218,8 @@ export default function ChangesPage() {
             className="rounded-btn border border-slate-300 dark:border-slate-600 bg-white dark:bg-surface-dark-secondary px-2.5 py-1.5 text-sm text-slate-700 dark:text-slate-200 focus-ring"
           >
             <option value="">All Environments</option>
+            <option value="prod">prod</option>
+            <option value="pre-prod">pre-prod</option>
             <option value="Prod">Prod</option>
             <option value="Preprod">Preprod</option>
             <option value="DC1">DC1</option>
@@ -564,73 +565,81 @@ function CreateChangeWizard({
 }) {
   const [step, setStep] = useState(0)
   const [title, setTitle] = useState('')
-  const [changeType, setChangeType] = useState('Firewall')
+  const [changeType, setChangeType] = useState('Preventive')
   const [action, setAction] = useState('')
-  const [env, setEnv] = useState('Prod')
+  const [env, setEnv] = useState('prod')
   const [desc, setDesc] = useState('')
   const [executionPlan, setExecutionPlan] = useState('')
   const [rollbackPlan, setRollbackPlan] = useState('')
   const [mwStart, setMwStart] = useState('')
   const [mwEnd, setMwEnd] = useState('')
   const [targetNodeIds, setTargetNodeIds] = useState<string[]>([])
+  const [targetComponentType, setTargetComponentType] = useState('all')
 
-  const ACTION_OPTIONS: Record<string, { value: string; label: string }[]> = {
-    Firewall: [
-      { value: 'add_rule', label: 'Add Rule' },
-      { value: 'remove_rule', label: 'Remove Rule' },
-      { value: 'modify_rule', label: 'Modify Rule' },
-      { value: 'disable_rule', label: 'Disable Rule' },
-      { value: 'config_change', label: 'Config Change' },
-      { value: 'reboot_device', label: 'Reboot Device' },
-      { value: 'firmware_upgrade', label: 'Firmware Upgrade' },
-      { value: 'decommission', label: 'Decommission' },
-    ],
-    Switch: [
-      { value: 'disable_port', label: 'Disable Port' },
-      { value: 'enable_port', label: 'Enable Port' },
-      { value: 'shutdown_interface', label: 'Shutdown Interface' },
-      { value: 'change_vlan', label: 'Change VLAN Assignment' },
-      { value: 'config_change', label: 'Config Change' },
-      { value: 'reboot_device', label: 'Reboot Device' },
-      { value: 'firmware_upgrade', label: 'Firmware Upgrade' },
-      { value: 'decommission', label: 'Decommission' },
-    ],
-    VLAN: [
-      { value: 'change_vlan', label: 'Change VLAN' },
-      { value: 'delete_vlan', label: 'Delete VLAN' },
-      { value: 'modify_vlan', label: 'Modify VLAN' },
-    ],
-    Port: [
-      { value: 'disable_port', label: 'Disable Port' },
-      { value: 'enable_port', label: 'Enable Port' },
-      { value: 'shutdown_interface', label: 'Shutdown Interface' },
-    ],
-    Rack: [
-      { value: 'decommission', label: 'Decommission' },
-      { value: 'config_change', label: 'Config Change' },
-    ],
-    CloudSG: [
-      { value: 'modify_sg', label: 'Modify Security Group' },
-      { value: 'delete_sg', label: 'Delete Security Group' },
-    ],
-  }
+  const ACTION_OPTIONS = [
+    { value: 'add_rule', label: 'Add Rule' },
+    { value: 'remove_rule', label: 'Remove Rule' },
+    { value: 'modify_rule', label: 'Modify Rule' },
+    { value: 'disable_rule', label: 'Disable Rule' },
+    { value: 'change_vlan', label: 'Change VLAN Assignment' },
+    { value: 'disable_port', label: 'Disable Port' },
+    { value: 'enable_port', label: 'Enable Port' },
+    { value: 'shutdown_interface', label: 'Shutdown Interface' },
+    { value: 'reboot_device', label: 'Reboot Device' },
+    { value: 'decommission', label: 'Decommission' },
+    { value: 'firmware_upgrade', label: 'Firmware Upgrade' },
+    { value: 'config_change', label: 'Config Change' },
+    { value: 'delete_vlan', label: 'Delete VLAN' },
+    { value: 'modify_vlan', label: 'Modify VLAN' },
+    { value: 'modify_sg', label: 'Modify Security Group' },
+    { value: 'delete_sg', label: 'Delete Security Group' },
+  ]
 
-  const availableActions = ACTION_OPTIONS[changeType] || []
+  const { data: graphDevices = [] } = useQuery<{ id: string; props?: Record<string, unknown> }[]>({
+    queryKey: ['change-wizard-graph-devices'],
+    queryFn: () => apiClient.get('/graph/devices').then((r) => r.data),
+    staleTime: 15_000,
+  })
+
+  const deviceOptions = useMemo(() => {
+    return graphDevices
+      .map((item) => {
+        const props = item.props ?? {}
+        const displayName =
+          (typeof props.display_name === 'string' && props.display_name.trim()) ||
+          (typeof props.name === 'string' && props.name.trim()) ||
+          (typeof props.hostname === 'string' && props.hostname.trim()) ||
+          item.id
+        const type = typeof props.type === 'string' ? props.type : 'unknown'
+        return { id: item.id, name: displayName, type }
+      })
+      .sort((a, b) => a.name.localeCompare(b.name))
+  }, [graphDevices])
+
+  const componentTypes = useMemo(
+    () => Array.from(new Set(deviceOptions.map((d) => d.type))).sort(),
+    [deviceOptions],
+  )
+
+  const filteredDeviceOptions = useMemo(() => {
+    if (targetComponentType === 'all') return deviceOptions
+    return deviceOptions.filter((device) => device.type === targetComponentType)
+  }, [deviceOptions, targetComponentType])
 
   // Reset action when changeType changes (if current action doesn't belong to new type)
   useEffect(() => {
-    if (!availableActions.find((a) => a.value === action)) {
-      setAction(availableActions[0]?.value ?? '')
+    if (!ACTION_OPTIONS.find((a) => a.value === action)) {
+      setAction(ACTION_OPTIONS[0]?.value ?? '')
     }
   }, [changeType])
 
-  const steps = ['Basics', 'Plans', 'Window & Targets']
+  const steps = ['Basics', 'Plans', 'Window']
   const canNext =
     step === 0
-      ? title.trim() !== '' && desc.trim() !== '' && action !== ''
+      ? title.trim() !== '' && desc.trim() !== '' && action !== '' && targetNodeIds.length > 0
       : step === 1
         ? executionPlan.trim() !== '' && rollbackPlan.trim() !== ''
-        : mwStart !== '' && mwEnd !== '' && targetNodeIds.length > 0
+        : mwStart !== '' && mwEnd !== ''
 
   return (
     <div className="space-y-6">
@@ -685,29 +694,53 @@ function CreateChangeWizard({
               <div>
                 <Label>Change Type</Label>
                 <Select value={changeType} onChange={(e) => setChangeType(e.target.value)}>
-                  <option value="Firewall">Firewall</option>
-                  <option value="Switch">Switch</option>
-                  <option value="VLAN">VLAN</option>
-                  <option value="Port">Port</option>
-                  <option value="Rack">Rack</option>
-                  <option value="CloudSG">Cloud SG</option>
+                  <option value="Preventive">Preventive</option>
+                  <option value="Evolution">Evolution</option>
+                  <option value="Corrective">Corrective</option>
                 </Select>
               </div>
               <div>
                 <Label>Environment</Label>
                 <Select value={env} onChange={(e) => setEnv(e.target.value)}>
-                  <option value="Prod">Prod</option>
-                  <option value="Preprod">Preprod</option>
-                  <option value="DC1">DC1</option>
-                  <option value="DC2">DC2</option>
+                  <option value="prod">prod</option>
+                  <option value="pre-prod">pre-prod</option>
                 </Select>
+              </div>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <Label>Target Component Type</Label>
+                <Select value={targetComponentType} onChange={(e) => setTargetComponentType(e.target.value)}>
+                  <option value="all">All</option>
+                  {componentTypes.map((type) => (
+                    <option key={type} value={type}>{type}</option>
+                  ))}
+                </Select>
+              </div>
+              <div>
+                <Label>Target Components</Label>
+                <select
+                  multiple
+                  value={targetNodeIds}
+                  onChange={(e) => {
+                    const selected = Array.from(e.target.selectedOptions).map((opt) => opt.value)
+                    setTargetNodeIds(selected)
+                  }}
+                  className="w-full min-h-[110px] rounded-input border border-slate-300 dark:border-slate-600 bg-white dark:bg-surface-dark-secondary px-3 py-2 text-sm text-slate-700 dark:text-slate-200 focus-ring"
+                >
+                  {filteredDeviceOptions.map((device) => (
+                    <option key={device.id} value={device.id}>
+                      {device.name}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
             <div>
               <Label>Action</Label>
               <Select value={action} onChange={(e) => setAction(e.target.value)}>
                 <option value="">Select an action…</option>
-                {availableActions.map((a) => (
+                {ACTION_OPTIONS.map((a) => (
                   <option key={a.value} value={a.value}>{a.label}</option>
                 ))}
               </Select>
@@ -718,7 +751,7 @@ function CreateChangeWizard({
             <div>
               <Label>Description</Label>
               <Textarea
-                placeholder="Description"
+                placeholder="Describe this change in natural language"
                 value={desc}
                 onChange={(e) => setDesc(e.target.value)}
                 rows={3}
@@ -781,14 +814,6 @@ function CreateChangeWizard({
                   className="w-full rounded-input border border-slate-300 dark:border-slate-600 bg-white dark:bg-surface-dark-secondary px-3 py-2 text-sm text-slate-700 dark:text-slate-200 focus-ring"
                 />
               </div>
-            </div>
-            <div>
-              <Label>Target Components</Label>
-              <NodePicker
-                selected={targetNodeIds}
-                onChange={setTargetNodeIds}
-                placeholder="Search devices, rules, VLANs…"
-              />
             </div>
           </motion.div>
         )}

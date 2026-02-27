@@ -1,11 +1,39 @@
+import asyncio
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from neo4j import AsyncGraphDatabase
 
 from app.core.config import settings
+from app.graph.errors import Neo4jCircuitOpenError, Neo4jQueryTimeoutError
 from app.utils.logging import get_logger
 
 logger = get_logger(__name__)
+
+ALLOWED_REL_TYPES: frozenset[str] = frozenset({
+    "HAS_INTERFACE",
+    "HAS_RULE",
+    "HOSTS",
+    "HAS_IP",
+    "PROTECTS",
+    "CONNECTED_TO",
+    "HAS_BGP_PEER",
+    "HAS_VRF",
+    "HAS_ROUTE",
+    "HAS_VPN_TUNNEL",
+    "HAS_WLAN",
+    "HAS_AP",
+    "SERVES_WLAN",
+    "HAS_RADIO",
+    "HAS_VHOST",
+    "HAS_INDEX",
+    "HAS_DATASOURCE",
+    "HAS_SCRAPE_TARGET",
+    "HAS_REPLICA",
+    "PART_OF",
+    "ROUTES_TO",
+    "LOCATED_IN",
+})
 
 
 class Neo4jClient:
@@ -14,21 +42,64 @@ class Neo4jClient:
             settings.neo4j_uri,
             auth=(settings.neo4j_username, settings.neo4j_password),
         )
+        self.query_timeout_seconds = settings.neo4j_query_timeout_seconds
+        self.failure_threshold = settings.neo4j_circuit_failure_threshold
+        self.reset_seconds = settings.neo4j_circuit_reset_seconds
+        self.failure_count = 0
+        self.circuit_open_until: datetime | None = None
 
     async def close(self) -> None:
         await self.driver.close()
 
+    def get_circuit_state(self) -> dict[str, Any]:
+        now = datetime.now(UTC)
+        is_open = bool(self.circuit_open_until and now < self.circuit_open_until)
+        return {
+            "is_open": is_open,
+            "failure_count": self.failure_count,
+            "open_until": self.circuit_open_until.isoformat() if self.circuit_open_until else None,
+        }
+
+    def _ensure_circuit_openable(self) -> None:
+        if self.failure_count >= self.failure_threshold:
+            self.circuit_open_until = datetime.now(UTC) + timedelta(seconds=self.reset_seconds)
+
+    def _record_success(self) -> None:
+        self.failure_count = 0
+        self.circuit_open_until = None
+
+    def _record_failure(self) -> None:
+        self.failure_count += 1
+        self._ensure_circuit_openable()
+
+    async def _execute(self, cypher: str, params: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+        now = datetime.now(UTC)
+        if self.circuit_open_until and now < self.circuit_open_until:
+            raise Neo4jCircuitOpenError("Neo4j circuit breaker is open")
+
+        try:
+            async with self.driver.session() as session:
+                result = await asyncio.wait_for(
+                    session.run(cypher, params or {}),
+                    timeout=self.query_timeout_seconds,
+                )
+                records = [record.data() async for record in result]
+                self._record_success()
+                return records
+        except TimeoutError as exc:
+            self._record_failure()
+            raise Neo4jQueryTimeoutError("Neo4j query timeout") from exc
+        except Exception:
+            self._record_failure()
+            raise
+
     # ── Generic helpers ────────────────────────────────────────────────
 
     async def run_query(self, cypher: str, params: dict[str, Any] | None = None) -> list[dict[str, Any]]:
-        async with self.driver.session() as session:
-            result = await session.run(cypher, params or {})
-            return [record.data() async for record in result]
+        return await self._execute(cypher, params)
 
     async def run_write(self, cypher: str, params: dict[str, Any] | None = None) -> list[dict[str, Any]]:
-        async with self.driver.session() as session:
-            result = await session.run(cypher, params or {})
-            return [record.data() async for record in result]
+        return await self._execute(cypher, params)
 
     # ── Node CRUD ──────────────────────────────────────────────────────
 
@@ -38,7 +109,7 @@ class Neo4jClient:
         return rows[0]["n"] if rows else {}
 
     async def merge_node(self, label: str, id_value: str, props: dict[str, Any]) -> dict[str, Any]:
-        cypher = f"MERGE (n:{label} {{id: $id}}) SET n += $props RETURN n"
+        cypher = f"MERGE (n:{label} {{id: $id}}) SET n += $props SET n.last_seen = timestamp() RETURN n"
         rows = await self.run_write(cypher, {"id": id_value, "props": props})
         return rows[0]["n"] if rows else {}
 
@@ -73,10 +144,16 @@ class Neo4jClient:
         to_id: str,
         props: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
+        if rel_type not in ALLOWED_REL_TYPES:
+            raise ValueError(
+                f"Relationship type {rel_type!r} is not in ALLOWED_REL_TYPES. "
+                f"Allowed: {sorted(ALLOWED_REL_TYPES)}"
+            )
         cypher = (
             f"MATCH (a:{from_label} {{id: $from_id}}), (b:{to_label} {{id: $to_id}}) "
             f"MERGE (a)-[r:{rel_type}]->(b) "
             "SET r += $props "
+            "SET r.last_seen = timestamp() "
             "RETURN type(r) as rel_type, a.id as from_id, b.id as to_id"
         )
         rows = await self.run_write(cypher, {"from_id": from_id, "to_id": to_id, "props": props or {}})
@@ -190,7 +267,14 @@ class Neo4jClient:
     # ── Full topology ──────────────────────────────────────────────────
 
     async def get_full_topology(self) -> dict[str, Any]:
-        nodes_cypher = "MATCH (n) RETURN n.id as id, labels(n)[0] as label, properties(n) as properties"
+        nodes_cypher = """
+        MATCH (n)
+        RETURN n.id as id,
+               coalesce(n.display_name, n.label, n.hostname, n.name, n.id) as label,
+               n.display_name as display_name,
+               labels(n)[0] as type,
+               properties(n) as properties
+        """
         edges_cypher = (
             "MATCH (a)-[r]->(b) "
             "RETURN a.id as source, b.id as target, type(r) as rel_type, properties(r) as properties, "
@@ -363,10 +447,11 @@ class Neo4jClient:
         MATCH (n)
         WHERE toLower(n.id) CONTAINS toLower($q)
            OR toLower(coalesce(n.label, '')) CONTAINS toLower($q)
+              OR toLower(coalesce(n.display_name, '')) CONTAINS toLower($q)
            OR toLower(coalesce(n.hostname, '')) CONTAINS toLower($q)
            OR toLower(coalesce(n.name, '')) CONTAINS toLower($q)
         RETURN n.id as id, labels(n)[0] as label, properties(n) as props
-        ORDER BY n.id
+          ORDER BY coalesce(n.display_name, n.label, n.hostname, n.name, n.id), n.id
         LIMIT $limit
         """
         return await self.run_query(cypher, {"q": query, "limit": limit})

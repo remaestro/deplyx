@@ -28,6 +28,7 @@ import {
   CodeBlock,
 } from '../components/ui'
 import NodePicker from '../components/NodePicker'
+import { fetchChangeStage, formatAnalysisStageLabel, isAnalysisStageTerminal, type ChangeStageResponse } from './changeStage'
 
 type ChangeDetail = {
   id: string
@@ -43,11 +44,21 @@ type ChangeDetail = {
   status: string
   risk_score: number | null
   risk_level: string | null
+  analysis_stage: string
+  analysis_attempts: number
+  analysis_last_error: string | null
+  analysis_trace_id: string | null
   reject_reason: string | null
   created_by: number
   created_at: string
   updated_at: string
-  impacted_components: { graph_node_id: string; component_type: string; impact_level: string }[]
+  impacted_components: {
+    graph_node_id: string
+    component_type: string
+    impact_level: string
+    display_name?: string | null
+    label?: string | null
+  }[]
 }
 
 type Approval = {
@@ -185,6 +196,19 @@ export default function ChangeDetailPage() {
     refetchOnWindowFocus: false,
   })
 
+  const { data: stageResponse } = useQuery<ChangeStageResponse>({
+    queryKey: ['change-stage', id],
+    queryFn: () => fetchChangeStage(id as string),
+    enabled: !!id,
+    refetchInterval: (query) => {
+      const stage = (query.state.data as ChangeStageResponse | undefined)?.analysis_stage
+      if (!stage || isAnalysisStageTerminal(stage)) {
+        return false
+      }
+      return 3000
+    },
+  })
+
   const refreshImpactMutation = useMutation({
     mutationFn: () => apiClient.get(`/changes/${id}/impact?refresh=true`).then((r) => r.data),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['impact', id] }),
@@ -192,6 +216,7 @@ export default function ChangeDetailPage() {
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ['change', id] })
+    queryClient.invalidateQueries({ queryKey: ['change-stage', id] })
     queryClient.invalidateQueries({ queryKey: ['approvals', id] })
     queryClient.invalidateQueries({ queryKey: ['audit', id] })
     // Impact is NOT invalidated here — it's cached server-side and only
@@ -296,6 +321,13 @@ export default function ChangeDetailPage() {
   const isAdmin = user?.role === 'Admin'
   const canEdit = (change.status === 'Draft' || change.status === 'Pending') && (isOwner || isAdmin)
   const impact = impactResponse?.impact
+  const stage = stageResponse ?? {
+    change_id: change.id,
+    analysis_stage: change.analysis_stage,
+    analysis_attempts: change.analysis_attempts,
+    analysis_last_error: change.analysis_last_error,
+    analysis_trace_id: change.analysis_trace_id,
+  }
 
   return (
     <div className="max-w-4xl space-y-6 pb-20">
@@ -314,6 +346,18 @@ export default function ChangeDetailPage() {
         </div>
         <StatusBadge status={change.status} />
       </div>
+
+      <Card>
+        <CardContent>
+          <div className="text-sm text-slate-600 dark:text-slate-300">
+            Analysis stage: <span className="font-medium">{formatAnalysisStageLabel(stage.analysis_stage)}</span>
+            {stage.analysis_attempts > 0 && <span className="ml-2">(attempts: {stage.analysis_attempts})</span>}
+          </div>
+          {stage.analysis_last_error && (
+            <div className="mt-2 text-sm text-red-600 dark:text-red-400">{stage.analysis_last_error}</div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Workflow Stepper */}
       <Card>
@@ -461,7 +505,7 @@ export default function ChangeDetailPage() {
                         ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
                         : 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400'
                     }`}>
-                      {c.component_type}: {c.graph_node_id} ({c.impact_level})
+                      {(c.label ?? c.component_type)}: {(c.display_name ?? c.graph_node_id)} ({c.graph_node_id})
                     </span>
                   ))}
                 </div>

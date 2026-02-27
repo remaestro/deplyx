@@ -1,31 +1,14 @@
-import asyncio
+from app.celery_app import celery_app, run_async
+from app.tasks.analyze_change import enqueue_analysis
 
-from celery import Celery
-from celery.schedules import crontab
-
-from app.core.config import settings
-
-celery_app = Celery("deplyx", broker=settings.redis_url, backend=settings.redis_url)
-
-celery_app.conf.beat_schedule = {
-    "check-approval-timeouts": {
-        "task": "app.tasks.check_timeouts",
-        "schedule": crontab(minute="*/30"),  # Every 30 minutes
-    },
-    "sync-pull-connectors": {
-        "task": "app.tasks.sync_pull_connectors",
-        "schedule": crontab(minute="*/5"),  # Every 5 minutes
-    },
-}
-
-
-def _run_async(coro):
-    """Helper to run async code inside sync Celery tasks."""
-    loop = asyncio.new_event_loop()
-    try:
-        return loop.run_until_complete(coro)
-    finally:
-        loop.close()
+# Ensure task modules are imported so Celery registers them
+from app.tasks import poll_dead_letter as _poll_dead_letter  # noqa: F401
+from app.tasks import reconcile_graph_pg as _reconcile_graph_pg  # noqa: F401
+from app.tasks.pipeline import compute_impact as _compute_impact  # noqa: F401
+from app.tasks.pipeline import fetch_change_data as _fetch_change_data  # noqa: F401
+from app.tasks.pipeline import finalise_analysis as _finalise_analysis  # noqa: F401
+from app.tasks.pipeline import route_workflow as _route_workflow  # noqa: F401
+from app.tasks.pipeline import score_risk as _score_risk  # noqa: F401
 
 
 @celery_app.task(name="app.tasks.health")
@@ -35,56 +18,8 @@ def health_task() -> str:
 
 @celery_app.task(name="app.tasks.analyze_change")
 def task_analyze_change(change_id: str) -> dict:
-    """Run impact analysis + risk scoring + workflow routing for a change."""
-
-    async def _do():
-        from app.core.database import AsyncSessionLocal
-        from app.risk.engine import risk_engine
-        from app.services import change_service, impact_service
-        from app.workflow.engine import workflow_engine
-
-        async with AsyncSessionLocal() as db:
-            change = await change_service.get_change(db, change_id)
-            if change is None:
-                return {"error": "Change not found"}
-
-            # Impact analysis
-            target_ids = [ic.graph_node_id for ic in change.impacted_components if ic.impact_level == "direct"]
-            impact = await impact_service.analyze_impact(target_ids)
-            incident_history_count = await change_service.get_incident_history_count(
-                db,
-                target_ids,
-                exclude_change_id=change.id,
-            )
-
-            # Risk scoring
-            change_data = {
-                "environment": change.environment,
-                "rollback_plan": change.rollback_plan,
-                "maintenance_window_start": change.maintenance_window_start,
-                "maintenance_window_end": change.maintenance_window_end,
-                "target_components": target_ids,
-                "incident_history_count": incident_history_count,
-            }
-            risk_result = await risk_engine.evaluate_change(change_data, impact)
-
-            # Update change
-            change.risk_score = risk_result["risk_score"]
-            change.risk_level = risk_result["risk_level"]
-
-            # Route through workflow
-            routing = await workflow_engine.route_change(db, change, risk_result, change.created_by)
-
-            await db.commit()
-
-            return {
-                "change_id": change_id,
-                "risk_score": risk_result["risk_score"],
-                "risk_level": risk_result["risk_level"],
-                "workflow": routing,
-            }
-
-    return _run_async(_do())
+    enqueue_analysis(change_id)
+    return {"change_id": change_id, "queued": True}
 
 
 @celery_app.task(name="app.tasks.check_timeouts")
@@ -110,7 +45,7 @@ def task_check_timeouts() -> dict:
             await db.commit()
             return {"checked_changes": len(change_ids), "timed_out_approvals": total_timed_out}
 
-    return _run_async(_do())
+    return run_async(_do())
 
 
 @celery_app.task(name="app.tasks.sync_pull_connectors")
@@ -126,4 +61,4 @@ def task_sync_pull_connectors() -> dict:
             await db.commit()
             return result
 
-    return _run_async(_do())
+    return run_async(_do())

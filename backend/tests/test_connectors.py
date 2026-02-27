@@ -224,3 +224,63 @@ async def test_operations_endpoint_returns_v2_contract(client: AsyncClient, monk
     assert body["status"] == "success"
     assert isinstance(body["data"], dict)
     assert body["data"]["valid"] is True
+
+
+@pytest.mark.asyncio
+async def test_sync_connector_triggers_rerun_hook(client: AsyncClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    headers = await _register_admin(client, email="sync-rerun-admin@deplyx.io")
+
+    monkeypatch.setitem(connector_service.CONNECTOR_CLASSES, "paloalto", FakeConnector)
+    rerun_calls: list[str] = []
+
+    async def _fake_rerun(db, trigger: str) -> None:
+        rerun_calls.append(trigger)
+
+    monkeypatch.setattr(connector_service, "_rerun_all_changes_analysis", _fake_rerun)
+
+    created = await client.post(
+        "/api/v1/connectors",
+        json={
+            "name": "Rerun Connector",
+            "connector_type": "paloalto",
+            "config": {"host": "demo.local"},
+            "sync_mode": "on-demand",
+            "sync_interval_minutes": 30,
+        },
+        headers=headers,
+    )
+    connector_id = created.json()["id"]
+
+    synced = await client.post(f"/api/v1/connectors/{connector_id}/sync", headers=headers)
+    assert synced.status_code == 200
+    assert rerun_calls == ["connector_sync"]
+
+
+@pytest.mark.asyncio
+async def test_pull_sync_triggers_rerun_once(client: AsyncClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    headers = await _register_admin(client, email="pull-rerun-admin@deplyx.io")
+
+    monkeypatch.setitem(connector_service.CONNECTOR_CLASSES, "paloalto", FakeConnector)
+    rerun_calls: list[str] = []
+
+    async def _fake_rerun(db, trigger: str) -> None:
+        rerun_calls.append(trigger)
+
+    monkeypatch.setattr(connector_service, "_rerun_all_changes_analysis", _fake_rerun)
+
+    created = await client.post(
+        "/api/v1/connectors",
+        json={
+            "name": "Pull Rerun Connector",
+            "connector_type": "paloalto",
+            "config": {"host": "demo.local"},
+            "sync_mode": "pull",
+            "sync_interval_minutes": 60,
+        },
+        headers=headers,
+    )
+    assert created.status_code == 201
+
+    res = await client.post("/api/v1/connectors/sync/pull", headers=headers)
+    assert res.status_code == 200
+    assert rerun_calls == ["pull_sync"]

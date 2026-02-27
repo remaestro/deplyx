@@ -176,6 +176,7 @@ class RelationshipRead(RelationshipCreate):
 class GraphNode(BaseModel):
     id: str
     label: str  # Neo4j label: Device, Application, etc.
+    display_name: str | None = None
     properties: dict[str, Any] = {}
 
 

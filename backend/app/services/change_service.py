@@ -6,19 +6,24 @@ from sqlalchemy.orm import selectinload
 
 from app.graph.neo4j_client import neo4j_client
 from app.models.change import Change, ChangeImpactedComponent
+from app.risk.engine import risk_engine
+from app.services import impact_service
 from app.utils.logging import get_logger
 
 logger = get_logger(__name__)
 
 
 async def _resolve_component_type(node_id: str) -> str:
-    node = await neo4j_client.get_node("Device", node_id)
-    if node:
-        return "Device"
-    for label in ["Rule", "VLAN", "Application", "Interface", "Service", "Datacenter", "IP"]:
-        node = await neo4j_client.get_node(label, node_id)
+    try:
+        node = await neo4j_client.get_node("Device", node_id)
         if node:
-            return label
+            return "Device"
+        for label in ["Rule", "VLAN", "Application", "Interface", "Service", "Datacenter", "IP"]:
+            node = await neo4j_client.get_node(label, node_id)
+            if node:
+                return label
+    except Exception:
+        logger.debug("Neo4j unavailable – cannot resolve component type for %s", node_id)
     return ""
 
 
@@ -39,7 +44,11 @@ async def _build_impacted_components(target_components: list[str], depth: int = 
         )
 
         # Use action-aware neighbor traversal
-        neighbors = await neo4j_client.get_action_aware_neighbors(comp_id, action=action, depth=depth)
+        try:
+            neighbors = await neo4j_client.get_action_aware_neighbors(comp_id, action=action, depth=depth)
+        except Exception:
+            logger.debug("Neo4j unavailable – skipping neighbor traversal for %s", comp_id)
+            neighbors = []
         for neighbor in neighbors:
             neighbor_id = neighbor.get("id")
             if not neighbor_id or neighbor_id in seen_ids:
@@ -165,6 +174,46 @@ async def transition_status(db: AsyncSession, change_id: str, new_status: str, *
     return change
 
 
+async def set_analysis_stage(
+    db: AsyncSession,
+    change_id: str,
+    stage: str,
+    error: str | None = None,
+    trace_id: str | None = None,
+) -> Change | None:
+    change = await get_change(db, change_id)
+    if change is None:
+        return None
+    change.analysis_stage = stage
+    if error is not None:
+        change.analysis_last_error = error
+    if trace_id is not None:
+        change.analysis_trace_id = trace_id
+    await db.flush()
+    await db.refresh(change)
+    return change
+
+
+async def set_analysis_last_error(db: AsyncSession, change_id: str, error: str | None) -> Change | None:
+    change = await get_change(db, change_id)
+    if change is None:
+        return None
+    change.analysis_last_error = error
+    await db.flush()
+    await db.refresh(change)
+    return change
+
+
+async def increment_analysis_attempts(db: AsyncSession, change_id: str) -> Change | None:
+    change = await get_change(db, change_id)
+    if change is None:
+        return None
+    change.analysis_attempts = int(change.analysis_attempts or 0) + 1
+    await db.flush()
+    await db.refresh(change)
+    return change
+
+
 async def get_incident_history_count(
     db: AsyncSession,
     target_component_ids: list[str],
@@ -188,3 +237,63 @@ async def get_incident_history_count(
 
     result = await db.execute(stmt)
     return len(result.scalars().all())
+
+
+async def invalidate_all_change_analysis(db: AsyncSession, reason: str | None = None) -> int:
+    result = await db.execute(select(Change))
+    changes = list(result.scalars().all())
+
+    for change in changes:
+        change.impact_cache = None
+        change.risk_score = None
+        change.risk_level = None
+
+    await db.flush()
+    logger.info("Invalidated analysis for %d changes (reason=%s)", len(changes), reason or "n/a")
+    return len(changes)
+
+
+async def enqueue_analysis_for_all_changes(db: AsyncSession) -> int:
+    result = await db.execute(select(Change).options(selectinload(Change.impacted_components)))
+    changes = list(result.scalars().all())
+    recomputed = 0
+
+    for change in changes:
+        target_ids = [
+            ic.graph_node_id for ic in change.impacted_components if ic.impact_level == "direct"
+        ]
+        if not target_ids:
+            continue
+
+        impact = await impact_service.analyze_impact(
+            target_ids,
+            action=change.action,
+            change_type=change.change_type,
+            environment=change.environment,
+            title=change.title,
+        )
+        change.impact_cache = impact
+
+        incident_history_count = await get_incident_history_count(
+            db,
+            target_ids,
+            exclude_change_id=change.id,
+        )
+
+        change_data = {
+            "environment": change.environment,
+            "rollback_plan": change.rollback_plan,
+            "maintenance_window_start": change.maintenance_window_start,
+            "maintenance_window_end": change.maintenance_window_end,
+            "target_components": target_ids,
+            "incident_history_count": incident_history_count,
+            "action": change.action,
+        }
+        risk_result = await risk_engine.evaluate_change(change_data, impact)
+        change.risk_score = risk_result["risk_score"]
+        change.risk_level = risk_result["risk_level"]
+        recomputed += 1
+
+    await db.flush()
+    logger.info("Recomputed analysis for %d changes", recomputed)
+    return recomputed

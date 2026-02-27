@@ -14,7 +14,7 @@ import ReactFlow, {
 import 'reactflow/dist/style.css'
 import dagre from 'dagre'
 import { useQuery } from '@tanstack/react-query'
-import { RefreshCw, X as XIcon, Layers, Zap, Search, Flame, Maximize2, ArrowRightLeft, ArrowDownUp, Network } from 'lucide-react'
+import { RefreshCw, X as XIcon, Layers, Zap, Search, Flame, Maximize2, ArrowRightLeft, ArrowDownUp, Network, Trash2 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { apiClient } from '../api/client'
 import { useAppStore } from '../store/useAppStore'
@@ -40,6 +40,12 @@ type CriticalPath = {
   edges: CriticalPathEdge[]
   path_description?: string
   reasoning?: string
+}
+
+export function resolveTopologyNodeLabel(node: { id: string; label?: string; display_name?: string }): string {
+  if (node.display_name && node.display_name.trim()) return node.display_name
+  if (node.label && node.label.trim()) return node.label
+  return node.id
 }
 type ImpactPayload = {
   directly_impacted: ImpactEntry[]
@@ -117,7 +123,12 @@ function layoutNodes(
         y: (pos?.y ?? 0) - NODE_HEIGHT / 2,
       },
       data: {
-        label: gn.label || gn.id,
+        label: resolveTopologyNodeLabel({
+          id: gn.id,
+          label: gn.label,
+          display_name:
+            typeof gn.properties?.display_name === 'string' ? gn.properties.display_name : undefined,
+        }),
         nodeType: gn.type,
         deviceSubType:
           typeof gn.properties?.type === 'string' ? gn.properties.type : undefined,
@@ -284,14 +295,6 @@ function GraphPageInner() {
     [topology, isDark],
   )
 
-  const directImpactIds = useMemo(
-    () => new Set((impactResponse?.impact.directly_impacted ?? []).map((item) => item.id)),
-    [impactResponse],
-  )
-  const indirectImpactIds = useMemo(
-    () => new Set((impactResponse?.impact.indirectly_impacted ?? []).map((item) => item.id)),
-    [impactResponse],
-  )
   // Nodes and edge-keys on LLM critical paths
   const criticalPathNodeIds = useMemo(() => {
     const ids = new Set<string>()
@@ -312,14 +315,6 @@ function GraphPageInner() {
     return keys
   }, [impactResponse])
 
-  const anyImpactIds = useMemo(() => {
-    const ids = new Set<string>()
-    for (const id of directImpactIds) ids.add(id)
-    for (const id of indirectImpactIds) ids.add(id)
-    for (const id of criticalPathNodeIds) ids.add(id)
-    return ids
-  }, [directImpactIds, indirectImpactIds, criticalPathNodeIds])
-
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes)
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges)
 
@@ -339,22 +334,6 @@ function GraphPageInner() {
         return {
           ...node,
           data: { ...node.data, impactType: 'critical-path' as const },
-          style: { opacity: 1 },
-        }
-      }
-
-      if (directImpactIds.has(node.id)) {
-        return {
-          ...node,
-          data: { ...node.data, impactType: 'direct' as const },
-          style: { opacity: 1 },
-        }
-      }
-
-      if (indirectImpactIds.has(node.id)) {
-        return {
-          ...node,
-          data: { ...node.data, impactType: 'indirect' as const },
           style: { opacity: 1 },
         }
       }
@@ -394,19 +373,6 @@ function GraphPageInner() {
         }
       }
 
-      const sourceInImpact = anyImpactIds.has(edge.source)
-      const targetInImpact = anyImpactIds.has(edge.target)
-      if (sourceInImpact && targetInImpact) {
-        const directEdge = directImpactIds.has(edge.source) || directImpactIds.has(edge.target)
-        const color = directEdge ? '#dc2626' : '#d97706'
-        return {
-          ...edge,
-          style: { stroke: color, opacity: 0.9 },
-          markerEnd: { type: MarkerType.ArrowClosed, width: 12, height: 12, color },
-          animated: directEdge,
-        }
-      }
-
       return {
         ...edge,
         style: { stroke: dimColor, opacity: 0.15 },
@@ -418,11 +384,8 @@ function GraphPageInner() {
     setNodes(highlightedNodes)
     setEdges(highlightedEdges)
   }, [
-    anyImpactIds,
     criticalPathNodeIds,
     criticalPathEdgeKeys,
-    directImpactIds,
-    indirectImpactIds,
     initialEdges,
     initialNodes,
     selectedImpactChangeId,
@@ -516,6 +479,20 @@ function GraphPageInner() {
 
   const selectedNode = topology?.nodes.find((n) => n.id === selectedNodeId)
 
+  const eraseTopology = async () => {
+    const confirmed = window.confirm(
+      'Erase current topology? This will keep connectors and changes, but existing change analyses may become obsolete until the next sync.',
+    )
+    if (!confirmed) return
+
+    await apiClient.post('/graph/topology/erase')
+    setSelectedImpactChangeId('')
+    setSelectedNodeId(null)
+    setCenter('')
+    await refetch()
+    window.alert('Topology erased. Run connector sync to rebuild topology and refresh change analysis.')
+  }
+
   return (
     <div className="flex h-[calc(100vh-120px)] gap-3">
       {/* Graph canvas */}
@@ -572,6 +549,13 @@ function GraphPageInner() {
           <button onClick={() => refetch()} className="rounded-btn border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors" title="Refresh">
             <RefreshCw className="h-3.5 w-3.5 text-slate-500 dark:text-slate-400" />
           </button>
+          <button
+            onClick={eraseTopology}
+            className="rounded-btn border border-rose-300 dark:border-rose-700 bg-white dark:bg-slate-800 p-1.5 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-colors"
+            title="Erase topology"
+          >
+            <Trash2 className="h-3.5 w-3.5 text-rose-500" />
+          </button>
 
           {/* Divider */}
           <div className="h-5 w-px bg-slate-300 dark:bg-slate-600" />
@@ -600,10 +584,9 @@ function GraphPageInner() {
           <span className="text-[10px] font-medium text-slate-400 dark:text-slate-500 tabular-nums">
             {nodes.length} nodes · {edges.length} edges
           </span>
-        </GlassPanel>
 
-        {/* Impact selector — top-center */}
-        <GlassPanel className="absolute left-1/2 -translate-x-1/2 top-3 z-10 flex items-center gap-2 px-3 py-2">
+          <div className="h-5 w-px bg-slate-300 dark:bg-slate-600" />
+
           <Zap className="h-3.5 w-3.5 text-amber-500" />
           <select
             value={selectedImpactChangeId}
@@ -619,7 +602,13 @@ function GraphPageInner() {
           </select>
           {selectedImpactChangeId && (
             <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400">
-              {impactLoading ? 'Loading…' : `Direct: ${directImpactIds.size} · Indirect: ${indirectImpactIds.size}${criticalPathNodeIds.size > 0 ? ` · Critical paths: ${impactResponse?.impact.critical_paths?.length ?? 0}` : ''}`}
+              {impactLoading ? 'Loading…' : `Critical nodes: ${criticalPathNodeIds.size} · Critical paths: ${impactResponse?.impact.critical_paths?.length ?? 0}`}
+            </span>
+          )}
+          {selectedImpactChangeId && (
+            <span className="inline-flex items-center gap-1 text-[10px] text-slate-500 dark:text-slate-400">
+              <span className="inline-block h-2.5 w-2.5 rounded-sm border-2 border-fuchsia-500 bg-fuchsia-500/20" />
+              Critical path
             </span>
           )}
           {(selectedImpactChangeId || center || selectedNodeId) && (
@@ -655,39 +644,6 @@ function GraphPageInner() {
             </div>
           </GlassPanel>
         )}
-
-        {/* Impact legend — bottom-left */}
-        {selectedImpactChangeId && !impactLoading && (
-          <GlassPanel className="absolute left-3 bottom-3 z-10 px-3 py-2 text-[10px] text-slate-600 dark:text-slate-300 space-y-1.5">
-            <div className="flex items-center gap-1.5">
-              <span className="inline-block h-2.5 w-2.5 rounded-sm border-2 border-fuchsia-500 bg-fuchsia-500/20" />
-              <span>Critical path (AI)</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className="inline-block h-2.5 w-2.5 rounded-sm border-2 border-red-500 bg-red-500/20" />
-              <span>Direct impact</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className="inline-block h-2.5 w-2.5 rounded-sm border-2 border-amber-500 bg-amber-500/20" />
-              <span>Indirect impact</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className="inline-block h-2.5 w-2.5 rounded-sm bg-slate-300 dark:bg-slate-600 opacity-40" />
-              <span>Not impacted</span>
-            </div>
-          </GlassPanel>
-        )}
-
-        {/* Criticality legend — bottom-right */}
-        <GlassPanel className="absolute right-3 bottom-3 z-10 px-3 py-2 text-[10px] text-slate-600 dark:text-slate-300">
-          <div className="font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">Criticality</div>
-          {Object.entries(CRITICALITY_COLORS).map(([level, color]) => (
-            <div key={level} className="flex items-center gap-1.5 mt-1">
-              <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: color }} />
-              <span className="capitalize">{level}</span>
-            </div>
-          ))}
-        </GlassPanel>
 
         {/* Canvas */}
         {isLoading ? (

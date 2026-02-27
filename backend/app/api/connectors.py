@@ -1,11 +1,17 @@
 from datetime import datetime, timezone, timedelta
 import random
+import logging
+import os
+import traceback
 
 from fastapi import APIRouter, Body, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.rbac import Role, require_role
+
+_log = logging.getLogger("deplyx.api.connectors")
+_log.setLevel(logging.DEBUG)
 from app.schemas.connector import (
     ConnectorCreate,
     ConnectorOperationRequest,
@@ -77,7 +83,14 @@ async def sync_connector(
     db: AsyncSession = Depends(get_db),
     _=Depends(require_role(Role.ADMIN, Role.NETWORK)),
 ):
-    result = await connector_service.sync_connector(db, connector_id)
+    _log.warning(">>> SYNC START  connector_id=%s  pid=%s", connector_id, os.getpid())
+    try:
+        result = await connector_service.sync_connector(db, connector_id)
+    except Exception:
+        _log.error(">>> SYNC EXCEPTION connector_id=%s\n%s", connector_id, traceback.format_exc())
+        raise
+    status_val = result.get("status", "?")
+    _log.warning(">>> SYNC FINISH connector_id=%s  status=%s  pid=%s", connector_id, status_val, os.getpid())
     if "error" in result and result.get("status") != "error":
         raise HTTPException(status_code=400, detail=result["error"])
     return result

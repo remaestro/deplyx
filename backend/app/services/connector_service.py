@@ -1,3 +1,4 @@
+import asyncio
 from datetime import UTC, datetime, timedelta
 from typing import Any
 from time import perf_counter
@@ -11,10 +12,32 @@ from app.connectors.checkpoint import CheckPointConnector
 from app.connectors.fortinet import FortinetConnector
 from app.connectors.juniper import JuniperConnector
 from app.connectors.paloalto import PaloAltoConnector
+from app.connectors.aruba_switch import ArubaSwitchConnector
+from app.connectors.aruba_ap import ArubaAPConnector
+from app.connectors.cisco_nxos import CiscoNXOSConnector
+from app.connectors.cisco_router import CiscoRouterConnector
+from app.connectors.cisco_wlc import CiscoWLCConnector
+from app.connectors.vyos import VyOSConnector
+from app.connectors.strongswan_vpn import StrongSwanVPNConnector
+from app.connectors.snort_ids import SnortIDSConnector
+from app.connectors.openldap import OpenLDAPConnector
+from app.connectors.nginx_app import NginxAppConnector
+from app.connectors.postgres_app import PostgresAppConnector
+from app.connectors.redis_app import RedisAppConnector
+from app.connectors.elasticsearch import ElasticsearchConnector
+from app.connectors.grafana import GrafanaConnector
+from app.connectors.prometheus import PrometheusConnector
 from app.models.connector import Connector
+from app.services import change_service
 from app.utils.logging import get_logger
 
 logger = get_logger(__name__)
+
+# Allow all connectors to sync concurrently.  Each connector already
+# offloads blocking I/O to a thread via asyncio.to_thread(), and
+# per-command timeouts (30 s) + overall operation timeout (90 s) prevent
+# any single sync from monopolising resources.
+_SYNC_SEMAPHORE = asyncio.Semaphore(20)
 
 CONNECTOR_CLASSES: dict[str, type] = {
     "paloalto": PaloAltoConnector,
@@ -22,6 +45,21 @@ CONNECTOR_CLASSES: dict[str, type] = {
     "cisco": CiscoConnector,
     "checkpoint": CheckPointConnector,
     "juniper": JuniperConnector,
+    "aruba-switch": ArubaSwitchConnector,
+    "aruba-ap": ArubaAPConnector,
+    "cisco-nxos": CiscoNXOSConnector,
+    "cisco-router": CiscoRouterConnector,
+    "cisco-wlc": CiscoWLCConnector,
+    "vyos": VyOSConnector,
+    "strongswan": StrongSwanVPNConnector,
+    "snort": SnortIDSConnector,
+    "openldap": OpenLDAPConnector,
+    "nginx": NginxAppConnector,
+    "postgres": PostgresAppConnector,
+    "redis": RedisAppConnector,
+    "elasticsearch": ElasticsearchConnector,
+    "grafana": GrafanaConnector,
+    "prometheus": PrometheusConnector,
 }
 
 
@@ -145,30 +183,59 @@ async def execute_connector_operation(
 
     started = perf_counter()
     try:
-        instance = _get_connector_instance(connector)
-        request = {
+        logger.warning("  [exec_op] connector=%s(%s) op=%s — waiting for semaphore", connector.id, connector.connector_type, operation)
+        async with _SYNC_SEMAPHORE:
+            logger.warning("  [exec_op] connector=%s(%s) op=%s — acquired semaphore, creating instance", connector.id, connector.connector_type, operation)
+            instance = _get_connector_instance(connector)
+            request = {
+                "contract_version": "2.0",
+                "operation": operation,
+                "action": action,
+                "input": payload or {},
+                "context": context or {},
+                "target": target or {},
+            }
+            if hasattr(instance, "run") and callable(getattr(instance, "run")):
+                logger.warning("  [exec_op] connector=%s — calling instance.run(%s)", connector.id, operation)
+                raw_result = await asyncio.wait_for(instance.run(request), timeout=90)
+            else:
+                payload_data = payload or {}
+                if operation == "sync":
+                    logger.warning("  [exec_op] connector=%s — calling instance.sync()", connector.id)
+                    raw_result = await asyncio.wait_for(instance.sync(), timeout=90)
+                elif operation == "validate":
+                    raw_result = await asyncio.wait_for(instance.validate_change(payload_data), timeout=90)
+                elif operation == "simulate":
+                    raw_result = await asyncio.wait_for(instance.simulate_change(payload_data), timeout=90)
+                elif operation == "apply":
+                    raw_result = await asyncio.wait_for(instance.apply_change(payload_data), timeout=90)
+                else:
+                    raw_result = {"status": "error", "error": f"Unsupported connector operation: {operation}"}
+            logger.warning("  [exec_op] connector=%s op=%s — returned status=%s  (%.0fms)", connector.id, operation, raw_result.get('status','?'), (perf_counter()-started)*1000)
+    except asyncio.TimeoutError:
+        elapsed = perf_counter() - started
+        logger.error("  [exec_op] connector=%s op=%s — TIMEOUT after %.0fs", connector.id, operation, elapsed)
+        connector.status = "error"
+        connector.last_error = f"Timeout after {elapsed:.0f}s"
+        await db.flush()
+        if not normalize:
+            return {"error": f"Timeout after {elapsed:.0f}s"}
+        duration_ms = int(elapsed * 1000)
+        return {
             "contract_version": "2.0",
             "operation": operation,
-            "action": action,
-            "input": payload or {},
-            "context": context or {},
-            "target": target or {},
+            "connector_type": connector.connector_type,
+            "ok": False,
+            "status": "failed",
+            "summary": f"{connector.name}: {operation} timed out after {elapsed:.0f}s",
+            "data": {},
+            "changes": [],
+            "artifacts": {},
+            "errors": [f"Timeout after {elapsed:.0f}s"],
+            "duration_ms": duration_ms,
         }
-        if hasattr(instance, "run") and callable(getattr(instance, "run")):
-            raw_result = await instance.run(request)
-        else:
-            payload_data = payload or {}
-            if operation == "sync":
-                raw_result = await instance.sync()
-            elif operation == "validate":
-                raw_result = await instance.validate_change(payload_data)
-            elif operation == "simulate":
-                raw_result = await instance.simulate_change(payload_data)
-            elif operation == "apply":
-                raw_result = await instance.apply_change(payload_data)
-            else:
-                raw_result = {"status": "error", "error": f"Unsupported connector operation: {operation}"}
     except Exception as exc:
+        logger.error("  [exec_op] connector=%s op=%s — EXCEPTION: %s", connector.id, operation, exc)
         connector.status = "error"
         connector.last_error = str(exc)
         await db.flush()
@@ -201,6 +268,13 @@ async def execute_connector_operation(
         connector.last_sync_at = datetime.now(UTC)
         connector.status = "active" if _sync_success(raw_result) else "error"
         connector.last_error = _extract_error_message(raw_result)
+        # Persist SyncResult detail (status/synced/failed/errors)
+        if "synced" in raw_result or "failed" in raw_result:
+            connector.last_sync_detail = {
+                k: raw_result[k]
+                for k in ("status", "synced", "failed", "errors")
+                if k in raw_result
+            }
         await db.flush()
 
     if normalize:
@@ -247,8 +321,11 @@ async def delete_connector(db: AsyncSession, connector_id: int) -> bool:
     return True
 
 
-async def sync_connector(db: AsyncSession, connector_id: int) -> dict[str, Any]:
-    return await execute_connector_operation(db, connector_id, "sync", normalize=False)
+async def sync_connector(db: AsyncSession, connector_id: int, *, rerun_changes: bool = True) -> dict[str, Any]:
+    result = await execute_connector_operation(db, connector_id, "sync", normalize=False)
+    if rerun_changes and result.get("status") == "synced":
+        await _rerun_all_changes_analysis(db, trigger="connector_sync")
+    return result
 
 
 async def sync_connector_webhook(db: AsyncSession, connector_id: int, payload: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -292,7 +369,7 @@ async def sync_due_pull_connectors(db: AsyncSession) -> dict[str, Any]:
             )
             continue
 
-        sync_result = await sync_connector(db, connector.id)
+        sync_result = await sync_connector(db, connector.id, rerun_changes=False)
         if "error" in sync_result and sync_result.get("status") != "synced":
             errors += 1
             details.append(
@@ -313,6 +390,9 @@ async def sync_due_pull_connectors(db: AsyncSession) -> dict[str, Any]:
                 }
             )
 
+    if synced > 0:
+        await _rerun_all_changes_analysis(db, trigger="pull_sync")
+
     return {
         "considered": considered,
         "synced": synced,
@@ -320,6 +400,25 @@ async def sync_due_pull_connectors(db: AsyncSession) -> dict[str, Any]:
         "errors": errors,
         "details": details,
     }
+
+
+async def reset_all_connector_sync_state(db: AsyncSession) -> int:
+    result = await db.execute(select(Connector))
+    connectors = list(result.scalars().all())
+    for connector in connectors:
+        connector.last_sync_at = None
+        connector.status = "inactive"
+        connector.last_error = None
+    await db.flush()
+    return len(connectors)
+
+
+async def _rerun_all_changes_analysis(db: AsyncSession, trigger: str) -> None:
+    try:
+        count = await change_service.enqueue_analysis_for_all_changes(db)
+        logger.info("Reran analysis for %d changes (trigger=%s)", count, trigger)
+    except Exception as exc:
+        logger.warning("Unable to rerun change analysis after sync (trigger=%s): %s", trigger, exc)
 
 
 async def validate_connector_change(db: AsyncSession, connector_id: int, payload: dict[str, Any]) -> dict[str, Any]:

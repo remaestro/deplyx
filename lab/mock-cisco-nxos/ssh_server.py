@@ -100,11 +100,18 @@ COMMAND_MAP = {
 
 
 class MockSSH(paramiko.ServerInterface):
+    def __init__(self):
+        super().__init__()
+        self.exec_command = None
+        self._ready = threading.Event()
     def check_channel_request(self, kind, chanid): return paramiko.OPEN_SUCCEEDED if kind == "session" else paramiko.OPEN_FAILED_ADMINISTRATIVELY_PROHIBITED
     def check_auth_password(self, username, password): return paramiko.AUTH_SUCCESSFUL if username == SSH_USER and password == SSH_PASS else paramiko.AUTH_FAILED
     def check_channel_pty_request(self, channel, term, width, height, pixelwidth, pixelheight, modes): return True
-    def check_channel_shell_request(self, channel): return True
-    def check_channel_exec_request(self, channel, command): return True
+    def check_channel_shell_request(self, channel): self._ready.set(); return True
+    def check_channel_exec_request(self, channel, command):
+        self.exec_command = command.decode("utf-8", errors="ignore").strip()
+        self._ready.set()
+        return True
     def get_allowed_auths(self, username): return "password,publickey"
     def check_auth_publickey(self, username, key): return paramiko.AUTH_SUCCESSFUL
 
@@ -112,14 +119,29 @@ class MockSSH(paramiko.ServerInterface):
 def handle_client(sock, addr):
     t = paramiko.Transport(sock)
     t.add_server_key(HOST_KEY)
+    server = MockSSH()
     try:
-        t.start_server(server=MockSSH())
+        t.start_server(server=server)
     except paramiko.SSHException:
         try: sock.close()
         except Exception: pass
         return
     ch = t.accept(30)
     if not ch: t.close(); return
+    server._ready.wait(timeout=5)
+    if server.exec_command is not None:
+        cmd = server.exec_command
+        resp = next((v for k, v in COMMAND_MAP.items() if cmd.lower().startswith(k.lower())), f"% Invalid command: '{cmd}'\n")
+        try:
+            ch.sendall(resp.encode() if resp else b"\n")
+            ch.send_exit_status(0)
+        except Exception:
+            pass
+        finally:
+            try: ch.close()
+            except: pass
+            t.close()
+        return
     try:
         ch.sendall(f"\r\n{HOSTNAME}# ".encode())
         buf = b""

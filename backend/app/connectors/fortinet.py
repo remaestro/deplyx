@@ -4,12 +4,14 @@ Uses the FortiOS REST API to sync devices, interfaces, and firewall policies int
 """
 
 from typing import Any
+import asyncio
 import re
 
 import requests
 import urllib3
 
 from app.connectors.base import BaseConnector
+from app.connectors import display_name
 from app.graph.neo4j_client import neo4j_client
 from app.utils.logging import get_logger
 
@@ -37,7 +39,8 @@ class FortinetConnector(BaseConnector):
 
         try:
             # System info
-            resp = requests.get(
+            resp = await asyncio.to_thread(
+                requests.get,
                 f"{self.base_url}/monitor/system/status",
                 headers=self._headers(), verify=self.verify_ssl, timeout=30,
             )
@@ -46,14 +49,17 @@ class FortinetConnector(BaseConnector):
                 hostname = info.get("hostname", self.host)
                 serial = info.get("serial", "unknown")
                 device_id = f"FG-{serial}"
+                device_dn = display_name.device(display_name.VENDOR_FORTINET, display_name.FUNCTION_FIREWALL, hostname)
                 await neo4j_client.merge_node("Device", device_id, {
                     "id": device_id, "type": "firewall", "vendor": "fortinet",
                     "hostname": hostname, "criticality": "critical",
+                    "display_name": device_dn,
                 })
                 synced["devices"] = 1
 
             # Interfaces
-            iface_resp = requests.get(
+            iface_resp = await asyncio.to_thread(
+                requests.get,
                 f"{self.base_url}/cmdb/system/interface",
                 headers=self._headers(), verify=self.verify_ssl, timeout=30,
             )
@@ -61,17 +67,20 @@ class FortinetConnector(BaseConnector):
                 for iface in iface_resp.json().get("results", []):
                     name = iface.get("name", "")
                     iface_id = f"IF-FG-{name}"
+                    iface_dn = display_name.interface(name, device_dn)
                     await neo4j_client.merge_node("Interface", iface_id, {
                         "id": iface_id, "name": name,
                         "status": iface.get("status", "up"),
                         "speed": iface.get("speed", ""),
+                        "display_name": iface_dn,
                     })
                     if device_id:
                         await neo4j_client.create_relationship("Device", device_id, "HAS_INTERFACE", "Interface", iface_id)
                     synced["interfaces"] += 1
 
             # Firewall policies
-            policy_resp = requests.get(
+            policy_resp = await asyncio.to_thread(
+                requests.get,
                 f"{self.base_url}/cmdb/firewall/policy",
                 headers=self._headers(), verify=self.verify_ssl, timeout=30,
             )
@@ -86,6 +95,10 @@ class FortinetConnector(BaseConnector):
                     await neo4j_client.merge_node("Rule", rule_id, {
                         "id": rule_id, "name": policy.get("name", f"Policy {pid}"),
                         "source": src, "destination": dst, "action": action,
+                        "display_name": display_name.rule(
+                            policy.get("name", f"Policy {pid}"),
+                            device_dn,
+                        ),
                     })
 
                     if not device_id:
@@ -96,6 +109,7 @@ class FortinetConnector(BaseConnector):
                             "vendor": "fortinet",
                             "hostname": self.host,
                             "criticality": "critical",
+                            "display_name": device_dn,
                         })
                         synced["devices"] = max(1, synced["devices"])
 
@@ -111,6 +125,7 @@ class FortinetConnector(BaseConnector):
                             "name": dst_name,
                             "label": dst_name,
                             "criticality": "medium",
+                            "display_name": display_name.application(dst_name),
                         })
                         await neo4j_client.create_relationship("Rule", rule_id, "PROTECTS", "Application", app_id)
 
@@ -124,7 +139,8 @@ class FortinetConnector(BaseConnector):
 
     async def validate_change(self, payload: dict[str, Any]) -> dict[str, Any]:
         try:
-            resp = requests.get(
+            resp = await asyncio.to_thread(
+                requests.get,
                 f"{self.base_url}/cmdb/firewall/policy/{payload.get('policy_id', '')}",
                 headers=self._headers(), verify=self.verify_ssl, timeout=30,
             )
@@ -138,7 +154,8 @@ class FortinetConnector(BaseConnector):
 
     async def apply_change(self, payload: dict[str, Any]) -> dict[str, Any]:
         try:
-            resp = requests.put(
+            resp = await asyncio.to_thread(
+                requests.put,
                 f"{self.base_url}/cmdb/firewall/policy/{payload.get('policy_id', '')}",
                 headers=self._headers(), json=payload.get("policy_config", {}),
                 verify=self.verify_ssl, timeout=30,

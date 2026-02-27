@@ -269,6 +269,10 @@ async def get_topology(center_id: str | None = None, depth: int = 3) -> dict[str
     return await neo4j_client.get_full_topology()
 
 
+async def clear_graph() -> None:
+    await neo4j_client.clear_all()
+
+
 # ── Search ────────────────────────────────────────────────────────────
 
 

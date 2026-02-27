@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Plus,
@@ -11,6 +11,8 @@ import {
   Server,
   Wifi,
   History,
+  CheckCircle2,
+  AlertCircle,
 } from 'lucide-react'
 import { apiClient } from '../api/client'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -117,6 +119,80 @@ export default function ConnectorsPage() {
     queryFn: () => apiClient.get('/connectors').then((r) => r.data),
   })
 
+  /* ─── Per-connector sync state ─── */
+  type SyncState = { phase: 'syncing' | 'done' | 'error'; startedAt: number; error?: string }
+  const [syncStates, setSyncStates] = useState<Record<number, SyncState>>({})
+  const syncTimers = useRef<Record<number, ReturnType<typeof setTimeout>>>({})
+
+  /* ─── Parallel sync queue (backend semaphore throttles to 5 concurrent) ─── */
+  const syncQueue = useRef<number[]>([])
+  const isProcessingQueue = useRef(false)
+
+  const processQueue = useCallback(async () => {
+    if (isProcessingQueue.current) return
+    isProcessingQueue.current = true
+
+    // Drain the queue into a local array and fire all at once
+    const ids = [...syncQueue.current]
+    syncQueue.current = []
+
+    await Promise.allSettled(
+      ids.map(async (id) => {
+        clearTimeout(syncTimers.current[id])
+        setSyncStates((prev) => ({ ...prev, [id]: { phase: 'syncing', startedAt: Date.now() } }))
+        try {
+          await apiClient.post(`/connectors/${id}/sync`)
+          setSyncStates((prev) => ({ ...prev, [id]: { phase: 'done', startedAt: prev[id]?.startedAt ?? Date.now() } }))
+          queryClient.invalidateQueries({ queryKey: ['connectors'] })
+          syncTimers.current[id] = setTimeout(() => {
+            setSyncStates((prev) => {
+              const next = { ...prev }
+              delete next[id]
+              return next
+            })
+          }, 8_000)
+        } catch (err: any) {
+          const msg = err?.response?.data?.detail ?? err?.message ?? 'Sync failed'
+          setSyncStates((prev) => ({ ...prev, [id]: { phase: 'error', startedAt: prev[id]?.startedAt ?? Date.now(), error: msg } }))
+          queryClient.invalidateQueries({ queryKey: ['connectors'] })
+        }
+      }),
+    )
+
+    isProcessingQueue.current = false
+  }, [queryClient])
+
+  const startSync = useCallback(
+    (id: number) => {
+      // Clear any lingering "done" timer
+      clearTimeout(syncTimers.current[id])
+      setSyncStates((prev) => ({ ...prev, [id]: { phase: 'syncing', startedAt: Date.now() } }))
+
+      apiClient
+        .post(`/connectors/${id}/sync`)
+        .then(() => {
+          setSyncStates((prev) => ({ ...prev, [id]: { phase: 'done', startedAt: prev[id]?.startedAt ?? Date.now() } }))
+          queryClient.invalidateQueries({ queryKey: ['connectors'] })
+          // Auto-clear the "done" badge after 8s
+          syncTimers.current[id] = setTimeout(() => {
+            setSyncStates((prev) => {
+              const next = { ...prev }
+              delete next[id]
+              return next
+            })
+          }, 8_000)
+        })
+        .catch((err) => {
+          const msg = err?.response?.data?.detail ?? err?.message ?? 'Sync failed'
+          setSyncStates((prev) => ({ ...prev, [id]: { phase: 'error', startedAt: prev[id]?.startedAt ?? Date.now(), error: msg } }))
+          queryClient.invalidateQueries({ queryKey: ['connectors'] })
+        })
+    },
+    [queryClient],
+  )
+
+  const isSyncingAny = Object.values(syncStates).some((s) => s.phase === 'syncing')
+
   const syncMut = useMutation({
     mutationFn: (id: number) => apiClient.post(`/connectors/${id}/sync`),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['connectors'] }),
@@ -135,10 +211,33 @@ export default function ConnectorsPage() {
     },
   })
 
+  const startSyncAll = useCallback(() => {
+    // Queue all connectors for sequential processing
+    syncQueue.current = connectors.map((c) => c.id)
+    // Mark them all as syncing right away for UI feedback
+    setSyncStates((prev) => {
+      const next = { ...prev }
+      for (const c of connectors) {
+        next[c.id] = { phase: 'syncing', startedAt: Date.now() }
+      }
+      return next
+    })
+    processQueue()
+  }, [connectors, processQueue])
+
   const bulkSync = useCallback(() => {
-    selectedIds.forEach((id) => syncMut.mutate(id))
+    // Queue selected IDs for sequential processing
+    syncQueue.current = [...selectedIds]
+    setSyncStates((prev) => {
+      const next = { ...prev }
+      for (const id of selectedIds) {
+        next[id] = { phase: 'syncing', startedAt: Date.now() }
+      }
+      return next
+    })
     setSelectedIds(new Set())
-  }, [selectedIds, syncMut])
+    processQueue()
+  }, [selectedIds, processQueue])
 
   const toggleSelect = useCallback(
     (id: number) =>
@@ -159,11 +258,11 @@ export default function ConnectorsPage() {
         </Button>
         <Button
           variant="secondary"
-          onClick={() => connectors.forEach((c) => syncMut.mutate(c.id))}
-          disabled={syncMut.isPending || connectors.length === 0}
+          onClick={startSyncAll}
+          disabled={isSyncingAny || connectors.length === 0}
         >
-          <RefreshCw className={`h-4 w-4 ${syncMut.isPending ? 'animate-spin' : ''}`} />
-          {syncMut.isPending ? 'Syncing…' : 'Sync All'}
+          <RefreshCw className={`h-4 w-4 ${isSyncingAny ? 'animate-spin' : ''}`} />
+          {isSyncingAny ? 'Syncing…' : 'Sync All'}
         </Button>
         {selectedIds.size > 0 && (
           <Button variant="secondary" size="sm" onClick={bulkSync}>
@@ -237,20 +336,52 @@ export default function ConnectorsPage() {
                       <ConnectorSparkline color={vendorColor} />
                     </div>
 
-                    {c.last_error && (
+                    {c.last_error && !syncStates[c.id] && (
                       <p className="mb-3 text-xs text-red-500 dark:text-red-400 truncate">Error: {c.last_error}</p>
+                    )}
+
+                    {/* Per-connector sync progress indicator */}
+                    {syncStates[c.id] && (
+                      <div className="mb-3">
+                        {syncStates[c.id].phase === 'syncing' && (
+                          <div className="flex items-center gap-2">
+                            <div className="flex-1 h-1.5 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
+                              <motion.div
+                                className="h-full rounded-full bg-brand-500"
+                                initial={{ width: '5%' }}
+                                animate={{ width: '90%' }}
+                                transition={{ duration: 12, ease: 'easeOut' }}
+                              />
+                            </div>
+                            <span className="text-[10px] font-medium text-brand-600 dark:text-brand-400 whitespace-nowrap">
+                              Syncing…
+                            </span>
+                          </div>
+                        )}
+                        {syncStates[c.id].phase === 'done' && (
+                          <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
+                            <CheckCircle2 className="h-3.5 w-3.5" />
+                            <span className="text-xs font-medium">Sync complete</span>
+                          </div>
+                        )}
+                        {syncStates[c.id].phase === 'error' && (
+                          <div className="flex items-center gap-1.5 text-red-500 dark:text-red-400">
+                            <AlertCircle className="h-3.5 w-3.5" />
+                            <span className="text-xs font-medium truncate">{syncStates[c.id].error}</span>
+                          </div>
+                        )}
+                      </div>
                     )}
 
                     <div className="flex gap-2">
                       <Button
                         variant="secondary"
                         size="xs"
-                        onClick={() => syncMut.mutate(c.id)}
-                        disabled={syncMut.isPending}
-                        loading={syncMut.isPending && syncMut.variables === c.id}
+                        onClick={() => startSync(c.id)}
+                        disabled={syncStates[c.id]?.phase === 'syncing'}
                       >
-                        <RefreshCw className={`h-3 w-3 ${syncMut.isPending && syncMut.variables === c.id ? 'animate-spin' : ''}`} />
-                        {syncMut.isPending && syncMut.variables === c.id ? 'Syncing…' : 'Sync Now'}
+                        <RefreshCw className={`h-3 w-3 ${syncStates[c.id]?.phase === 'syncing' ? 'animate-spin' : ''}`} />
+                        {syncStates[c.id]?.phase === 'syncing' ? 'Syncing…' : 'Sync Now'}
                       </Button>
                       <Button
                         variant="ghost"

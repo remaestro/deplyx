@@ -1,7 +1,8 @@
 import uuid
 from datetime import datetime
+from typing import Literal
 
-from sqlalchemy import DateTime, Enum, ForeignKey, JSON, String, Text, Float, func
+from sqlalchemy import DateTime, ForeignKey, JSON, String, Text, Float, Integer
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, TimestampMixin
@@ -34,6 +35,17 @@ class ChangeStatus(str):
     ROLLED_BACK = "RolledBack"
 
 
+AnalysisStage = Literal[
+    "pending",
+    "fetching_data",
+    "computing_impact",
+    "scoring_risk",
+    "routing_workflow",
+    "finalised",
+    "failed",
+]
+
+
 def _uuid() -> str:
     return str(uuid.uuid4())
 
@@ -55,6 +67,10 @@ class Change(TimestampMixin, Base):
     risk_score: Mapped[float | None] = mapped_column(Float, nullable=True)
     risk_level: Mapped[str | None] = mapped_column(String(16), nullable=True)
     impact_cache: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    analysis_stage: Mapped[AnalysisStage] = mapped_column(String(32), default="pending")
+    analysis_attempts: Mapped[int] = mapped_column(Integer, default=0)
+    analysis_last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    analysis_trace_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     created_by: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
     reject_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
 

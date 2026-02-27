@@ -51,4 +51,4 @@ async def test_login_wrong_password(client: AsyncClient) -> None:
 @pytest.mark.asyncio
 async def test_me_without_token(client: AsyncClient) -> None:
     res = await client.get("/api/v1/auth/me")
-    assert res.status_code == 403
+    assert res.status_code == 401

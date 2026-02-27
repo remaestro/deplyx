@@ -1,7 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.database import get_db
 from app.core.rbac import Role, require_role
 from app.core.security import get_current_user
+from app.graph.neo4j_client import neo4j_client
 from app.graph.seed import seed_graph
 from app.schemas.graph import (
     ApplicationCreate,
@@ -30,6 +33,8 @@ from app.schemas.graph import (
     VLANRead,
 )
 from app.services import graph_service
+from app.services.change_service import invalidate_all_change_analysis
+from app.services.connector_service import reset_all_connector_sync_state
 
 router = APIRouter(prefix="/graph", tags=["graph"])
 
@@ -413,6 +418,28 @@ async def get_topology(
     _=Depends(get_current_user),
 ):
     return await graph_service.get_topology(center_id=center, depth=depth)
+
+
+@router.post("/topology/erase")
+async def erase_topology(
+    db: AsyncSession = Depends(get_db),
+    _=Depends(require_role(Role.ADMIN)),
+):
+    await neo4j_client.clear_all()
+    reset_count = await reset_all_connector_sync_state(db)
+    invalidated_count = await invalidate_all_change_analysis(db, reason="topology_erased")
+    return {
+        "status": "ok",
+        "message": "Topology erased. Connectors and changes were preserved. Change analyses are stale until next sync.",
+        "connectors_reset": reset_count,
+        "changes_invalidated": invalidated_count,
+    }
+
+
+@router.delete("/clear", status_code=status.HTTP_200_OK)
+async def clear_graph(_=Depends(require_role(Role.ADMIN))):
+    await graph_service.clear_graph()
+    return {"status": "cleared"}
 
 
 # ── Seed (admin only) ─────────────────────────────────────────────────

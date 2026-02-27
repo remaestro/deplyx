@@ -43,9 +43,9 @@ async def test_risk_score_high() -> None:
         },
     )
     # Prod (+30) + core (+40) + >10 deps (+20) + no rollback (+25) + outside window (+30) = 145
-    # norm = 145/160*100 = 90.6
-    assert result["risk_score"] > 70
-    assert result["risk_level"] == "high"
+    # norm = 145/215*100 = 67.4  (_LEGACY_MAX_RAW = 215)
+    assert result["risk_score"] > 60
+    assert result["risk_level"] == "medium"
 
 
 @pytest.mark.asyncio

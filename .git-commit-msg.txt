@@ -1,0 +1,20 @@
+feat: parallel sync, 20 connectors (SSH+NAPALM+HTTP), auto-restart
+
+Backend:
+- All 20 connector types with asyncio.to_thread + 30s SSH timeouts
+- Elasticsearch, Grafana, Prometheus rewritten from HTTP to SSH
+- Semaphore(20) for full parallel sync, DB pool 20+30 overflow
+- 90s per-operation timeout, display_name module
+- Alembic migrations 0004-0007, alerting and governance modules
+- Lab API (app_lab) for container lifecycle management
+
+Frontend:
+- Parallel Sync All via Promise.allSettled (was sequential)
+- Per-connector sync progress, change stage UI, display name UI
+- Playwright e2e: full-pipeline.spec.ts
+
+Infrastructure:
+- restart: unless-stopped + healthcheck on all services (dev and prod)
+- 16 mock SSH servers with threading.Event exec/shell sync
+- Lab spawn script, connector creation and sync integration tests
+- .gitignore: exclude temp scripts, test.db, playwright artifacts

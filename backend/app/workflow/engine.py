@@ -12,6 +12,8 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.governance.errors import PolicyEvaluationError, ThresholdArtifactError
+from app.governance.threshold_artifact import load_threshold_artifact
 from app.models.approval import Approval
 from app.models.audit import AuditLog
 from app.models.change import Change
@@ -29,7 +31,18 @@ class WorkflowEngine:
         user_id: int | None = None,
     ) -> dict[str, Any]:
         """Route a change based on its risk assessment. Creates approval records as needed."""
-        risk_level = risk_result.get("risk_level", "medium")
+        try:
+            threshold = load_threshold_artifact()
+            risk_score = float(risk_result.get("risk_score", 0) or 0)
+            risk_level = threshold.level_for_score(risk_score)
+        except (ThresholdArtifactError, PolicyEvaluationError) as exc:
+            change.status = "Rejected"
+            await db.flush()
+            await self._log_audit(db, change.id, user_id, "policy_error_fail_closed", {
+                "error": str(exc),
+            })
+            return {"next_step": "policy-error", "approvals_created": 0, "error": str(exc)}
+
         auto_approve = risk_result.get("auto_approve", False)
         timeout_at = datetime.now(UTC) + timedelta(hours=settings.approval_timeout_hours)
 

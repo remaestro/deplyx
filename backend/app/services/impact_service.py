@@ -89,20 +89,88 @@ async def analyze_impact(
     else:
         logger.info("[IMPACT-DIAG] LLM not available, using graph-only")
 
-    # ── 3. Merge LLM results into graph results ──────────────────────
+    # ── 3. Prefer LLM response shape when available ───────────────────
     if llm_result:
-        graph_result["critical_paths"] = llm_result.get("critical_paths", graph_result.get("critical_paths", []))
-        graph_result["risk_assessment"] = llm_result.get("risk_assessment", {})
-        graph_result["blast_radius"] = llm_result.get("blast_radius", {})
-        graph_result["action_analysis"] = llm_result.get("action_analysis", {})
-        graph_result["llm_powered"] = True
+        result = _build_llm_first_response(
+            target_node_ids=target_node_ids,
+            action=action,
+            graph_result=graph_result,
+            llm_result=llm_result,
+        )
     else:
         graph_result["llm_powered"] = False
+        result = graph_result
 
     t_total = time.monotonic() - t0
-    logger.info("[IMPACT-DIAG] TOTAL: %.1fs, llm_powered=%s", t_total, graph_result["llm_powered"])
+    logger.info("[IMPACT-DIAG] TOTAL: %.1fs, llm_powered=%s", t_total, result["llm_powered"])
 
-    return graph_result
+    return result
+
+
+def _build_llm_first_response(
+    *,
+    target_node_ids: list[str],
+    action: str | None,
+    graph_result: dict[str, Any],
+    llm_result: dict[str, Any],
+) -> dict[str, Any]:
+    critical_paths = llm_result.get("critical_paths") or []
+    risk_assessment = llm_result.get("risk_assessment") or {}
+    blast_radius = llm_result.get("blast_radius") or {}
+    action_analysis = llm_result.get("action_analysis") or {}
+
+    direct_map = {
+        item.get("id"): item
+        for item in (graph_result.get("directly_impacted") or [])
+        if isinstance(item, dict) and item.get("id")
+    }
+    directly_impacted = [direct_map[node_id] for node_id in target_node_ids if node_id in direct_map]
+
+    indirect_map: dict[str, dict[str, Any]] = {}
+    for cp in critical_paths:
+        if not isinstance(cp, dict):
+            continue
+        for node in cp.get("nodes") or []:
+            if not isinstance(node, dict):
+                continue
+            node_id = node.get("id")
+            if not node_id or node_id in target_node_ids:
+                continue
+            if node_id not in indirect_map:
+                indirect_map[node_id] = {
+                    "id": node_id,
+                    "label": node.get("label") or "",
+                    "properties": {},
+                }
+
+    indirectly_impacted = list(indirect_map.values())
+    affected_applications = [item for item in indirectly_impacted if item.get("label") == "Application"]
+    affected_services = [item for item in indirectly_impacted if item.get("label") == "Service"]
+    affected_vlans = [item for item in indirectly_impacted if item.get("label") == "VLAN"]
+
+    total_dependency_count = blast_radius.get("total_impacted")
+    if not isinstance(total_dependency_count, int):
+        total_dependency_count = len(directly_impacted) + len(indirectly_impacted)
+
+    max_criticality = risk_assessment.get("severity")
+    if not isinstance(max_criticality, str):
+        max_criticality = _compute_max_criticality(directly_impacted + indirectly_impacted)
+
+    return {
+        "directly_impacted": directly_impacted,
+        "indirectly_impacted": indirectly_impacted,
+        "affected_applications": affected_applications,
+        "affected_services": affected_services,
+        "affected_vlans": affected_vlans,
+        "total_dependency_count": total_dependency_count,
+        "max_criticality": max_criticality,
+        "traversal_strategy": action_analysis.get("traversal_strategy") or _strategy_name(action),
+        "critical_paths": critical_paths,
+        "risk_assessment": risk_assessment,
+        "blast_radius": blast_radius,
+        "action_analysis": action_analysis,
+        "llm_powered": True,
+    }
 
 
 async def _graph_based_analysis(

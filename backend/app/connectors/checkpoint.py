@@ -4,11 +4,13 @@ Syncs gateways and access-layer rules into the graph.
 """
 
 from typing import Any
+import asyncio
 import re
 
 import requests
 
 from app.connectors.base import BaseConnector
+from app.connectors import display_name
 from app.graph.neo4j_client import neo4j_client
 from app.utils.logging import get_logger
 
@@ -53,8 +55,9 @@ class CheckPointConnector(BaseConnector):
     async def sync(self) -> dict[str, Any]:
         synced: dict[str, int] = {"gateways": 0, "rules": 0}
         policy_device_id = f"CP-MGMT-{_safe_id(self.host)}"
+        sid: str | None = None
         try:
-            sid = self._login()
+            sid = await asyncio.to_thread(self._login)
             headers = {"X-chkp-sid": sid, "Content-Type": "application/json"}
 
             await neo4j_client.merge_node(
@@ -66,10 +69,16 @@ class CheckPointConnector(BaseConnector):
                     "vendor": "checkpoint",
                     "hostname": self.host,
                     "criticality": "critical",
+                    "display_name": display_name.device(
+                        display_name.VENDOR_CHECK_POINT,
+                        display_name.FUNCTION_FIREWALL,
+                        self.host,
+                    ),
                 },
             )
 
-            gateways_resp = requests.post(
+            gateways_resp = await asyncio.to_thread(
+                requests.post,
                 f"{self.base_url}/show-simple-gateways",
                 json={"limit": 200, "offset": 0},
                 headers=headers,
@@ -90,12 +99,18 @@ class CheckPointConnector(BaseConnector):
                         "vendor": "checkpoint",
                         "hostname": gw.get("name", gateway_id),
                         "criticality": "critical",
+                        "display_name": display_name.device(
+                            display_name.VENDOR_CHECK_POINT,
+                            display_name.FUNCTION_FIREWALL,
+                            gw.get("name", gateway_id),
+                        ),
                     },
                 )
                 await neo4j_client.create_relationship("Device", policy_device_id, "CONNECTED_TO", "Device", gateway_id)
                 synced["gateways"] += 1
 
-            rules_resp = requests.post(
+            rules_resp = await asyncio.to_thread(
+                requests.post,
                 f"{self.base_url}/show-access-rulebase",
                 json={"name": "Network", "details-level": "standard", "limit": 500, "offset": 0},
                 headers=headers,
@@ -126,6 +141,14 @@ class CheckPointConnector(BaseConnector):
                         "port": port,
                         "protocol": "any",
                         "action": (rule.get("action", {}) or {}).get("name", "allow"),
+                        "display_name": display_name.rule(
+                            rule.get("name", rule_id),
+                            display_name.device(
+                                display_name.VENDOR_CHECK_POINT,
+                                display_name.FUNCTION_FIREWALL,
+                                self.host,
+                            ),
+                        ),
                     },
                 )
                 await neo4j_client.create_relationship("Device", policy_device_id, "HAS_RULE", "Rule", rule_id)
@@ -142,26 +165,38 @@ class CheckPointConnector(BaseConnector):
                             "name": dst_name,
                             "label": dst_name,
                             "criticality": "medium",
+                            "display_name": display_name.application(dst_name),
                         },
                     )
                     await neo4j_client.create_relationship("Rule", rule_id, "PROTECTS", "Application", app_id)
 
                 synced["rules"] += 1
 
-            requests.post(f"{self.base_url}/logout", headers=headers, verify=self.verify_ssl, timeout=15)
-
         except requests.RequestException as e:
             logger.error("CheckPoint sync error: %s", e)
             return {"vendor": "checkpoint", "status": "error", "error": str(e), "synced": synced}
+        finally:
+            if sid:
+                try:
+                    await asyncio.to_thread(
+                        requests.post,
+                        f"{self.base_url}/logout",
+                        headers={"X-chkp-sid": sid, "Content-Type": "application/json"},
+                        verify=self.verify_ssl,
+                        timeout=15,
+                    )
+                except Exception as logout_exc:
+                    logger.warning("Check Point logout failed: %s", logout_exc)
 
         return {"vendor": "checkpoint", "status": "synced", "synced": synced}
 
     async def validate_change(self, payload: dict[str, Any]) -> dict[str, Any]:
         try:
-            sid = self._login()
+            sid = await asyncio.to_thread(self._login)
             headers = {"X-chkp-sid": sid, "Content-Type": "application/json"}
-            requests.post(f"{self.base_url}/show-access-rulebase", json={"name": payload.get("policy_package", "Network"), "limit": 1}, headers=headers, verify=self.verify_ssl, timeout=20).raise_for_status()
-            requests.post(f"{self.base_url}/logout", headers=headers, verify=self.verify_ssl, timeout=15)
+            resp = await asyncio.to_thread(requests.post, f"{self.base_url}/show-access-rulebase", json={"name": payload.get("policy_package", "Network"), "limit": 1}, headers=headers, verify=self.verify_ssl, timeout=20)
+            resp.raise_for_status()
+            await asyncio.to_thread(requests.post, f"{self.base_url}/logout", headers=headers, verify=self.verify_ssl, timeout=15)
             return {"vendor": "checkpoint", "valid": True}
         except requests.RequestException as e:
             return {"vendor": "checkpoint", "valid": False, "error": str(e)}
@@ -171,18 +206,20 @@ class CheckPointConnector(BaseConnector):
 
     async def apply_change(self, payload: dict[str, Any]) -> dict[str, Any]:
         try:
-            sid = self._login()
+            sid = await asyncio.to_thread(self._login)
             headers = {"X-chkp-sid": sid, "Content-Type": "application/json"}
-            requests.post(
+            resp = await asyncio.to_thread(
+                requests.post,
                 f"{self.base_url}/set-access-rule",
                 json=payload,
                 headers=headers,
                 verify=self.verify_ssl,
                 timeout=30,
-            ).raise_for_status()
-            publish_resp = requests.post(f"{self.base_url}/publish", headers=headers, verify=self.verify_ssl, timeout=30)
+            )
+            resp.raise_for_status()
+            publish_resp = await asyncio.to_thread(requests.post, f"{self.base_url}/publish", headers=headers, verify=self.verify_ssl, timeout=30)
             publish_ok = publish_resp.ok
-            requests.post(f"{self.base_url}/logout", headers=headers, verify=self.verify_ssl, timeout=15)
+            await asyncio.to_thread(requests.post, f"{self.base_url}/logout", headers=headers, verify=self.verify_ssl, timeout=15)
             return {"vendor": "checkpoint", "applied": publish_ok}
         except requests.RequestException as e:
             return {"vendor": "checkpoint", "applied": False, "error": str(e)}

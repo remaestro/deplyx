@@ -8,12 +8,14 @@ Uses the PAN-OS REST/XML API to:
 """
 
 from typing import Any
+import asyncio
 import re
 
 import requests
 import urllib3
 
 from app.connectors.base import BaseConnector
+from app.connectors import display_name
 from app.graph.neo4j_client import neo4j_client
 from app.utils.logging import get_logger
 
@@ -39,10 +41,12 @@ class PaloAltoConnector(BaseConnector):
         """Fetch system info, interfaces, and security rules from PAN-OS and upsert into Neo4j."""
         synced: dict[str, int] = {"devices": 0, "interfaces": 0, "rules": 0}
         device_id: str | None = None
+        hostname = self.host
 
         try:
             # Fetch system info
-            resp = requests.get(
+            resp = await asyncio.to_thread(
+                requests.get,
                 f"https://{self.host}/api/?type=op&cmd=<show><system><info></info></system></show>&key={self.api_key}",
                 verify=self.verify_ssl, timeout=30,
             )
@@ -56,14 +60,17 @@ class PaloAltoConnector(BaseConnector):
                 serial = serial_el.text if serial_el is not None else "unknown"
 
                 device_id = f"PA-{serial}"
+                device_dn = display_name.device(display_name.VENDOR_PALO_ALTO, display_name.FUNCTION_FIREWALL, hostname)
                 await neo4j_client.merge_node("Device", device_id, {
                     "id": device_id, "type": "firewall", "vendor": "paloalto",
                     "hostname": hostname, "criticality": "critical",
+                    "display_name": device_dn,
                 })
                 synced["devices"] = 1
 
             # Fetch interfaces
-            iface_resp = requests.get(
+            iface_resp = await asyncio.to_thread(
+                requests.get,
                 f"https://{self.host}/api/?type=op&cmd=<show><interface>all</interface></show>&key={self.api_key}",
                 verify=self.verify_ssl, timeout=30,
             )
@@ -76,13 +83,22 @@ class PaloAltoConnector(BaseConnector):
                         iface_id = f"IF-PA-{name}"
                         await neo4j_client.merge_node("Interface", iface_id, {
                             "id": iface_id, "name": name, "status": "up",
+                            "display_name": display_name.interface(
+                                name,
+                                display_name.device(
+                                    display_name.VENDOR_PALO_ALTO,
+                                    display_name.FUNCTION_FIREWALL,
+                                    hostname,
+                                ),
+                            ),
                         })
                         if device_id:
                             await neo4j_client.create_relationship("Device", device_id, "HAS_INTERFACE", "Interface", iface_id)
                         synced["interfaces"] += 1
 
             # Fetch security rules
-            rules_resp = requests.get(
+            rules_resp = await asyncio.to_thread(
+                requests.get,
                 f"{self.base_url}/Policies/SecurityRules?location=vsys&vsys=vsys1",
                 headers=self._headers(), verify=self.verify_ssl, timeout=30,
             )
@@ -103,6 +119,14 @@ class PaloAltoConnector(BaseConnector):
                         "source": src[0] if isinstance(src, list) else str(src),
                         "destination": dst[0] if isinstance(dst, list) else str(dst),
                         "action": action if isinstance(action, str) else "allow",
+                        "display_name": display_name.rule(
+                            rule_name or f"Rule {rule_id}",
+                            display_name.device(
+                                display_name.VENDOR_PALO_ALTO,
+                                display_name.FUNCTION_FIREWALL,
+                                hostname,
+                            ),
+                        ),
                     })
 
                     if not device_id:
@@ -113,6 +137,11 @@ class PaloAltoConnector(BaseConnector):
                             "vendor": "paloalto",
                             "hostname": self.host,
                             "criticality": "critical",
+                            "display_name": display_name.device(
+                                display_name.VENDOR_PALO_ALTO,
+                                display_name.FUNCTION_FIREWALL,
+                                self.host,
+                            ),
                         })
                         synced["devices"] = max(1, synced["devices"])
 
@@ -129,6 +158,7 @@ class PaloAltoConnector(BaseConnector):
                             "name": dst_value,
                             "label": dst_value,
                             "criticality": "medium",
+                            "display_name": display_name.application(dst_value),
                         })
                         await neo4j_client.create_relationship("Rule", rule_id, "PROTECTS", "Application", app_id)
 
@@ -143,7 +173,8 @@ class PaloAltoConnector(BaseConnector):
     async def validate_change(self, payload: dict[str, Any]) -> dict[str, Any]:
         """Validate a proposed rule change against the PAN-OS candidate config."""
         try:
-            resp = requests.post(
+            resp = await asyncio.to_thread(
+                requests.post,
                 f"{self.base_url}/Policies/SecurityRules?location=vsys&vsys=vsys1&name={payload.get('rule_name', '')}",
                 headers=self._headers(), json={"entry": payload.get("rule_config", {})},
                 verify=self.verify_ssl, timeout=30,
@@ -155,7 +186,8 @@ class PaloAltoConnector(BaseConnector):
     async def simulate_change(self, payload: dict[str, Any]) -> dict[str, Any]:
         """Commit validation (dry-run) on PAN-OS."""
         try:
-            resp = requests.get(
+            resp = await asyncio.to_thread(
+                requests.get,
                 f"https://{self.host}/api/?type=op&cmd=<validate><full></full></validate>&key={self.api_key}",
                 verify=self.verify_ssl, timeout=60,
             )
@@ -167,7 +199,8 @@ class PaloAltoConnector(BaseConnector):
         """Push and commit a config change on PAN-OS."""
         try:
             # First set the config
-            set_resp = requests.put(
+            set_resp = await asyncio.to_thread(
+                requests.put,
                 f"{self.base_url}/Policies/SecurityRules?location=vsys&vsys=vsys1&name={payload.get('rule_name', '')}",
                 headers=self._headers(), json={"entry": payload.get("rule_config", {})},
                 verify=self.verify_ssl, timeout=30,
@@ -176,7 +209,8 @@ class PaloAltoConnector(BaseConnector):
                 return {"vendor": "paloalto", "applied": False, "error": f"Set failed: {set_resp.status_code}"}
 
             # Then commit
-            commit_resp = requests.get(
+            commit_resp = await asyncio.to_thread(
+                requests.get,
                 f"https://{self.host}/api/?type=commit&cmd=<commit></commit>&key={self.api_key}",
                 verify=self.verify_ssl, timeout=120,
             )

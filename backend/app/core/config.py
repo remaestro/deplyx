@@ -27,6 +27,11 @@ class Settings(BaseSettings):
     cors_allowed_origins: list[str] = ["http://localhost:5173", "http://localhost:3000"]
 
     gemini_api_key: str = ""
+    slack_webhook_url: str = ""
+    governance_threshold_artifact: str = ""
+    neo4j_query_timeout_seconds: int = 10
+    neo4j_circuit_failure_threshold: int = 5
+    neo4j_circuit_reset_seconds: int = 30
 
     @field_validator("cors_allowed_origins", mode="before")
     @classmethod

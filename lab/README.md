@@ -97,6 +97,31 @@ python3 register-devices.py
 
 ## Utilisation
 
+### Lancer une topologie entreprise (preset)
+
+Pour déployer un réseau entreprise complet (network + security + application)
+avec naming standardisé et rôles de zones:
+
+```bash
+cd /opt/deplyx/lab
+python3 spawn_enterprise_topology.py --reset
+```
+
+Variables optionnelles:
+
+```bash
+export DEPLYX_AUTH_API_BASE=http://localhost:8000/api/v1
+export DEPLYX_LAB_API_BASE=http://localhost:8001/api/v1
+```
+
+- `--reset` supprime les containers lab existants avant le déploiement.
+- Sans `--reset`, le script ajoute uniquement les noeuds manquants.
+
+Le preset déploie notamment:
+- Edge/Core: Fortinet, Palo Alto, Check Point, Cisco Router, VyOS, switches Cisco/Juniper/Aruba
+- Security: StrongSwan VPN, Snort IDS, OpenLDAP
+- Application/Observability: Nginx, PostgreSQL, Redis, Elasticsearch, Grafana, Prometheus
+
 ### Accès aux interfaces
 
 | Service | URL |

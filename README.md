@@ -3,6 +3,7 @@
 Stack mise en place:
 
 - Backend: FastAPI (Python 3.11+), Pydantic, JWT, Passlib, Neo4j driver, SQLAlchemy
+- Lab API: FastAPI service dedicated to lab emulation endpoints
 - Async jobs: Celery + Redis
 - Frontend: React 18 + Vite + TypeScript + TailwindCSS + React Query + Zustand + React Flow
 - Databases: Neo4j + PostgreSQL
@@ -33,7 +34,13 @@ docker compose up --build
 
 - Frontend: http://localhost:5173
 - API: http://localhost:8000/docs
+- Lab API: http://localhost:8001/docs
 - Neo4j Browser: http://localhost:7474
+
+Notes:
+
+- Main API excludes lab routes.
+- Lab routes are served by the isolated lab service (`/api/v1/lab/*`).
 
 ## Variables d'environnement backend
 
@@ -42,6 +49,11 @@ Variables importantes (voir `.env.example`):
 - `CORS_ALLOWED_ORIGINS` (liste séparée par des virgules)
 - `APPROVAL_TIMEOUT_HOURS`
 - `JWT_SECRET_KEY` (obligatoire et non par défaut en production)
+
+## Variables d'environnement frontend
+
+- `VITE_API_URL` (par défaut `http://localhost:8000/api/v1`)
+- `VITE_LAB_API_URL` (par défaut `http://localhost:8001/api/v1`)
 
 ## Backend - Connecteurs
 

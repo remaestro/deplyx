@@ -226,6 +226,10 @@ SW-DC1-ACC02     Gi0/2             145              S     WS-C2960  Gi0/1
 
 
 class MockSSHServer(paramiko.ServerInterface):
+    def __init__(self):
+        super().__init__()
+        self.exec_command = None
+        self._ready = threading.Event()
     def check_channel_request(self, kind, chanid):
         if kind == "session":
             return paramiko.OPEN_SUCCEEDED
@@ -245,6 +249,8 @@ class MockSSHServer(paramiko.ServerInterface):
         return True
 
     def check_channel_exec_request(self, channel, command):
+        self.exec_command = command.decode("utf-8", errors="ignore").strip()
+        self._ready.set()
         return True
 
     def get_allowed_auths(self, username):
@@ -268,6 +274,21 @@ def handle_client(client_socket, address):
     channel = transport.accept(30)
     if channel is None:
         transport.close()
+        return
+
+    server._ready.wait(timeout=5)
+    if server.exec_command is not None:
+        cmd = server.exec_command
+        resp = next((v for k, v in COMMAND_MAP.items() if cmd.lower().startswith(k.lower())), f"% Invalid command: '{cmd}'\n")
+        try:
+            channel.sendall(resp.encode() if resp else b"\n")
+            channel.send_exit_status(0)
+        except Exception:
+            pass
+        finally:
+            try: channel.close()
+            except: pass
+            transport.close()
         return
 
     try:

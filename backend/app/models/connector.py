@@ -17,5 +17,6 @@ class Connector(TimestampMixin, Base):
     sync_mode: Mapped[str] = mapped_column(String(16), default="on-demand")  # pull | webhook | on-demand
     sync_interval_minutes: Mapped[int] = mapped_column(Integer, default=60)
     last_sync_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_sync_detail: Mapped[dict | None] = mapped_column(JSON, nullable=True)  # SyncResult.to_dict()
     status: Mapped[str] = mapped_column(String(16), default="inactive")  # active | inactive | error
     last_error: Mapped[str | None] = mapped_column(Text, nullable=True)

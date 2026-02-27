@@ -1,4 +1,19 @@
-import { apiClient } from './client'
+import axios from 'axios'
+
+const env = (import.meta as { env?: { VITE_LAB_API_URL?: string } }).env
+
+const labApiClient = axios.create({
+  baseURL: env?.VITE_LAB_API_URL ?? 'http://localhost:8001/api/v1',
+  timeout: 120_000,
+})
+
+labApiClient.interceptors.request.use((config) => {
+  const token = localStorage.getItem('deplyx_token')
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`
+  }
+  return config
+})
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 
@@ -66,40 +81,40 @@ export interface ExecRequest {
 
 /** Fetch the static device catalog (never changes at runtime). */
 export const getCatalog = (): Promise<CatalogItem[]> =>
-  apiClient.get('/lab/catalog').then((r) => r.data)
+  labApiClient.get('/lab/catalog').then((r) => r.data)
 
 /** List all running/stopped lab containers. */
 export const getContainers = (): Promise<LabContainer[]> =>
-  apiClient.get('/lab/containers').then((r) => r.data)
+  labApiClient.get('/lab/containers').then((r) => r.data)
 
 /** Spawn a new container from the catalog. */
 export const spawnContainer = (payload: SpawnRequest): Promise<LabContainer> =>
-  apiClient.post('/lab/containers', payload).then((r) => r.data)
+  labApiClient.post('/lab/containers', payload).then((r) => r.data)
 
 /** Remove a container (must be stopped first). */
 export const removeContainer = (id: string): Promise<void> =>
-  apiClient.delete(`/lab/containers/${id}`).then(() => undefined)
+  labApiClient.delete(`/lab/containers/${id}`).then(() => undefined)
 
 /** Start a stopped container. */
 export const startContainer = (id: string): Promise<LabContainer> =>
-  apiClient.post(`/lab/containers/${id}/start`).then((r) => r.data)
+  labApiClient.post(`/lab/containers/${id}/start`).then((r) => r.data)
 
 /** Stop a running container. */
 export const stopContainer = (id: string): Promise<LabContainer> =>
-  apiClient.post(`/lab/containers/${id}/stop`).then((r) => r.data)
+  labApiClient.post(`/lab/containers/${id}/stop`).then((r) => r.data)
 
 /** Restart a container. */
 export const restartContainer = (id: string): Promise<LabContainer> =>
-  apiClient.post(`/lab/containers/${id}/restart`).then((r) => r.data)
+  labApiClient.post(`/lab/containers/${id}/restart`).then((r) => r.data)
 
 /** Fetch recent log output. */
 export const getContainerLogs = (id: string, lines = 150): Promise<ContainerLogs> =>
-  apiClient.get(`/lab/containers/${id}/logs`, { params: { lines } }).then((r) => r.data)
+  labApiClient.get(`/lab/containers/${id}/logs`, { params: { lines } }).then((r) => r.data)
 
 /** Execute a command against a lab device. */
 export const execCommand = (id: string, command: string): Promise<ExecResult> =>
-  apiClient.post(`/lab/containers/${id}/exec`, { command }).then((r) => r.data)
+  labApiClient.post(`/lab/containers/${id}/exec`, { command }).then((r) => r.data)
 
 /** Get available commands for a lab device. */
 export const getExecHelp = (id: string): Promise<ExecResult> =>
-  apiClient.get(`/lab/containers/${id}/exec/help`).then((r) => r.data)
+  labApiClient.get(`/lab/containers/${id}/exec/help`).then((r) => r.data)
