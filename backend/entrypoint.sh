@@ -35,7 +35,7 @@ from sqlalchemy import create_engine, inspect, text
 from app.core.config import settings
 from app.models.base import Base
 # Import all models so metadata is populated
-from app.models import connector, user, change, policy, approval, audit_log
+from app.models import Connector, User, Change, Policy, Approval, AuditLog
 
 e = create_engine(settings.postgres_dsn_sync)
 insp = inspect(e)
