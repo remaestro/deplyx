@@ -1,9 +1,10 @@
 import axios from 'axios'
 
 const env = (import.meta as { env?: { VITE_API_URL?: string } }).env
+const apiBaseUrl = env?.VITE_API_URL?.trim() || 'http://localhost:8000/api/v1'
 
 export const apiClient = axios.create({
-  baseURL: env?.VITE_API_URL ?? 'http://localhost:8000/api/v1',
+  baseURL: apiBaseUrl,
   timeout: 120_000,
 })
 

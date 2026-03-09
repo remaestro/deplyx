@@ -1,9 +1,10 @@
 import axios from 'axios'
 
 const env = (import.meta as { env?: { VITE_LAB_API_URL?: string } }).env
+const labApiBaseUrl = env?.VITE_LAB_API_URL?.trim() || 'http://localhost:8001/api/v1'
 
 const labApiClient = axios.create({
-  baseURL: env?.VITE_LAB_API_URL ?? 'http://localhost:8001/api/v1',
+  baseURL: labApiBaseUrl,
   timeout: 120_000,
 })
 
