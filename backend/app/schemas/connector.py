@@ -26,6 +26,7 @@ class ConnectorRead(BaseModel):
     sync_mode: str
     sync_interval_minutes: int
     last_sync_at: datetime | None
+    last_sync_detail: dict[str, Any] | None = None
     status: str
     last_error: str | None
     created_at: datetime

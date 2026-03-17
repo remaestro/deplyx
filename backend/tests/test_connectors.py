@@ -68,6 +68,63 @@ async def test_create_list_and_sync_connector(client: AsyncClient, monkeypatch: 
     assert fetched.status_code == 200
     assert fetched.json()["status"] == "active"
     assert fetched.json()["last_sync_at"] is not None
+    assert fetched.json()["last_sync_detail"] == {"status": "synced", "synced": {"devices": 1}}
+
+
+@pytest.mark.asyncio
+async def test_sync_error_exposes_last_error_and_detail(client: AsyncClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    headers = await _register_admin(client, email="sync-error-admin@deplyx.io")
+
+    class FailingConnector:
+        def __init__(self, config: dict):
+            self.config = config
+
+        async def sync(self) -> dict:
+            return {
+                "vendor": "fake",
+                "status": "error",
+                "failed": {"devices": 1},
+                "errors": ["devices: login failed"],
+            }
+
+        async def validate_change(self, payload: dict) -> dict:
+            return {"vendor": "fake", "valid": False, "error": "not implemented"}
+
+        async def simulate_change(self, payload: dict) -> dict:
+            return {"vendor": "fake", "simulation": "not implemented"}
+
+        async def apply_change(self, payload: dict) -> dict:
+            return {"vendor": "fake", "applied": False, "error": "not implemented"}
+
+    monkeypatch.setitem(connector_service.CONNECTOR_CLASSES, "paloalto", FailingConnector)
+
+    created = await client.post(
+        "/api/v1/connectors",
+        json={
+            "name": "Broken Connector",
+            "connector_type": "paloalto",
+            "config": {"host": "demo.local"},
+            "sync_mode": "on-demand",
+            "sync_interval_minutes": 30,
+        },
+        headers=headers,
+    )
+    assert created.status_code == 201
+    connector_id = created.json()["id"]
+
+    synced = await client.post(f"/api/v1/connectors/{connector_id}/sync", headers=headers)
+    assert synced.status_code == 200
+    assert synced.json()["status"] == "error"
+
+    fetched = await client.get(f"/api/v1/connectors/{connector_id}", headers=headers)
+    assert fetched.status_code == 200
+    assert fetched.json()["status"] == "error"
+    assert fetched.json()["last_error"] == "devices: login failed"
+    assert fetched.json()["last_sync_detail"] == {
+        "status": "error",
+        "failed": {"devices": 1},
+        "errors": ["devices: login failed"],
+    }
 
 
 @pytest.mark.asyncio

@@ -89,8 +89,19 @@ def _extract_error_message(result: dict[str, Any]) -> str | None:
             first = errors[0]
             if isinstance(first, dict):
                 return first.get("message")
+            if isinstance(first, str):
+                return first
         return None
-    return result.get("error")
+    error = result.get("error")
+    if error:
+        return str(error)
+    errors = result.get("errors") or []
+    if errors:
+        first = errors[0]
+        if isinstance(first, dict):
+            return first.get("message") or str(first)
+        return str(first)
+    return None
 
 
 def _legacy_payload(result: dict[str, Any]) -> dict[str, Any]:
