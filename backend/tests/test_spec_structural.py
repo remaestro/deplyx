@@ -230,12 +230,12 @@ class TestDisplayNameBuilders:
 # ── §9  Connector CLASSES registry ───────────────────────────────────────
 
 class TestConnectorRegistry:
-    def test_all_20_types(self):
+    def test_all_21_types(self):
         from app.services.connector_service import CONNECTOR_CLASSES
 
         expected = {
             "paloalto", "fortinet", "cisco", "checkpoint", "juniper",
-            "aruba-switch", "aruba-ap", "cisco-nxos", "cisco-router",
+            "aruba-switch", "aruba-ap", "cisco-nxos", "cisco-ftd", "cisco-router",
             "cisco-wlc", "vyos", "strongswan", "snort", "openldap",
             "nginx", "postgres", "redis", "elasticsearch", "grafana",
             "prometheus",
@@ -258,6 +258,7 @@ class TestConnectorIDPatterns:
     PATTERNS = {
         "aruba_switch": r"^ARUBA-SW-",
         "cisco_nxos": r"^NXOS-",
+        "cisco_ftd": r"^FTD-",
         "cisco_router": r"^ROUTER-",
         "cisco_wlc": r"^WLC-",
         "aruba_ap": r"^ARUBA-AP-",

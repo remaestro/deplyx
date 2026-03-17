@@ -58,6 +58,7 @@ const VENDOR_ICON: Record<string, typeof Shield> = {
   paloalto: Shield,
   fortinet: Shield,
   checkpoint: Shield,
+  'cisco-ftd': Shield,
   cisco: Wifi,
   juniper: Server,
 }
@@ -66,12 +67,13 @@ const VENDOR_COLOR: Record<string, string> = {
   paloalto: '#e53935',
   fortinet: '#e53935',
   checkpoint: '#e8308c',
+  'cisco-ftd': '#1ba0d8',
   cisco: '#1ba0d8',
   juniper: '#4caf50',
 }
 
 /* Connectors that use SSH (username/password) vs API key */
-const SSH_CONNECTORS = new Set(['cisco', 'juniper'])
+const SSH_CONNECTORS = new Set(['cisco', 'cisco-ftd', 'juniper'])
 
 /* Mock sparkline data for sync history */
 function useSyncSparkline() {
@@ -561,6 +563,7 @@ function ConnectorWizard({
                 <option value="paloalto">Palo Alto</option>
                 <option value="fortinet">Fortinet</option>
                 <option value="checkpoint">Check Point</option>
+                <option value="cisco-ftd">Cisco FTD</option>
                 <option value="cisco">Cisco (SSH)</option>
                 <option value="juniper">Juniper (SSH)</option>
               </Select>

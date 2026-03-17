@@ -15,6 +15,7 @@ from app.connectors.paloalto import PaloAltoConnector
 from app.connectors.aruba_switch import ArubaSwitchConnector
 from app.connectors.aruba_ap import ArubaAPConnector
 from app.connectors.cisco_nxos import CiscoNXOSConnector
+from app.connectors.cisco_ftd import CiscoFTDConnector
 from app.connectors.cisco_router import CiscoRouterConnector
 from app.connectors.cisco_wlc import CiscoWLCConnector
 from app.connectors.vyos import VyOSConnector
@@ -48,6 +49,7 @@ CONNECTOR_CLASSES: dict[str, type] = {
     "aruba-switch": ArubaSwitchConnector,
     "aruba-ap": ArubaAPConnector,
     "cisco-nxos": CiscoNXOSConnector,
+    "cisco-ftd": CiscoFTDConnector,
     "cisco-router": CiscoRouterConnector,
     "cisco-wlc": CiscoWLCConnector,
     "vyos": VyOSConnector,

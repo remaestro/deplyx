@@ -69,6 +69,7 @@ ALL_CONNECTOR_MODULES = [
     "app.connectors.paloalto",
     "app.connectors.checkpoint",
     "app.connectors.cisco",
+    "app.connectors.cisco_ftd",
     "app.connectors.juniper",
     "app.connectors.aruba_switch",
     "app.connectors.aruba_ap",
