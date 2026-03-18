@@ -4,11 +4,13 @@ from app.models.change import Change, ChangeImpactedComponent
 from app.models.approval import Approval
 from app.models.audit import AuditLog
 from app.models.connector import Connector
+from app.models.discovery import DiscoveryResult, DiscoverySession
 from app.models.policy import Policy
 
 __all__ = [
     "Base", "TimestampMixin", "User",
     "Change", "ChangeImpactedComponent",
     "Approval", "AuditLog", "Connector",
+    "DiscoverySession", "DiscoveryResult",
     "Policy",
 ]

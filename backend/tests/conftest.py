@@ -1,7 +1,6 @@
 """Shared fixtures for Deplyx backend tests."""
 
-import asyncio
-from typing import AsyncGenerator, Generator
+from typing import AsyncGenerator
 
 import pytest
 import pytest_asyncio
@@ -20,13 +19,6 @@ TEST_DB_URL = "sqlite+aiosqlite:///./test.db"
 
 engine_test = create_async_engine(TEST_DB_URL, echo=False)
 TestSession = sessionmaker(engine_test, class_=AsyncSession, expire_on_commit=False)
-
-
-@pytest.fixture(scope="session")
-def event_loop() -> Generator[asyncio.AbstractEventLoop, None, None]:
-    loop = asyncio.new_event_loop()
-    yield loop
-    loop.close()
 
 
 @pytest_asyncio.fixture(autouse=True)

@@ -4,6 +4,7 @@ from app.api.auth import router as auth_router
 from app.api.changes import router as changes_router
 from app.api.connectors import router as connectors_router
 from app.api.dashboard import router as dashboard_router
+from app.api.discovery import router as discovery_router
 from app.api.graph import router as graph_router
 from app.api.policies import router as policies_router
 from app.api.risk import router as risk_router
@@ -78,6 +79,7 @@ async def llm_diagnostics():
 
 router.include_router(auth_router)
 router.include_router(dashboard_router)
+router.include_router(discovery_router)
 router.include_router(graph_router)
 router.include_router(changes_router)
 router.include_router(risk_router)

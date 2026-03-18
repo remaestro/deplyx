@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useRef } from 'react'
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Plus,
@@ -23,10 +23,19 @@ import {
 } from 'recharts'
 import { formatDistanceToNow } from 'date-fns'
 import {
+  discoveryApi,
+  type DiscoveryEvidence,
+  type DiscoveryResult,
+  type DiscoverySession,
+  type DiscoverySessionDetail,
+} from '../api/discovery'
+import {
   Button,
+  Badge,
   Card,
   CardHeader,
   CardContent,
+  CodeBlock,
   StatusBadge,
   StatusLED,
   Skeleton,
@@ -34,6 +43,7 @@ import {
   Input,
   Select,
   Label,
+  Textarea,
 } from '../components/ui'
 
 type Connector = {
@@ -74,6 +84,7 @@ const VENDOR_COLOR: Record<string, string> = {
 
 /* Connectors that use SSH (username/password) vs API key */
 const SSH_CONNECTORS = new Set(['cisco', 'cisco-ftd', 'juniper'])
+const APP_CONNECTORS = new Set(['elasticsearch', 'grafana', 'nginx', 'openldap', 'postgres', 'prometheus', 'redis'])
 
 /* Mock sparkline data for sync history */
 function useSyncSparkline() {
@@ -115,11 +126,57 @@ export default function ConnectorsPage() {
   const [showWizard, setShowWizard] = useState(false)
   const [syncLogDrawer, setSyncLogDrawer] = useState<number | null>(null)
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
+  const [discoveryName, setDiscoveryName] = useState('')
+  const [discoveryTargets, setDiscoveryTargets] = useState('')
+  const [discoveryCidrs, setDiscoveryCidrs] = useState('')
+  const [discoveryTimeout, setDiscoveryTimeout] = useState('3')
+  const [activeDiscoverySessionId, setActiveDiscoverySessionId] = useState<number | null>(null)
+  const [discoverySearch, setDiscoverySearch] = useState('')
+  const [discoveryStatusFilter, setDiscoveryStatusFilter] = useState<'all' | 'reachable' | 'unreachable'>('all')
+  const [discoveryEvidenceFilter, setDiscoveryEvidenceFilter] = useState<'all' | 'service' | 'ssh' | 'api' | 'snmp' | 'bootstrap-ready'>('all')
+  const [selectedDiscoveryResultIds, setSelectedDiscoveryResultIds] = useState<Set<number>>(new Set())
+  const [discoveryConnectorOverrides, setDiscoveryConnectorOverrides] = useState<Record<number, string>>({})
 
   const { data: connectors = [], isLoading } = useQuery<Connector[]>({
     queryKey: ['connectors'],
     queryFn: () => apiClient.get('/connectors').then((r) => r.data),
   })
+
+  const { data: discoverySessions = [], isLoading: isDiscoveryLoading } = useQuery<DiscoverySession[]>({
+    queryKey: ['discovery-sessions'],
+    queryFn: discoveryApi.listSessions,
+    staleTime: 15_000,
+  })
+
+  const { data: activeDiscoverySession, isLoading: isDiscoverySessionLoading } = useQuery<DiscoverySessionDetail>({
+    queryKey: ['discovery-session', activeDiscoverySessionId],
+    queryFn: () => discoveryApi.getSession(activeDiscoverySessionId as number),
+    enabled: activeDiscoverySessionId !== null,
+  })
+
+  useEffect(() => {
+    if (!activeDiscoverySession) {
+      setSelectedDiscoveryResultIds(new Set())
+      setDiscoveryConnectorOverrides({})
+      return
+    }
+
+    setSelectedDiscoveryResultIds(
+      new Set(
+        activeDiscoverySession.results
+          .filter((result) => result.status === 'reachable')
+          .map((result) => result.id),
+      ),
+    )
+
+    setDiscoveryConnectorOverrides(
+      Object.fromEntries(
+        activeDiscoverySession.results
+          .filter((result) => Boolean(result.selected_connector_type))
+          .map((result) => [result.id, result.selected_connector_type as string]),
+      ),
+    )
+  }, [activeDiscoverySession])
 
   /* ─── Per-connector sync state ─── */
   type SyncState = { phase: 'syncing' | 'done' | 'error'; startedAt: number; error?: string }
@@ -213,6 +270,28 @@ export default function ConnectorsPage() {
     },
   })
 
+  const createDiscoveryMut = useMutation({
+    mutationFn: discoveryApi.createSession,
+    onSuccess: (session) => {
+      queryClient.invalidateQueries({ queryKey: ['discovery-sessions'] })
+      queryClient.invalidateQueries({ queryKey: ['discovery-session', session.id] })
+      setActiveDiscoverySessionId(session.id)
+      setDiscoveryName('')
+      setDiscoveryTargets('')
+      setDiscoveryCidrs('')
+    },
+  })
+
+  const bootstrapDiscoveryMut = useMutation({
+    mutationFn: ({ sessionId, payload }: { sessionId: number; payload: Parameters<typeof discoveryApi.bootstrapSession>[1] }) =>
+      discoveryApi.bootstrapSession(sessionId, payload),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['connectors'] })
+      queryClient.invalidateQueries({ queryKey: ['discovery-sessions'] })
+      queryClient.invalidateQueries({ queryKey: ['discovery-session', variables.sessionId] })
+    },
+  })
+
   const startSyncAll = useCallback(() => {
     // Queue all connectors for sequential processing
     syncQueue.current = connectors.map((c) => c.id)
@@ -250,6 +329,112 @@ export default function ConnectorsPage() {
       }),
     [],
   )
+
+  const handleStartDiscovery = useCallback(() => {
+    const targets = parseDiscoveryList(discoveryTargets)
+    const cidrs = parseDiscoveryList(discoveryCidrs)
+    createDiscoveryMut.mutate({
+      name: discoveryName.trim() || undefined,
+      targets,
+      cidrs,
+      timeout_seconds: Number.parseInt(discoveryTimeout, 10) || 3,
+    })
+  }, [createDiscoveryMut, discoveryCidrs, discoveryName, discoveryTargets, discoveryTimeout])
+
+  const discoveryCanSubmit =
+    parseDiscoveryList(discoveryTargets).length > 0 || parseDiscoveryList(discoveryCidrs).length > 0
+
+  const filteredDiscoveryResults = useMemo(() => {
+    const results = activeDiscoverySession?.results ?? []
+    const normalizedSearch = discoverySearch.trim().toLowerCase()
+
+    return results.filter((result) => {
+      const evidence = getDiscoveryEvidence(result)
+      const matchesSearch =
+        normalizedSearch.length === 0 ||
+        result.host.toLowerCase().includes(normalizedSearch) ||
+        (result.name_hint ?? '').toLowerCase().includes(normalizedSearch) ||
+        result.suggested_connector_types.some((value) => value.toLowerCase().includes(normalizedSearch))
+
+      const matchesStatus =
+        discoveryStatusFilter === 'all' || result.status === discoveryStatusFilter
+
+      const matchesEvidence =
+        discoveryEvidenceFilter === 'all' ||
+        (discoveryEvidenceFilter === 'service' && Boolean(evidence.service_detected)) ||
+        (discoveryEvidenceFilter === 'ssh' && Boolean(evidence.ssh_manageable)) ||
+        (discoveryEvidenceFilter === 'api' && Boolean(evidence.api_manageable)) ||
+        (discoveryEvidenceFilter === 'snmp' && Boolean(evidence.snmp_identified)) ||
+        (discoveryEvidenceFilter === 'bootstrap-ready' && isBootstrapReady(result, discoveryConnectorOverrides[result.id]))
+
+      return matchesSearch && matchesStatus && matchesEvidence
+    })
+  }, [activeDiscoverySession, discoveryConnectorOverrides, discoveryEvidenceFilter, discoverySearch, discoveryStatusFilter])
+
+  const selectedDiscoveryItems = useMemo(
+    () => filteredDiscoveryResults.filter((result) => selectedDiscoveryResultIds.has(result.id)),
+    [filteredDiscoveryResults, selectedDiscoveryResultIds],
+  )
+
+  const discoverySelectionStats = useMemo(() => {
+    const selected = activeDiscoverySession?.results.filter((result) => selectedDiscoveryResultIds.has(result.id)) ?? []
+    const ready = selected.filter((result) => isBootstrapReady(result, discoveryConnectorOverrides[result.id])).length
+    return {
+      selected: selected.length,
+      ready,
+    }
+  }, [activeDiscoverySession, discoveryConnectorOverrides, selectedDiscoveryResultIds])
+
+  const toggleDiscoveryResultSelection = useCallback((resultId: number) => {
+    setSelectedDiscoveryResultIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(resultId)) {
+        next.delete(resultId)
+      } else {
+        next.add(resultId)
+      }
+      return next
+    })
+  }, [])
+
+  const setDiscoveryOverride = useCallback((resultId: number, connectorType: string) => {
+    setDiscoveryConnectorOverrides((prev) => {
+      if (!connectorType) {
+        const next = { ...prev }
+        delete next[resultId]
+        return next
+      }
+      return { ...prev, [resultId]: connectorType }
+    })
+  }, [])
+
+  const selectFilteredDiscoveryResults = useCallback(() => {
+    setSelectedDiscoveryResultIds(new Set(filteredDiscoveryResults.map((result) => result.id)))
+  }, [filteredDiscoveryResults])
+
+  const clearDiscoverySelection = useCallback(() => {
+    setSelectedDiscoveryResultIds(new Set())
+  }, [])
+
+  const handleBootstrapSelected = useCallback(() => {
+    if (activeDiscoverySessionId === null || selectedDiscoveryResultIds.size === 0) {
+      return
+    }
+
+    const payloadItems = [...selectedDiscoveryResultIds].map((resultId) => ({
+      result_id: resultId,
+      connector_type: discoveryConnectorOverrides[resultId] || undefined,
+      run_sync: true,
+    }))
+
+    bootstrapDiscoveryMut.mutate({
+      sessionId: activeDiscoverySessionId,
+      payload: {
+        run_sync: true,
+        items: payloadItems,
+      },
+    })
+  }, [activeDiscoverySessionId, bootstrapDiscoveryMut, discoveryConnectorOverrides, selectedDiscoveryResultIds])
 
   return (
     <div className="space-y-4">
@@ -409,6 +594,164 @@ export default function ConnectorsPage() {
         )}
       </div>
 
+      <div className="space-y-4 pt-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100">
+              Discovery Sessions
+            </h2>
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              Run deterministic discovery, inspect suggested connector types, and review probe reasons before bootstrap.
+            </p>
+          </div>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => queryClient.invalidateQueries({ queryKey: ['discovery-sessions'] })}
+          >
+            <RefreshCw className="h-4 w-4" />
+            Refresh Sessions
+          </Button>
+        </div>
+
+        <div className="grid gap-4 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.35fr)]">
+          <Card>
+            <CardHeader title="Start Discovery" />
+            <CardContent>
+              <div className="space-y-4">
+                <p className="text-sm text-slate-500 dark:text-slate-400">
+                  Enter explicit targets or CIDRs. Results will show suggested connector types and the exact probe evidence used.
+                </p>
+                <div>
+                  <Label htmlFor="discovery-name">Session Name</Label>
+                  <Input
+                    id="discovery-name"
+                    placeholder="Edge scan, DC audit, branch inventory"
+                    value={discoveryName}
+                    onChange={(e) => setDiscoveryName(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="discovery-targets">Targets</Label>
+                  <Textarea
+                    id="discovery-targets"
+                    rows={4}
+                    placeholder="192.168.1.10&#10;fw-edge-01.local"
+                    value={discoveryTargets}
+                    onChange={(e) => setDiscoveryTargets(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="discovery-cidrs">CIDRs</Label>
+                  <Textarea
+                    id="discovery-cidrs"
+                    rows={3}
+                    placeholder="192.168.1.0/30"
+                    value={discoveryCidrs}
+                    onChange={(e) => setDiscoveryCidrs(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="discovery-timeout">Timeout (seconds)</Label>
+                  <Input
+                    id="discovery-timeout"
+                    type="number"
+                    min={1}
+                    max={15}
+                    value={discoveryTimeout}
+                    onChange={(e) => setDiscoveryTimeout(e.target.value)}
+                  />
+                </div>
+                {createDiscoveryMut.isError && (
+                  <p className="text-sm text-red-500 dark:text-red-400">
+                    {extractApiError(createDiscoveryMut.error)}
+                  </p>
+                )}
+                <Button
+                  onClick={handleStartDiscovery}
+                  loading={createDiscoveryMut.isPending}
+                  disabled={!discoveryCanSubmit || createDiscoveryMut.isPending}
+                >
+                  Start Discovery
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader title="Recent Sessions" />
+            <CardContent>
+              <div className="space-y-3">
+                <p className="text-sm text-slate-500 dark:text-slate-400">
+                  Inspect discovery facts before creating or syncing connectors.
+                </p>
+                {isDiscoveryLoading ? (
+                  Array.from({ length: 3 }).map((_, i) => (
+                    <div key={i} className="rounded-xl border border-slate-200 dark:border-slate-700 p-4">
+                      <Skeleton className="mb-3 h-5 w-40" />
+                      <Skeleton className="mb-2 h-3 w-52" />
+                      <Skeleton className="h-3 w-28" />
+                    </div>
+                  ))
+                ) : discoverySessions.length === 0 ? (
+                  <EmptyState
+                    title="No discovery sessions yet"
+                    description="Run a discovery session to inspect deterministic classification evidence before bootstrap."
+                  />
+                ) : (
+                  discoverySessions.map((session) => (
+                    <div
+                      key={session.id}
+                      className="rounded-xl border border-slate-200 dark:border-slate-700 p-4 transition-colors hover:border-brand-300 dark:hover:border-brand-700"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <h4 className="font-semibold text-slate-800 dark:text-slate-100">
+                            {session.name || `Discovery #${session.id}`}
+                          </h4>
+                          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                            {formatDiscoverySummary(session)}
+                          </p>
+                        </div>
+                        <DiscoveryStatusBadge status={session.status} />
+                      </div>
+
+                      <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                        <span>{session.target_count} targets</span>
+                        <span>&middot;</span>
+                        <span>{session.ports.join(', ')}</span>
+                        <span>&middot;</span>
+                        <span>
+                          {session.completed_at
+                            ? formatDistanceToNow(new Date(session.completed_at), { addSuffix: true })
+                            : 'In progress'}
+                        </span>
+                      </div>
+
+                      {session.last_error && (
+                        <p className="mt-3 text-sm text-red-500 dark:text-red-400">
+                          {session.last_error}
+                        </p>
+                      )}
+
+                      <div className="mt-4 flex gap-2">
+                        <Button
+                          variant="secondary"
+                          size="xs"
+                          onClick={() => setActiveDiscoverySessionId(session.id)}
+                        >
+                          Inspect Results
+                        </Button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
       {/* Sync Log Drawer */}
       <AnimatePresence>
         {syncLogDrawer !== null && (
@@ -462,6 +805,206 @@ export default function ConnectorsPage() {
         )}
       </AnimatePresence>
 
+      <AnimatePresence>
+        {activeDiscoverySessionId !== null && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm"
+              onClick={() => setActiveDiscoverySessionId(null)}
+            />
+            <motion.div
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              className="fixed right-0 top-0 z-50 h-full w-full max-w-3xl overflow-y-auto bg-white dark:bg-surface-dark-secondary border-l border-slate-200 dark:border-slate-700 shadow-2xl"
+            >
+              <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 px-6 py-4">
+                <div>
+                  <h2 className="text-lg font-semibold text-slate-800 dark:text-white">
+                    {activeDiscoverySession?.name || `Discovery #${activeDiscoverySessionId}`}
+                  </h2>
+                  {activeDiscoverySession && (
+                    <p className="text-sm text-slate-500 dark:text-slate-400">
+                      {formatDiscoverySummary(activeDiscoverySession)}
+                    </p>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() =>
+                      queryClient.invalidateQueries({
+                        queryKey: ['discovery-session', activeDiscoverySessionId],
+                      })
+                    }
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                    Refresh
+                  </Button>
+                  <Button
+                    size="sm"
+                    loading={bootstrapDiscoveryMut.isPending}
+                    disabled={
+                      !activeDiscoverySession ||
+                      activeDiscoverySession.status !== 'completed' ||
+                      discoverySelectionStats.selected === 0
+                    }
+                    onClick={handleBootstrapSelected}
+                  >
+                    Bootstrap Selected ({discoverySelectionStats.selected})
+                  </Button>
+                  <button
+                    onClick={() => setActiveDiscoverySessionId(null)}
+                    className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+              </div>
+
+              <div className="p-6 space-y-6">
+                {bootstrapDiscoveryMut.isError && (
+                  <p className="text-sm text-red-500 dark:text-red-400">
+                    {extractApiError(bootstrapDiscoveryMut.error)}
+                  </p>
+                )}
+
+                {isDiscoverySessionLoading || !activeDiscoverySession ? (
+                  <div className="space-y-4">
+                    <Skeleton className="h-20 w-full" />
+                    <Skeleton className="h-40 w-full" />
+                    <Skeleton className="h-40 w-full" />
+                  </div>
+                ) : (
+                  <>
+                    <Card>
+                      <CardContent>
+                        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                          <DiscoveryMetric label="Status" value={activeDiscoverySession.status} />
+                          <DiscoveryMetric label="Targets" value={String(activeDiscoverySession.target_count)} />
+                          <DiscoveryMetric label="Ports" value={activeDiscoverySession.ports.join(', ')} />
+                          <DiscoveryMetric
+                            label="Completed"
+                            value={
+                              activeDiscoverySession.completed_at
+                                ? formatDistanceToNow(new Date(activeDiscoverySession.completed_at), { addSuffix: true })
+                                : 'In progress'
+                            }
+                          />
+                        </div>
+                        {activeDiscoverySession.summary && (
+                          <div className="mt-4 grid gap-3 md:grid-cols-2">
+                            <CodeBlock language="summary">
+                              {JSON.stringify(activeDiscoverySession.summary, null, 2)}
+                            </CodeBlock>
+                            <CodeBlock language="input">
+                              {JSON.stringify(activeDiscoverySession.input_payload, null, 2)}
+                            </CodeBlock>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardContent>
+                        <div className="grid gap-3 lg:grid-cols-[minmax(0,1.2fr)_repeat(3,minmax(0,0.55fr))]">
+                          <div>
+                            <Label htmlFor="discovery-search">Filter Results</Label>
+                            <Input
+                              id="discovery-search"
+                              placeholder="Host, name hint, connector type"
+                              value={discoverySearch}
+                              onChange={(e) => setDiscoverySearch(e.target.value)}
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="discovery-status-filter">Reachability</Label>
+                            <Select
+                              id="discovery-status-filter"
+                              value={discoveryStatusFilter}
+                              onChange={(e) => setDiscoveryStatusFilter(e.target.value as 'all' | 'reachable' | 'unreachable')}
+                            >
+                              <option value="all">All</option>
+                              <option value="reachable">Reachable</option>
+                              <option value="unreachable">Unreachable</option>
+                            </Select>
+                          </div>
+                          <div>
+                            <Label htmlFor="discovery-evidence-filter">Evidence</Label>
+                            <Select
+                              id="discovery-evidence-filter"
+                              value={discoveryEvidenceFilter}
+                              onChange={(e) =>
+                                setDiscoveryEvidenceFilter(
+                                  e.target.value as 'all' | 'service' | 'ssh' | 'api' | 'snmp' | 'bootstrap-ready',
+                                )
+                              }
+                            >
+                              <option value="all">All</option>
+                              <option value="service">Service Detected</option>
+                              <option value="ssh">SSH Confirmed</option>
+                              <option value="api">API Confirmed</option>
+                              <option value="snmp">SNMP Identified</option>
+                              <option value="bootstrap-ready">Bootstrap Ready</option>
+                            </Select>
+                          </div>
+                          <div className="rounded-xl border border-slate-200 dark:border-slate-700 px-4 py-3">
+                            <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                              Selection
+                            </p>
+                            <p className="mt-1 text-sm font-medium text-slate-700 dark:text-slate-200">
+                              {discoverySelectionStats.ready}/{discoverySelectionStats.selected} ready
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="mt-4 flex flex-wrap items-center gap-2">
+                          <Button variant="secondary" size="xs" onClick={selectFilteredDiscoveryResults}>
+                            Select Filtered ({filteredDiscoveryResults.length})
+                          </Button>
+                          <Button variant="ghost" size="xs" onClick={clearDiscoverySelection}>
+                            Clear Selection
+                          </Button>
+                          <Badge color="neutral">Visible: {filteredDiscoveryResults.length}</Badge>
+                          <Badge color={discoverySelectionStats.ready === discoverySelectionStats.selected && discoverySelectionStats.selected > 0 ? 'success' : 'warning'}>
+                            Ready: {discoverySelectionStats.ready}
+                          </Badge>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <div className="space-y-3">
+                      {filteredDiscoveryResults.length === 0 ? (
+                        <EmptyState
+                          title="No results match the current filters"
+                          description="Adjust the reachability, evidence, or search filters to inspect other discovery results."
+                        />
+                      ) : (
+                        filteredDiscoveryResults.map((result) => (
+                          <DiscoveryResultCard
+                            key={result.id}
+                            result={result}
+                            isSelected={selectedDiscoveryResultIds.has(result.id)}
+                            overrideConnectorType={discoveryConnectorOverrides[result.id]}
+                            onToggleSelected={toggleDiscoveryResultSelection}
+                            onOverrideConnectorType={setDiscoveryOverride}
+                          />
+                        ))
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
       {/* Create Wizard Drawer */}
       <AnimatePresence>
         {showWizard && (
@@ -503,6 +1046,214 @@ export default function ConnectorsPage() {
       </AnimatePresence>
     </div>
   )
+}
+
+function DiscoveryMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl border border-slate-200 dark:border-slate-700 px-4 py-3">
+      <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+        {label}
+      </p>
+      <p className="mt-1 text-sm font-medium text-slate-700 dark:text-slate-200">
+        {value}
+      </p>
+    </div>
+  )
+}
+
+function DiscoveryStatusBadge({ status }: { status: string }) {
+  const color =
+    status === 'completed'
+      ? 'success'
+      : status === 'running'
+        ? 'info'
+        : status === 'error'
+          ? 'critical'
+          : 'neutral'
+
+  return <Badge color={color}>{status}</Badge>
+}
+
+function DiscoveryEvidenceBadge({ label, active }: { label: string; active: boolean }) {
+  return <Badge color={active ? 'success' : 'neutral'}>{label}: {active ? 'yes' : 'no'}</Badge>
+}
+
+function DiscoveryResultCard({
+  result,
+  isSelected,
+  overrideConnectorType,
+  onToggleSelected,
+  onOverrideConnectorType,
+}: {
+  result: DiscoveryResult
+  isSelected: boolean
+  overrideConnectorType?: string
+  onToggleSelected: (resultId: number) => void
+  onOverrideConnectorType: (resultId: number, connectorType: string) => void
+}) {
+  const evidence = getDiscoveryEvidence(result)
+  const connectorOptions = getDiscoveryConnectorOptions(result)
+  const effectiveConnectorType = overrideConnectorType || result.selected_connector_type || ''
+  const bootstrapReady = isBootstrapReady(result, overrideConnectorType)
+  const serviceOnlyAppSignal =
+    Boolean(evidence.service_detected) &&
+    !Boolean(evidence.ssh_manageable) &&
+    !Boolean(evidence.api_manageable) &&
+    !Boolean(evidence.snmp_identified) &&
+    result.suggested_connector_types.some((connectorType) => APP_CONNECTORS.has(connectorType))
+
+  return (
+    <Card>
+      <CardContent>
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-start gap-3">
+            <input
+              type="checkbox"
+              checked={isSelected}
+              onChange={() => onToggleSelected(result.id)}
+              className="mt-1 h-4 w-4 rounded border-slate-300 dark:border-slate-600"
+            />
+            <div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h3 className="font-semibold text-slate-800 dark:text-slate-100">{result.host}</h3>
+              <DiscoveryStatusBadge status={result.status} />
+              <Badge color="neutral">{result.source_kind}</Badge>
+              {result.selected_connector_type && <Badge color="info">detected: {result.selected_connector_type}</Badge>}
+              {overrideConnectorType && overrideConnectorType !== result.selected_connector_type && (
+                <Badge color="warning">override: {overrideConnectorType}</Badge>
+              )}
+            </div>
+            {result.name_hint && (
+              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{result.name_hint}</p>
+            )}
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2 justify-end">
+            {result.suggested_connector_types.map((connectorType) => (
+              <Badge key={connectorType} color={connectorType === result.selected_connector_type ? 'success' : 'purple'}>
+                {connectorType}
+              </Badge>
+            ))}
+          </div>
+        </div>
+
+        <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <DiscoveryMetric label="Preflight" value={result.preflight_status} />
+          <DiscoveryMetric label="Bootstrap" value={result.bootstrap_status} />
+          <DiscoveryMetric
+            label="Bootstrap Ready"
+            value={bootstrapReady ? 'ready' : 'needs selection'}
+          />
+          <DiscoveryMetric
+            label="Connector"
+            value={result.connector_name || effectiveConnectorType || 'Not selected'}
+          />
+        </div>
+
+        <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(240px,300px)]">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+              Evidence States
+            </p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <DiscoveryEvidenceBadge label="Service Detected" active={Boolean(evidence.service_detected)} />
+              <DiscoveryEvidenceBadge label="SSH Confirmed" active={Boolean(evidence.ssh_manageable)} />
+              <DiscoveryEvidenceBadge label="API Confirmed" active={Boolean(evidence.api_manageable)} />
+              <DiscoveryEvidenceBadge label="SNMP Identified" active={Boolean(evidence.snmp_identified)} />
+            </div>
+            {serviceOnlyAppSignal && (
+              <p className="mt-3 text-sm text-amber-600 dark:text-amber-400">
+                Service detection is present, but SSH, API, and SNMP confirmation are still absent. Bootstrap remains allowed, but manageability is not yet confirmed.
+              </p>
+            )}
+          </div>
+
+          <div className="rounded-xl border border-slate-200 dark:border-slate-700 p-4">
+            <Label htmlFor={`discovery-override-${result.id}`}>Connector Override</Label>
+            <Select
+              id={`discovery-override-${result.id}`}
+              value={effectiveConnectorType}
+              onChange={(e) => onOverrideConnectorType(result.id, e.target.value)}
+            >
+              <option value="">Use detected selection</option>
+              {connectorOptions.map((connectorType) => (
+                <option key={connectorType} value={connectorType}>
+                  {connectorType}
+                </option>
+              ))}
+            </Select>
+            <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+              Use this when discovery suggested multiple connector types and you want bootstrap to create only the chosen connector.
+            </p>
+          </div>
+        </div>
+
+        {result.classification_reasons.length > 0 && (
+          <div className="mt-4">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+              Classification Reasons
+            </p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {result.classification_reasons.map((reason) => (
+                <Badge key={reason} color="neutral" className="max-w-full whitespace-normal text-left">
+                  {reason}
+                </Badge>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {result.error && (
+          <p className="mt-4 text-sm text-red-500 dark:text-red-400">{result.error}</p>
+        )}
+
+        <div className="mt-4 grid gap-3 xl:grid-cols-2">
+          <CodeBlock language="probe detail">
+            {JSON.stringify(result.probe_detail, null, 2)}
+          </CodeBlock>
+          <CodeBlock language="facts">
+            {JSON.stringify(result.facts, null, 2)}
+          </CodeBlock>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+function parseDiscoveryList(value: string): string[] {
+  return value
+    .split(/[\n,]/g)
+    .map((item) => item.trim())
+    .filter(Boolean)
+}
+
+function getDiscoveryEvidence(result: DiscoveryResult): DiscoveryEvidence {
+  return ((result.facts.evidence as DiscoveryEvidence | undefined) ?? {})
+}
+
+function getDiscoveryConnectorOptions(result: DiscoveryResult): string[] {
+  const values = new Set<string>()
+  if (result.selected_connector_type) {
+    values.add(result.selected_connector_type)
+  }
+  result.suggested_connector_types.forEach((connectorType) => values.add(connectorType))
+  return [...values]
+}
+
+function isBootstrapReady(result: DiscoveryResult, overrideConnectorType?: string): boolean {
+  return result.status === 'reachable' && Boolean(overrideConnectorType || result.selected_connector_type)
+}
+
+function extractApiError(error: unknown): string {
+  const maybeAxios = error as { response?: { data?: { detail?: string } }; message?: string }
+  return maybeAxios.response?.data?.detail || maybeAxios.message || 'Request failed'
+}
+
+function formatDiscoverySummary(session: DiscoverySession | DiscoverySessionDetail): string {
+  const summary = session.summary || {}
+  const reachable = typeof summary.reachable_targets === 'number' ? summary.reachable_targets : 0
+  const unreachable = typeof summary.unreachable_targets === 'number' ? summary.unreachable_targets : 0
+  return `${reachable} reachable, ${unreachable} unreachable`
 }
 
 /* ---------- Multi-step Connector Wizard ---------- */
