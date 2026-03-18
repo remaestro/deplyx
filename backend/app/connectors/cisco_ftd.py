@@ -81,6 +81,14 @@ def _first_items(obj: Any) -> list[dict[str, Any]]:
     return []
 
 
+def _first_id(obj: Any) -> str:
+    for item in _first_items(obj):
+        value = item.get("id")
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return ""
+
+
 class CiscoFTDConnector(BaseConnector):
     def __init__(self, config: dict[str, Any]) -> None:
         self.host = config.get("host", "")
@@ -140,6 +148,17 @@ class CiscoFTDConnector(BaseConnector):
             last_error = output.strip() or f"No output for command: {command}"
         raise RuntimeError(last_error or "No CLI command produced usable output")
 
+    @staticmethod
+    def _is_unsupported_cli_error(message: str) -> bool:
+        text = message.lower()
+        return any(marker in text for marker in [
+            "illegal command line",
+            "syntax error",
+            "unknown command",
+            "invalid input",
+            "% invalid",
+        ])
+
     def _api_login(self, api_base: str) -> str:
         response = requests.post(
             f"{api_base}/fdm/token",
@@ -182,6 +201,24 @@ class CiscoFTDConnector(BaseConnector):
         if last_exc is not None:
             raise last_exc
         raise RuntimeError("No Cisco FTD API endpoint candidates were provided")
+
+    def _discover_access_policy_id(self, api_base: str, token: str) -> str:
+        _path, payload = self._api_get_first_success(
+            api_base,
+            token,
+            [
+                "/policy/accesspolicies?limit=200",
+                "/policy/accesspolicies",
+            ],
+        )
+        policy_id = _first_id(payload)
+        if not policy_id:
+            raise RuntimeError("Cisco FTD API returned no access policy id")
+        return policy_id
+
+    def _device_facts_from_ssh(self) -> dict[str, str]:
+        _command, version_out = self._run_first_success(["show version"])
+        return self._parse_version(version_out)
 
     def _consume_endpoint(self, tokens: list[str]) -> tuple[str, list[str]]:
         if not tokens:
@@ -479,6 +516,29 @@ class CiscoFTDConnector(BaseConnector):
                 tunnels.append({"name": name or peer, "peer": peer})
         return tunnels
 
+    def _parse_vpn_tunnels_from_running_config(self, output: str) -> list[dict[str, str]]:
+        tunnels: list[dict[str, str]] = []
+        seen: set[str] = set()
+
+        for line in output.splitlines():
+            stripped = line.strip()
+            peer_match = re.search(r"^crypto map\s+\S+\s+\d+\s+set peer\s+(\d+\.\d+\.\d+\.\d+)$", stripped, re.IGNORECASE)
+            if peer_match:
+                peer = peer_match.group(1)
+                if peer not in seen:
+                    tunnels.append({"name": peer, "peer": peer})
+                    seen.add(peer)
+                continue
+
+            group_match = re.search(r"^tunnel-group\s+(\d+\.\d+\.\d+\.\d+)\s+type\s+ipsec-l2l$", stripped, re.IGNORECASE)
+            if group_match:
+                peer = group_match.group(1)
+                if peer not in seen:
+                    tunnels.append({"name": peer, "peer": peer})
+                    seen.add(peer)
+
+        return tunnels
+
     async def _merge_inventory(
         self,
         result: SyncResult,
@@ -574,17 +634,35 @@ class CiscoFTDConnector(BaseConnector):
         for api_base in self.api_bases:
             try:
                 token = await asyncio.to_thread(self._api_login, api_base)
-                _device_path, device_payload = await asyncio.to_thread(
-                    self._api_get_first_success,
-                    api_base,
-                    token,
-                    [
-                        "/devices/default/deviceversion",
-                        "/devices/default/devices/default",
-                        "/devices/default/device",
-                    ],
-                )
-                facts = self._parse_api_device_facts(device_payload)
+                facts: dict[str, str] | None = None
+                try:
+                    _device_path, device_payload = await asyncio.to_thread(
+                        self._api_get_first_success,
+                        api_base,
+                        token,
+                        [
+                            "/devices/default/deviceversion",
+                            "/devices/default",
+                            "/devices/default/devices/default",
+                            "/devices/default/device",
+                        ],
+                    )
+                    facts = self._parse_api_device_facts(device_payload)
+                except Exception as exc:
+                    logger.warning(
+                        "Cisco FTD API device discovery failed for %s using %s: %s",
+                        self.host,
+                        api_base,
+                        exc,
+                    )
+
+                if facts is None:
+                    try:
+                        facts = await asyncio.to_thread(self._device_facts_from_ssh)
+                    except Exception as exc:
+                        last_exc = exc
+                        continue
+
                 hostname = facts["hostname"]
                 device_id = f"FTD-{facts['serial']}"
                 device_dn = display_name.device(display_name.VENDOR_CISCO, display_name.FUNCTION_FIREWALL, hostname)
@@ -624,11 +702,14 @@ class CiscoFTDConnector(BaseConnector):
                     result.record_failure("routes", f"api: {exc}")
 
                 try:
+                    policy_id = await asyncio.to_thread(self._discover_access_policy_id, api_base, token)
                     _rule_path, rule_payload = await asyncio.to_thread(
                         self._api_get_first_success,
                         api_base,
                         token,
                         [
+                            f"/policy/accesspolicies/{policy_id}/accessrules?limit=200",
+                            f"/policy/accesspolicies/{policy_id}/accessrules",
                             "/policy/accesspolicies/default/accessrules?limit=200",
                             "/devices/default/accesspolicies/default/accessrules?limit=200",
                         ],
@@ -691,19 +772,22 @@ class CiscoFTDConnector(BaseConnector):
             )
             interfaces = self._parse_interfaces(iface_out)
         except Exception as exc:
-            result.record_failure("interfaces", str(exc))
+            if not self._is_unsupported_cli_error(str(exc)):
+                result.record_failure("interfaces", str(exc))
 
         try:
             _route_command, route_out = await asyncio.to_thread(self._run_first_success, ["show route", "show ip route"])
             routes = self._parse_routes(route_out)
         except Exception as exc:
-            result.record_failure("routes", str(exc))
+            if not self._is_unsupported_cli_error(str(exc)):
+                result.record_failure("routes", str(exc))
 
         try:
             _rule_command, rule_out = await asyncio.to_thread(self._run_first_success, ["show access-list"])
             rules = self._parse_rules(rule_out)
         except Exception as exc:
-            result.record_failure("rules", str(exc))
+            if not self._is_unsupported_cli_error(str(exc)):
+                result.record_failure("rules", str(exc))
 
         try:
             _vpn_command, vpn_out = await asyncio.to_thread(
@@ -711,8 +795,12 @@ class CiscoFTDConnector(BaseConnector):
                 ["show vpn-sessiondb detail l2l", "show vpn-sessiondb summary", "show crypto ipsec sa"],
             )
             tunnels = self._parse_vpn_tunnels(vpn_out)
+            if not tunnels:
+                _running_command, running_out = await asyncio.to_thread(self._run_first_success, ["show running-config"])
+                tunnels = self._parse_vpn_tunnels_from_running_config(running_out)
         except Exception as exc:
-            result.record_failure("vpn_tunnels", str(exc))
+            if not self._is_unsupported_cli_error(str(exc)):
+                result.record_failure("vpn_tunnels", str(exc))
 
         await self._merge_inventory(
             result,
@@ -730,13 +818,13 @@ class CiscoFTDConnector(BaseConnector):
     async def sync(self) -> dict[str, Any]:
         result = SyncResult()
         if self.transport in {"auto", "api"}:
-            api_ok = await self._sync_via_api(result)
-            if api_ok:
-                result.finalise()
-                return {"vendor": "cisco-ftd", **result.to_dict()}
+            api_result = SyncResult()
+            api_ok = await self._sync_via_api(api_result)
+            api_result.finalise()
+            if api_ok and (self.transport == "api" or not api_result.failed):
+                return {"vendor": "cisco-ftd", **api_result.to_dict()}
             if self.transport == "api":
-                result.finalise()
-                return {"vendor": "cisco-ftd", **result.to_dict()}
+                return {"vendor": "cisco-ftd", **api_result.to_dict()}
 
         try:
             await self._sync_via_ssh(result)

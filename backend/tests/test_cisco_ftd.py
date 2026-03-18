@@ -132,3 +132,91 @@ async def test_cisco_ftd_sync_uses_fdm_api_token(monkeypatch: pytest.MonkeyPatch
     assert result["synced"]["rules"] == 1
     assert result["synced"]["vpn_tunnels"] == 1
     assert any(label == "Device" and node_id == "FTD-FPRAPI123" for label, node_id, _props in merged_nodes)
+
+
+@pytest.mark.asyncio
+async def test_cisco_ftd_auto_falls_back_to_ssh_when_api_is_partial(monkeypatch: pytest.MonkeyPatch):
+    merged_nodes: list[tuple[str, str, dict]] = []
+
+    async def _merge_node(label, node_id, props):
+        merged_nodes.append((label, node_id, props))
+        return {"id": node_id}
+
+    async def _create_relationship(*_args, **_kwargs):
+        return {}
+
+    class _Resp:
+        def __init__(self, data, status_code=200):
+            self._data = data
+            self.status_code = status_code
+
+        def raise_for_status(self):
+            if self.status_code >= 400:
+                raise cisco_ftd.requests.HTTPError(f"status={self.status_code}")
+
+        def json(self):
+            return self._data
+
+    def _fake_post(url, **_kwargs):
+        if url.endswith("/fdm/token"):
+            return _Resp({"access_token": "token-123"})
+        raise AssertionError(url)
+
+    def _fake_get(url, **_kwargs):
+        if url.endswith("/devices/default/deviceversion"):
+            return _Resp({"hostname": "ftd1", "serialNumber": "FPRAPI123", "model": "Firepower 2110", "version": "7.3.0"})
+        return _Resp({}, status_code=404)
+
+    outputs = {
+        "show version": """
+Cisco Firepower Threat Defense for FTD1
+Version 7.3.0
+Serial Number: FPRSSH123
+Model : Firepower 2110
+""",
+        "show interface ip brief": """
+Interface                  IP-Address      OK? Method Status                Protocol
+GigabitEthernet0/0         192.168.1.254   YES CONFIG up                    up
+GigabitEthernet0/1         10.0.0.254      YES CONFIG up                    up
+""",
+        "show route": """
+C        10.0.0.0 255.255.255.0 is directly connected, outside
+S        172.16.10.0 255.255.255.0 [1/0] via 10.0.0.1, outside
+""",
+        "show access-list": """
+access-list NGFW_ONBOX_ACL line 9 advanced trust ip ifc internalnet any ifc outside any rule-id 268435457 event-log both
+""",
+        "show vpn-sessiondb detail l2l": "% Invalid",
+        "show vpn-sessiondb summary": "% Invalid",
+        "show crypto ipsec sa": "There are no ipsec sas",
+        "show running-config": """
+crypto map s2sCryptoMap 1 set peer 20.0.0.254
+tunnel-group 20.0.0.254 type ipsec-l2l
+""",
+    }
+
+    def _run_ssh(self, command: str) -> str:
+        return outputs[command]
+
+    monkeypatch.setattr(cisco_ftd.neo4j_client, "merge_node", _merge_node)
+    monkeypatch.setattr(cisco_ftd.neo4j_client, "create_relationship", _create_relationship)
+    monkeypatch.setattr(cisco_ftd.requests, "post", _fake_post)
+    monkeypatch.setattr(cisco_ftd.requests, "get", _fake_get)
+    monkeypatch.setattr(cisco_ftd.CiscoFTDConnector, "_run_ssh", _run_ssh)
+
+    connector = cisco_ftd.CiscoFTDConnector({
+        "host": "192.168.170.10",
+        "username": "admin",
+        "password": "Admin@123",
+        "transport": "auto",
+    })
+    result = await connector.sync()
+
+    assert result["status"] == "synced"
+    assert result["failed"] == {}
+    assert result["synced"]["devices"] == 1
+    assert result["synced"]["interfaces"] == 2
+    assert result["synced"]["routes"] == 2
+    assert result["synced"]["rules"] == 1
+    assert result["synced"]["vpn_tunnels"] == 1
+    assert any(label == "Device" and node_id == "FTD-FPRSSH123" for label, node_id, _props in merged_nodes)
