@@ -1,6 +1,6 @@
 """add discovery bootstrap fields
 
-Revision ID: 0009_add_discovery_bootstrap_fields
+Revision ID: 0009_disc_bootstrap
 Revises: 0008_add_discovery_sessions
 Create Date: 2026-03-18 00:30:00.000000
 
@@ -11,7 +11,7 @@ from alembic import op
 import sqlalchemy as sa
 
 
-revision: str = "0009_add_discovery_bootstrap_fields"
+revision: str = "0009_disc_bootstrap"
 down_revision: Union[str, None] = "0008_add_discovery_sessions"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
