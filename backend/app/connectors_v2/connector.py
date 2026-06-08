@@ -505,6 +505,10 @@ class UnifiedConnector:
                     result["bgp_peers"] = self._normalize_bgp(parsed, raw_out)
                 elif "mac" in iso or "address-table" in iso:
                     result["mac_table"] = parsed
+                elif "cdp" in iso or "lldp" in iso:
+                    protocol = "cdp" if "cdp" in iso else "lldp"
+                    existing = result.get("topology_neighbors", [])
+                    result["topology_neighbors"] = existing + self._normalize_neighbors(parsed, protocol)
                 elif "network" in iso:
                     self._parse_ftd_network(raw_out, result)
                 elif "manager" in iso:
@@ -575,6 +579,23 @@ class UnifiedConnector:
                         })
 
     # ── system info extractors ──────────────────────────────────
+    def _normalize_neighbors(self, parsed: list[dict], protocol: str) -> list[dict]:
+        """Normalize CDP/LLDP neighbor data into a standard format."""
+        neighbors: list[dict] = []
+        for entry in parsed if isinstance(parsed, list) else []:
+            if not entry.get("neighbor_name"):
+                continue
+            neighbors.append({
+                "hostname": entry.get("neighbor_name", ""),
+                "local_interface": entry.get("local_interface", ""),
+                "neighbor_interface": entry.get("neighbor_interface", ""),
+                "platform": entry.get("platform", ""),
+                "capabilities": entry.get("capabilities", ""),
+                "management_ip": entry.get("mgmt_address", ""),
+                "protocol": protocol,
+            })
+        return neighbors
+
     def _is_ip_interface_brief_command(self, command: str) -> bool:
         cmd = command.strip().lower()
         return bool(re.search(r"\bshow\s+ip\s+int(?:erface)?\s+brief\b", cmd))
@@ -783,6 +804,31 @@ class UnifiedConnector:
                     "display_name": f"VLAN {vid} ({hostname})",
                 })
                 await neo4j_client.create_relationship("Device", device_id, "HAS_VLAN", "VLAN", vlan_id_name)
+            except Exception:
+                pass
+
+        for neighbor in data.get("topology_neighbors", []):
+            nbr_host = neighbor.get("hostname", "")
+            nbr_local_if = neighbor.get("local_interface", "")
+            nbr_remote_if = neighbor.get("neighbor_interface", "")
+            if not nbr_host:
+                continue
+            try:
+                # Find the neighbor device in Neo4j
+                found = await neo4j_client.run_query(
+                    "MATCH (d:Device) WHERE d.hostname = $host RETURN d.id LIMIT 1",
+                    {"host": nbr_host},
+                )
+                if found:
+                    nbr_id = found[0]["d.id"]
+                    props = {"source": neighbor.get("protocol", "cdp")}
+                    if nbr_local_if:
+                        props["local_port"] = nbr_local_if
+                    if nbr_remote_if:
+                        props["neighbor_port"] = nbr_remote_if
+                    await neo4j_client.create_relationship(
+                        "Device", device_id, "CONNECTED_TO", "Device", nbr_id, props,
+                    )
             except Exception:
                 pass
 

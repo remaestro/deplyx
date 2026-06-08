@@ -11,13 +11,19 @@ commands:
   show_version: "show version"
   show_interfaces: "show interfaces"
   show_ip_route: "show ip route"
+  show_cdp: "show cdp neighbors detail"
+  show_lldp: "show lldp neighbors detail"
   show_bgp: "show ip bgp summary"
 command_groups:
+  topology:
+    refs: ["show_cdp", "show_lldp"]
   all:
-    refs: ["show_version", "show_interfaces", "show_ip_route", "show_bgp"]
+    refs: ["show_version", "show_interfaces", "show_ip_route", "show_cdp", "show_lldp", "show_bgp"]
 parsers:
   show_version: textfsm
   show_interfaces: textfsm
+  show_cdp: textfsm
+  show_lldp: textfsm
 neo4j_labels:
   device: "Device"
   interface: "Interface"

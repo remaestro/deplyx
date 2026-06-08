@@ -27,6 +27,7 @@ commands:
   show_vlan: "show vlan brief"
   show_mac: "show mac address-table"
   show_cdp: "show cdp neighbors detail"
+  show_lldp: "show lldp neighbors detail"
   show_bgp: "show ip bgp summary"
   show_ospf: "show ip ospf neighbor"
   show_spanning_tree: "show spanning-tree"
@@ -42,10 +43,10 @@ command_groups:
   switching:
     refs: ["show_vlan", "show_mac", "show_spanning_tree"]
   topology:
-    refs: ["show_cdp"]
+    refs: ["show_cdp", "show_lldp"]
   all:
     refs: ["show_version", "show_interfaces", "show_ip_route",
-           "show_vlan", "show_mac", "show_cdp", "show_bgp",
+           "show_vlan", "show_mac", "show_cdp", "show_lldp", "show_bgp",
            "show_ospf", "show_spanning_tree"]
 
 parsers:
@@ -54,6 +55,7 @@ parsers:
   show_ip_route: textfsm
   show_vlan: textfsm
   show_cdp: textfsm
+  show_lldp: textfsm
   show_bgp: textfsm
 
 neo4j_labels:
