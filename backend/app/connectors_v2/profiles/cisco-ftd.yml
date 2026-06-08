@@ -1,6 +1,7 @@
 name: cisco-ftd
 vendor: cisco
 os: ftd
+device_role: firewall
 match_banner:
   - "FTD"
   - "Firepower"

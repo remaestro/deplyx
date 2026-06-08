@@ -226,6 +226,124 @@ def fingerprint_device(
     return result
 
 
+# ── Device role inference ─────────────────────────────────────────
+
+CISCO_MODEL_ROLES: dict[str, str] = {
+    # ISR/ASR/CSR routers
+    "4321": "core-router",
+    "4331": "core-router",
+    "4351": "core-router",
+    "4221": "core-router",
+    "4431": "core-router",
+    "4451": "core-router",
+    "4461": "core-router",
+    "ASR": "core-router",
+    "CSR": "core-router",
+    "7200": "core-router",
+    "7300": "core-router",
+    # Catalyst switches
+    "3750": "distribution-switch",
+    "3850": "distribution-switch",
+    "3650": "distribution-switch",
+    "4500": "distribution-switch",
+    "6500": "core-switch",
+    "6800": "core-switch",
+    "9200": "access-switch",
+    "9300": "access-switch",
+    "9400": "distribution-switch",
+    "9500": "core-switch",
+    "2960": "access-switch",
+    "3560": "distribution-switch",
+    # WLC
+    "5508": "wlc",
+    "5520": "wlc",
+    "8540": "wlc",
+    "9800": "wlc",
+    "2504": "wlc",
+    # FTD/ASA firewalls
+    "FTD": "firewall",
+    "ASA": "firewall",
+    "Firepower": "firewall",
+    "2100": "firewall",
+    "3100": "firewall",
+    "4100": "firewall",
+    "9300": "firewall",
+}
+
+
+def infer_device_role(
+    vendor: str,
+    os_name: str,
+    model: str | None = None,
+    interface_count: int = 0,
+    has_routing_protocols: bool = False,
+    profile_role: str = "",
+) -> str:
+    """Infer the device role from available context."""
+    # 1. Profile-specified role takes precedence
+    if profile_role:
+        return profile_role
+
+    # 2. Infer from vendor + OS
+    vendor_lower = vendor.lower().strip() if vendor else ""
+    os_lower = os_name.lower().strip() if os_name else ""
+
+    if os_lower in ("ftd", "asa"):
+        return "firewall"
+    if vendor_lower == "fortinet":
+        return "firewall"
+    if vendor_lower == "paloalto":
+        return "firewall"
+    if vendor_lower == "checkpoint":
+        return "firewall"
+    if os_lower == "panos":
+        return "firewall"
+
+    if os_lower in ("nxos",):
+        return "distribution-switch"
+    if vendor_lower == "aruba" and "switch" not in os_lower:
+        return "wlc"
+    if vendor_lower == "juniper":
+        # Juniper can be router or switch; check model
+        if model:
+            model_upper = model.upper()
+            if any(p in model_upper for p in ("MX", "PTX", "ACX", "M")):
+                return "core-router"
+            if any(p in model_upper for p in ("EX", "QFX")):
+                return "distribution-switch"
+            if any(p in model_upper for p in ("SRX",)):
+                return "firewall"
+        # Default Juniper to router
+        return "router"
+
+    # 3. Infer from Cisco model number
+    if model and vendor_lower == "cisco":
+        model_upper = model.upper()
+        for model_key, role in CISCO_MODEL_ROLES.items():
+            if model_key in model_upper:
+                return role
+
+    # 4. Infer from interface count
+    if interface_count >= 24:
+        return "distribution-switch"
+    if interface_count >= 8:
+        return "access-switch"
+    if interface_count <= 4:
+        if has_routing_protocols:
+            return "core-router"
+        return "router"
+
+    # 5. Default based on vendor/OS
+    if os_lower in ("ios", "iosxe"):
+        return "router" if has_routing_protocols else "switch"
+    if os_lower == "nxos":
+        return "distribution-switch"
+    if vendor_lower == "linux":
+        return "server"
+
+    return "unknown"
+
+
 _PROFILE_SCHEMA = {
     "name": str,
     "vendor": str,
@@ -251,6 +369,7 @@ class DeviceProfile:
         self.command_groups: dict[str, Any] = data.get("command_groups", {})
         self.parsers: dict[str, str] = data.get("parsers", {})
         self.neo4j_labels: dict[str, str] = data.get("neo4j_labels", {})
+        self.device_role: str = data.get("device_role", "")
         self.api_discovery: list[str] = data.get("api_discovery", [])
         self.fallback: dict[str, Any] = data.get("fallback", {})
 

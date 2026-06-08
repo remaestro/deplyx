@@ -65,6 +65,7 @@ class TextFSMParser:
             "extreme_exos": "extreme_exos",
             "cisco_ios_telnet": "cisco_ios",
             "cisco_ftd": "cisco_asa",
+            "ios": "cisco_ios",
         }
         vendor = vendor_map.get(os_name, os_name)
 

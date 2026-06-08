@@ -137,7 +137,16 @@ async def sync_all_connectors(
         try:
             instance = UnifiedConnector({**c.config, "_connector_type": c.connector_type})
             result = await instance.sync()
-            results.append({"id": c.id, "name": c.name, "status": result.get("status", "ok")})
+            results.append({
+                "id": c.id,
+                "name": c.name,
+                "hostname": result.get("hostname"),
+                "role": result.get("role"),
+                "status": result.get("status", "ok"),
+                "topology_neighbors": result.get("topology_neighbors", []),
+                "interfaces_count": len(result.get("interfaces", [])),
+                "errors": result.get("errors", []),
+            })
             c.last_sync_at = datetime.now(timezone.utc)
             c.status = "active" if result.get("status") == "ok" else "error"
         except Exception as e:

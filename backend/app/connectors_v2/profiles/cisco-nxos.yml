@@ -1,6 +1,7 @@
 name: cisco-nxos
 vendor: cisco
 os: nxos
+device_role: distribution-switch
 match_banner:
   - "NX-OS"
 match_cmd_output:

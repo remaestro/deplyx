@@ -1,6 +1,7 @@
 name: paloalto-panos
 vendor: paloalto
 os: panos
+device_role: firewall
 match_banner:
   - "Palo Alto"
   - "PAN-OS"

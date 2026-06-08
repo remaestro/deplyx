@@ -1,6 +1,7 @@
 name: cisco-router
 vendor: cisco
 os: ios
+device_role: router
 match_banner: []
 match_cmd_output: []
 transports:

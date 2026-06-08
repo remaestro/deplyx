@@ -1,6 +1,7 @@
 name: fortinet-fortios
 vendor: fortinet
 os: fortios
+device_role: firewall
 match_banner:
   - "Fortinet"
   - "FortiGate"

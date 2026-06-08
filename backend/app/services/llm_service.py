@@ -79,6 +79,66 @@ Your job is to perform a **complete impact analysis** by reasoning about the \
 topology graph. Think like you are tracing packets and dependencies through the \
 network.
 
+## CRITICAL: Classify the impact type
+
+The `action` field tells you what kind of change is being made. **NOT all actions \
+cause traffic disruption.** Classify the action into one of these categories:
+
+### Category A — Policy-only changes (LOW risk of traffic disruption)
+`add_rule`, `remove_rule`, `modify_rule`, `disable_rule`, `modify_acl`, `modify_sg`
+- These modify firewall/security policy, they do NOT physically disrupt connectivity
+- **Stateful firewall behaviour**: Modern firewalls (FTD, FortiGate, Palo Alto, etc.) \
+  maintain stateful session tables. Removing or modifying a rule does NOT drop existing \
+  established connections — only NEW connection attempts are affected. The impact is \
+  gradual as sessions time out.
+- Risk is about **loss of protection** (e.g. an app behind the firewall becomes exposed), \
+  not about connectivity loss. Trace PROTECTS edges to find apps that lose protection.
+- If the rule being removed/modified has NOT been hit recently (low hit count), the \
+  real-world impact is minimal.
+- For these actions, the blast radius is about SECURITY EXPOSURE, not downtime.
+
+### Category B — Traffic-impacting changes (HIGH risk of disruption)
+`reboot_device`, `decommission`, `firmware_upgrade`, `shutdown_interface`, \
+`disable_port`, `config_change`
+- These physically disrupt connectivity. The device/interface goes down.
+- Trace ALL connected paths for full blast radius.
+- Every device, application, and service that depends on this path is at risk of downtime.
+- Consider whether the target has redundancy (HA pair, secondary path, VRRP/HSRP).
+
+### Category C — L2/L3 topology changes (MEDIUM risk)
+`change_vlan`, `delete_vlan`, `modify_vlan`, `enable_port`
+- These affect layer-2 or layer-3 connectivity but may not cause complete disruption.
+- VLAN changes affect all devices on that VLAN. Check if the VLAN is used for \
+  management, user traffic, or both.
+- Port enable is typically benign unless it creates a loop (check STP).
+
+## Stateful firewall deep-dive
+
+For ANY action on a firewall device:
+- Stateful firewalls track connection state in a session table.
+- **Removing a rule does NOT tear down existing sessions.** The sessions remain until \
+  they naturally expire (typically 60-3600s depending on protocol).
+- Risk of traffic loss from rule removal is limited to NEW flows that would have \
+  matched that rule.
+- However, if ALL rules permitting traffic to an application are removed, the \
+  application will become unreachable for new connections once existing sessions expire.
+- For `disable_rule`: the rule is just disabled (kept in config), easily reverted.
+- For `remove_rule`: the rule is deleted, harder to revert but still just a policy change.
+- Factor the FIREWALL MODEL into your reasoning if available from topology data \
+  (FTD/FortiGate/PaloAlto all handle stateful sessions slightly differently).
+
+## Redundancy & risk context
+
+The change details may include a `redundancy_analysis` object with pre-computed data \
+showing which affected applications still have alternate protection from other \
+firewalls/rules or alternate network paths. You MUST use this data to:
+- Set `blast_radius.redundancy_available` accurately (true if ANY app has alt protection)
+- Write a detailed `blast_radius.redundancy_details` explaining which apps are still \
+  protected by which other firewalls/rules, and which apps become fully exposed
+- Factor redundancy into your `risk_assessment.severity` — an app with alternate \
+  protection is less critical than one that becomes a single point of failure
+- Mention redundancy in `risk_assessment.factors` and `mitigations`
+
 Return a JSON object with EXACTLY this structure (no markdown, no extra keys):
 {
   "critical_paths": [
@@ -91,12 +151,12 @@ Return a JSON object with EXACTLY this structure (no markdown, no extra keys):
       "path_description": "<one-line description of dependency chain>",
       "nodes": [{"id": "<id>", "label": "<type>"}],
       "edges": [{"type": "<rel type>", "source": "<from id>", "target": "<to id>"}],
-      "reasoning": "<why this path matters for this specific action>"
+      "reasoning": "<why this path matters for this specific action, factoring action category>"
     }
   ],
   "risk_assessment": {
     "severity": "critical|high|medium|low",
-    "summary": "<2-3 sentence risk summary>",
+    "summary": "<2-3 sentence risk summary that accounts for action category>",
     "factors": ["<factor 1>", "<factor 2>", ...],
     "mitigations": ["<mitigation 1>", "<mitigation 2>", ...]
   },
@@ -109,27 +169,33 @@ Return a JSON object with EXACTLY this structure (no markdown, no extra keys):
   "action_analysis": {
     "action": "<the change action>",
     "traversal_strategy": "<what kind of traversal makes sense>",
-    "explanation": "<why this traversal strategy is appropriate for this action>"
+    "explanation": "<why this traversal strategy is appropriate, including action category>"
   }
 }
 
 Rules:
 - Order critical_paths by criticality (critical first, then high, medium, low)
 - Only include paths that are ACTUALLY affected by the specific action
-- For 'remove_rule', trace PROTECTS edges to find apps that lose protection
-- For 'reboot_device'/'decommission', trace ALL connected paths (full blast radius)
-- For 'change_vlan'/'delete_vlan', find all devices and apps on that VLAN
-- For 'disable_port', trace through the port's device to downstream dependencies
-- **REDUNDANCY IS CRITICAL**: The change details may include a `redundancy_analysis` \
-  object with pre-computed data showing which affected applications still have \
-  alternate protection from other firewalls/rules. You MUST use this data to:
-  * Set `blast_radius.redundancy_available` accurately (true if ANY app has alt protection)
-  * Write a detailed `blast_radius.redundancy_details` explaining which apps are still \
-    protected by which other firewalls/rules, and which apps become fully exposed
-  * Factor redundancy into your `risk_assessment.severity` — an app with alternate \
-    protection is less critical than one that becomes a single point of failure
-  * Mention redundancy in `risk_assessment.factors` and `mitigations`
-- Be specific about WHY each path is critical for this particular action
+- For Category A (policy) actions: focus on PROTECTS edges and security exposure, \
+  NOT connectivity loss. Mark criticality lower than you would for traffic-impacting changes.
+- For Category B (traffic-impacting) actions: trace all CONNECTED_TO and DEPENDS_ON \
+  edges. Be thorough — this is a real outage risk.
+- For Category C (L2/L3) actions: trace VLAN membership and adjacency.
+- **Criticality scaling**: A policy change that exposes an app should be "medium" at \
+  worst unless there is zero redundancy AND the app is business-critical. A traffic-impacting \
+  change on a core device without HA should be "critical".
+- **Device role context**: Each node has a `role` field that indicates its function \
+  (core-router, distribution-switch, access-switch, firewall, wlc, ap, router, switch). \
+  Use this to calibrate your risk assessment:
+  * `core-router` / `distribution-switch` — Higher risk: these devices carry aggregated \
+    traffic from many downstream devices. An outage affects a large blast radius.
+  * `access-switch` — Lower risk: only affects the end-users/devices directly connected.
+  * `firewall` — Risk depends on action category (policy change vs device reboot).
+  * `wlc` / `ap` — Medium risk: affects wireless clients but not wired infrastructure.
+  * If no role is shown, infer it from the device's position in the graph topology \
+    (how many edges, what kind of neighbors, upstream/downstream position).
+- Be specific about WHY each path is critical for this particular action, referencing \
+  the action category and device role in your reasoning.
 - Return ONLY valid JSON, no markdown fences, no comments
 """
 
@@ -236,7 +302,7 @@ async def _call_openai_compatible(prompt: str, user_prompt: str) -> dict[str, An
                 base_url, model, len(prompt) + len(user_prompt))
 
     try:
-        async with httpx.AsyncClient(timeout=120) as client:
+        async with httpx.AsyncClient(timeout=300) as client:
             response = await client.post(
                 f"{base_url}/chat/completions",
                 headers=headers,
@@ -403,7 +469,7 @@ def _build_prompt(topology: dict[str, Any], change_details: dict[str, Any]) -> s
             "label": node.get("label"),
         }
         props = node.get("properties", {})
-        for key in ["type", "criticality", "vendor", "hostname", "name", "status", "vlan_id", "port", "protocol"]:
+        for key in ["type", "role", "criticality", "vendor", "hostname", "name", "status", "vlan_id", "port", "protocol"]:
             if key in props:
                 trimmed[key] = props[key]
         trimmed_nodes.append(trimmed)

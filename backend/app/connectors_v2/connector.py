@@ -112,15 +112,32 @@ class UnifiedConnector:
                     if llm_commands:
                         fp["llm_commands"] = llm_commands
 
-            connected = await asyncio.to_thread(self._connect)
-            if not connected:
+            def _connect_and_collect():
+                if not self._connect():
+                    return None
+                return self._collect_all()
+
+            sync_data = await asyncio.to_thread(_connect_and_collect)
+            if sync_data is None:
                 self._open_circuit()
                 result["status"] = "error"
                 result["errors"].append("No transport could connect to device")
                 return result
-
-            sync_data = await asyncio.to_thread(self._collect_all)
             result.update(sync_data)
+
+            # Infer device role from available context
+            from app.connectors_v2.device_profile import infer_device_role
+            role = infer_device_role(
+                vendor=fp.get("vendor", ""),
+                os_name=fp.get("os", ""),
+                model=result.get("model", fp.get("model")),
+                interface_count=len(result.get("interfaces", [])),
+                has_routing_protocols=bool(result.get("routes") or result.get("bgp_peers")),
+                profile_role=self._profile.device_role if self._profile else "",
+            )
+            result["role"] = role
+            fp["role"] = role
+            logger.info("Device %s inferred role: %s", self.host, role)
 
             await self._push_to_neo4j(result)
             await self._infer_topology()
@@ -149,6 +166,7 @@ class UnifiedConnector:
         api_result = await self._sync_ftd_via_api()
         if api_result.get("status") == "ok" or self.transport_mode == "api":
             result.update(api_result)
+            result["role"] = "firewall"
             await self._infer_topology()
             return result
 
@@ -170,6 +188,7 @@ class UnifiedConnector:
             "failed": legacy_result.get("failed", {}),
             "errors": legacy_result.get("errors", []),
         })
+        result["role"] = "firewall"
         await self._infer_topology()
         return result
 
@@ -731,9 +750,9 @@ class UnifiedConnector:
         serial = data.get("serial", hostname)
         device_id = f"DEV-{serial}"
         vendor = data.get("vendor", self._fingerprint.get("vendor", "unknown"))
-        device_type = self._fingerprint.get("os", "unknown")
+        role = data.get("role", self._fingerprint.get("os", "unknown"))
         ip = self.host
-        display_name = f"{hostname} ({vendor}/{device_type})"
+        display_name = f"{hostname} ({vendor}/{role})"
 
         try:
             existing = await self._find_device_by_hostname_ip(hostname, ip)
@@ -741,13 +760,14 @@ class UnifiedConnector:
                 device_id = existing["id"]
             await neo4j_client.merge_node("Device", device_id, {
                 "id": device_id,
-                "type": device_type,
+                "type": role,
                 "vendor": vendor,
                 "hostname": hostname,
                 "model": data.get("model", ""),
                 "os_version": data.get("os_version", ""),
                 "serial": serial,
                 "ip": ip,
+                "role": role,
                 "display_name": display_name,
             })
             data["device_id"] = device_id
