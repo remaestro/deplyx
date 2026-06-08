@@ -477,6 +477,7 @@ class UnifiedConnector:
             "redundancy": {},
             "acl_bindings": [],
             "access_lists": [],
+            "services": [],
             "errors": [],
         }
 
@@ -548,6 +549,8 @@ class UnifiedConnector:
                     result["acl_bindings"] = self._parse_acl_bindings(raw_out)
                 elif "access-list" in iso or "access" in iso and "list" in iso:
                     result["access_lists"] = self._normalize_access_lists(parsed, raw_out)
+                elif "http" in iso and ("server" in iso or "status" in iso):
+                    result["services"] = self._normalize_http_service(raw_out, parsed)
                 elif "network" in iso:
                     self._parse_ftd_network(raw_out, result)
                 elif "manager" in iso:
@@ -888,6 +891,34 @@ class UnifiedConnector:
                     current_acl = None
         return acls
 
+    # ── Services detection ──────────────────────────────────────
+    def _normalize_http_service(self, raw: str, parsed: list[dict]) -> list[dict[str, Any]]:
+        """Parse 'show ip http server status' to extract HTTP service info."""
+        services: list[dict[str, Any]] = []
+        enabled = False
+        port = 80
+        if parsed and not parsed[0].get("raw"):
+            entry = parsed[0] if parsed else {}
+            enabled = entry.get("status", "").lower() == "enabled" if entry.get("status") else False
+            port = int(entry.get("port", 80)) if entry.get("port") else 80
+        else:
+            m = re.search(r"HTTP server status:\s*(\S+)", raw, re.IGNORECASE)
+            if m:
+                enabled = m.group(1).lower() == "enabled"
+            m = re.search(r"HTTP server port:\s*(\d+)", raw, re.IGNORECASE)
+            if m:
+                port = int(m.group(1))
+        services.append({
+            "name": "http",
+            "protocol": "tcp",
+            "port": port,
+            "enabled": enabled,
+            "source": "show ip http server status",
+        })
+        if enabled:
+            logger.info("Service detected: HTTP (port %d) on %s", port, self.host)
+        return services
+
     # ── Neo4j push (upsert par hostname+ip) ──────────────────────
     async def _push_to_neo4j(self, data: dict[str, Any]) -> None:
         hostname = data.get("hostname", self.host)
@@ -919,6 +950,10 @@ class UnifiedConnector:
             acl_bindings = data.get("acl_bindings", [])
             acl_bindings_json = json.dumps(acl_bindings) if acl_bindings else ""
 
+            # Serialize services for Neo4j storage
+            services = data.get("services", [])
+            services_json = json.dumps(services) if services else ""
+
             await neo4j_client.merge_node("Device", device_id, {
                 "id": device_id,
                 "type": role,
@@ -932,6 +967,7 @@ class UnifiedConnector:
                 "has_redundancy": has_redundancy,
                 "redundancy_protocol": redundancy_protocol,
                 "acl_bindings": acl_bindings_json,
+                "services": services_json,
                 "display_name": display_name,
             })
             data["device_id"] = device_id

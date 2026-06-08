@@ -211,6 +211,14 @@ Rules:
   * If an ACL is applied inbound on an interface facing a specific device, only that \
     device's traffic is affected.
   * ACLs applied to management interfaces (Vlan1, Mgmt) have limited blast radius.
+- **Services/Listening ports**: Device nodes may have a `services` field (JSON array) \
+  listing detected services (HTTP, HTTPS, SSH, etc.) with `name`, `protocol`, `port`, \
+  and `enabled` status. Use this to determine if a proposed rule/ACL change would \
+  actually affect a running service:
+  * If a rule blocks port 80 but the device has `services: [{"name": "http", "enabled": false}]`, \
+    the impact is LOW — HTTP is not running.
+  * If the device has HTTP enabled, blocking port 80 would impact management access.
+  * Services running on management interfaces (Vlan1, Mgmt) affect only administrative access.
 - Be specific about WHY each path is critical for this particular action, referencing \
   the action category, device role, and redundancy status in your reasoning.
 - Return ONLY valid JSON, no markdown fences, no comments
@@ -489,7 +497,7 @@ def _build_prompt(topology: dict[str, Any], change_details: dict[str, Any]) -> s
         for key in ["type", "role", "criticality", "vendor", "hostname", "name",
                      "status", "vlan_id", "port", "protocol",
                      "has_redundancy", "redundancy_protocol",
-                     "acl_in", "acl_out"]:
+                     "acl_in", "acl_out", "services"]:
             if key in props:
                 trimmed[key] = props[key]
         trimmed_nodes.append(trimmed)

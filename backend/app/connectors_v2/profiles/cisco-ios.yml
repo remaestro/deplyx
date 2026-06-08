@@ -38,6 +38,7 @@ commands:
   show_redundancy: "show redundancy"
   show_ip_interface: "show ip interface"
   show_access_list: "show access-list"
+  show_http_status: "show ip http server status"
 
 command_groups:
   system:
@@ -54,6 +55,8 @@ command_groups:
     refs: ["show_standby", "show_vrrp", "show_etherchannel", "show_redundancy"]
   security:
     refs: ["show_ip_interface", "show_access_list"]
+  services:
+    refs: ["show_http_status"]
   all:
     refs: ["show_version", "show_interfaces", "show_ip_route",
            "show_vlan", "show_mac", "show_cdp", "show_lldp", "show_bgp",
@@ -75,6 +78,7 @@ parsers:
   show_redundancy: textfsm
   show_ip_interface: textfsm
   show_access_list: textfsm
+  show_http_status: textfsm
 
 neo4j_labels:
   device: "Device"
