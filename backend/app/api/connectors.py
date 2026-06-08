@@ -19,6 +19,8 @@ from app.schemas.connector import (
     ConnectorRead,
     ConnectorUpdate,
 )
+from app.graph.neo4j_client import neo4j_client
+from app.connectors_v2.connector import UnifiedConnector
 from app.services import connector_service
 
 router = APIRouter(prefix="/connectors", tags=["connectors"])
@@ -117,6 +119,40 @@ async def sync_pull_connectors(
     _=Depends(require_role(Role.ADMIN)),
 ):
     return await connector_service.sync_due_pull_connectors(db)
+
+
+@router.post("/sync-all")
+async def sync_all_connectors(
+    db: AsyncSession = Depends(get_db),
+    _=Depends(require_role(Role.ADMIN)),
+):
+    from time import perf_counter
+    started = perf_counter()
+
+    await neo4j_client.run_write("MATCH (n) DETACH DELETE n")
+
+    connectors = await connector_service.list_connectors(db)
+    results = []
+    for c in connectors:
+        try:
+            instance = UnifiedConnector({**c.config, "_connector_type": c.connector_type})
+            result = await instance.sync()
+            results.append({"id": c.id, "name": c.name, "status": result.get("status", "ok")})
+            c.last_sync_at = datetime.now(timezone.utc)
+            c.status = "active" if result.get("status") == "ok" else "error"
+        except Exception as e:
+            results.append({"id": c.id, "name": c.name, "status": "error", "error": str(e)})
+            c.status = "error"
+            c.last_error = str(e)
+        await db.flush()
+
+    duration = perf_counter() - started
+    return {
+        "status": "ok",
+        "duration_seconds": round(duration, 1),
+        "total": len(connectors),
+        "results": results,
+    }
 
 
 @router.post("/{connector_id}/validate")

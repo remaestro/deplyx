@@ -22,6 +22,7 @@ class ChangeActionEnum(StrEnum):
     REMOVE_RULE = "remove_rule"
     MODIFY_RULE = "modify_rule"
     DISABLE_RULE = "disable_rule"
+    MODIFY_ACL = "modify_acl"
     # Switch / Port actions
     CHANGE_VLAN = "change_vlan"
     DISABLE_PORT = "disable_port"

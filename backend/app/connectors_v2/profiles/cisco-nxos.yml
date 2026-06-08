@@ -1,0 +1,54 @@
+name: cisco-nxos
+vendor: cisco
+os: nxos
+match_banner:
+  - "NX-OS"
+match_cmd_output:
+  - "nx-os"
+  - "nxos"
+  - "NX-OS"
+
+transports:
+  - type: ssh
+    priority: 10
+    device_type: cisco_nxos
+
+commands:
+  show_version: "show version"
+  show_interfaces: "show interface"
+  show_vlan: "show vlan"
+  show_bgp: "show bgp summary"
+  show_vrf: "show vrf"
+  show_ip_route: "show ip route"
+
+command_groups:
+  system:
+    refs: ["show_version"]
+  interfaces:
+    refs: ["show_interfaces"]
+  routing:
+    refs: ["show_ip_route", "show_bgp"]
+  switching:
+    refs: ["show_vlan"]
+  all:
+    refs: ["show_version", "show_interfaces", "show_ip_route",
+           "show_vlan", "show_bgp", "show_vrf"]
+
+parsers:
+  show_version: textfsm
+  show_interfaces: textfsm
+  show_ip_route: textfsm
+
+neo4j_labels:
+  device: "Device"
+  interface: "Interface"
+  route: "Route"
+  vlan: "VLAN"
+  bgp_peer: "BGPPeer"
+
+fallback:
+  transport: ssh
+  device_type: cisco_nxos
+  commands:
+    - "show version"
+    - "show interface"

@@ -1,0 +1,51 @@
+name: fortinet-fortios
+vendor: fortinet
+os: fortios
+match_banner:
+  - "Fortinet"
+  - "FortiGate"
+match_cmd_output:
+  - "fortinet"
+  - "fortigate"
+  - "FortiGate"
+
+transports:
+  - type: api
+    priority: 20
+    api_base: /api/v2
+    auth: api_token
+  - type: ssh
+    priority: 10
+    device_type: fortinet
+
+api_discovery:
+  - "/monitor/system/status"
+  - "/cmdb/system/interface"
+  - "/cmdb/firewall/policy"
+
+commands:
+  show_system: "get system status"
+  show_interfaces: "get system interface"
+  show_firewall: "show firewall policy"
+
+command_groups:
+  system:
+    refs: ["show_system"]
+  interfaces:
+    refs: ["show_interfaces"]
+  security:
+    refs: ["show_firewall"]
+  all:
+    refs: ["show_system", "show_interfaces", "show_firewall"]
+
+neo4j_labels:
+  device: "Device"
+  interface: "Interface"
+  rule: "Rule"
+
+fallback:
+  transport: ssh
+  device_type: fortinet
+  commands:
+    - "get system status"
+    - "get system interface"

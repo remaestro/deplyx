@@ -28,6 +28,7 @@ from app.connectors.redis_app import RedisAppConnector
 from app.connectors.elasticsearch import ElasticsearchConnector
 from app.connectors.grafana import GrafanaConnector
 from app.connectors.prometheus import PrometheusConnector
+from app.connectors_v2.connector import UnifiedConnector
 from app.models.connector import Connector
 from app.services import change_service
 from app.utils.logging import get_logger
@@ -64,11 +65,19 @@ CONNECTOR_CLASSES: dict[str, type] = {
     "prometheus": PrometheusConnector,
 }
 
+_V2_TYPES = {"cisco", "cisco-router", "cisco-ftd", "cisco-nxos",
+             "juniper", "vyos", "aruba-switch", "aruba-ap",
+             "fortinet", "paloalto", "checkpoint"}
+
 
 def _get_connector_instance(connector: Connector) -> BaseConnector:
-    cls = CONNECTOR_CLASSES.get(connector.connector_type)
+    ctype = connector.connector_type
+    if ctype in _V2_TYPES:
+        logger.info("Using UnifiedConnector V2 for %s (%s)", connector.name, ctype)
+        return UnifiedConnector({**connector.config, "_connector_type": ctype})
+    cls = CONNECTOR_CLASSES.get(ctype)
     if cls is None:
-        raise ValueError(f"Unknown connector type: {connector.connector_type}")
+        raise ValueError(f"Unknown connector type: {ctype}")
     return cls(connector.config)
 
 
@@ -79,7 +88,8 @@ def _is_v2_result(result: dict[str, Any]) -> bool:
 def _sync_success(result: dict[str, Any]) -> bool:
     if _is_v2_result(result):
         return bool(result.get("ok"))
-    return result.get("status") == "synced"
+    status = result.get("status", "")
+    return status in ("synced", "ok")
 
 
 def _extract_error_message(result: dict[str, Any]) -> str | None:
@@ -210,12 +220,12 @@ async def execute_connector_operation(
             }
             if hasattr(instance, "run") and callable(getattr(instance, "run")):
                 logger.warning("  [exec_op] connector=%s — calling instance.run(%s)", connector.id, operation)
-                raw_result = await asyncio.wait_for(instance.run(request), timeout=90)
+                raw_result = await asyncio.wait_for(instance.run(request), timeout=300)
             else:
                 payload_data = payload or {}
                 if operation == "sync":
                     logger.warning("  [exec_op] connector=%s — calling instance.sync()", connector.id)
-                    raw_result = await asyncio.wait_for(instance.sync(), timeout=90)
+                    raw_result = await asyncio.wait_for(instance.sync(), timeout=300)
                 elif operation == "validate":
                     raw_result = await asyncio.wait_for(instance.validate_change(payload_data), timeout=90)
                 elif operation == "simulate":

@@ -13,6 +13,7 @@ import {
   History,
   CheckCircle2,
   AlertCircle,
+  Layers,
 } from 'lucide-react'
 import { apiClient } from '../api/client'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -83,7 +84,7 @@ const VENDOR_COLOR: Record<string, string> = {
 }
 
 /* Connectors that use SSH (username/password) vs API key */
-const SSH_CONNECTORS = new Set(['cisco', 'cisco-ftd', 'juniper'])
+const SSH_CONNECTORS = new Set(['cisco', 'cisco-ftd', 'cisco-router', 'juniper'])
 const APP_CONNECTORS = new Set(['elasticsearch', 'grafana', 'nginx', 'openldap', 'postgres', 'prometheus', 'redis'])
 
 /* Mock sparkline data for sync history */
@@ -124,6 +125,7 @@ function ConnectorSparkline({ color }: { color: string }) {
 export default function ConnectorsPage() {
   const queryClient = useQueryClient()
   const [showWizard, setShowWizard] = useState(false)
+  const [showBulkWizard, setShowBulkWizard] = useState(false)
   const [syncLogDrawer, setSyncLogDrawer] = useState<number | null>(null)
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
   const [discoveryName, setDiscoveryName] = useState('')
@@ -267,6 +269,18 @@ export default function ConnectorsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['connectors'] })
       setShowWizard(false)
+    },
+  })
+
+  const bulkCreateMut = useMutation({
+    mutationFn: async (items: Record<string, unknown>[]) => {
+      for (const body of items) {
+        await apiClient.post('/connectors', body)
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['connectors'] })
+      setShowBulkWizard(false)
     },
   })
 
@@ -442,6 +456,10 @@ export default function ConnectorsPage() {
         <Button onClick={() => setShowWizard(true)}>
           <Plus className="h-4 w-4" />
           Add Connector
+        </Button>
+        <Button variant="secondary" onClick={() => setShowBulkWizard(true)}>
+          <Layers className="h-4 w-4" />
+          Bulk Add
         </Button>
         <Button
           variant="secondary"
@@ -760,7 +778,7 @@ export default function ConnectorsPage() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm"
+              className="fixed inset-0 z-40 bg-black/40"
               onClick={() => setSyncLogDrawer(null)}
             />
             <motion.div
@@ -812,7 +830,7 @@ export default function ConnectorsPage() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm"
+              className="fixed inset-0 z-40 bg-black/40"
               onClick={() => setActiveDiscoverySessionId(null)}
             />
             <motion.div
@@ -1005,6 +1023,48 @@ export default function ConnectorsPage() {
         )}
       </AnimatePresence>
 
+      {/* Bulk Add Drawer */}
+      <AnimatePresence>
+        {showBulkWizard && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-40 bg-black/40"
+              onClick={() => setShowBulkWizard(false)}
+            />
+            <motion.div
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              className="fixed right-0 top-0 z-50 h-full w-full max-w-2xl overflow-y-auto bg-white dark:bg-surface-dark-secondary border-l border-slate-200 dark:border-slate-700 shadow-2xl"
+            >
+              <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 px-6 py-4">
+                <div>
+                  <h2 className="text-lg font-semibold text-slate-800 dark:text-white">Bulk Add Connectors</h2>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">Renseignez les credentials partagés puis la liste des devices.</p>
+                </div>
+                <button
+                  onClick={() => setShowBulkWizard(false)}
+                  className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              <div className="p-6">
+                <BulkConnectorWizard
+                  onSubmit={(items) => bulkCreateMut.mutate(items)}
+                  loading={bulkCreateMut.isPending}
+                  error={bulkCreateMut.isError ? extractApiError(bulkCreateMut.error) : undefined}
+                />
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
       {/* Create Wizard Drawer */}
       <AnimatePresence>
         {showWizard && (
@@ -1013,7 +1073,7 @@ export default function ConnectorsPage() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm"
+              className="fixed inset-0 z-40 bg-black/40"
               onClick={() => setShowWizard(false)}
             />
             <motion.div
@@ -1091,6 +1151,7 @@ function DiscoveryResultCard({
   onToggleSelected: (resultId: number) => void
   onOverrideConnectorType: (resultId: number, connectorType: string) => void
 }) {
+  const [showDetails, setShowDetails] = useState(false)
   const evidence = getDiscoveryEvidence(result)
   const connectorOptions = getDiscoveryConnectorOptions(result)
   const effectiveConnectorType = overrideConnectorType || result.selected_connector_type || ''
@@ -1207,13 +1268,23 @@ function DiscoveryResultCard({
           <p className="mt-4 text-sm text-red-500 dark:text-red-400">{result.error}</p>
         )}
 
-        <div className="mt-4 grid gap-3 xl:grid-cols-2">
-          <CodeBlock language="probe detail">
-            {JSON.stringify(result.probe_detail, null, 2)}
-          </CodeBlock>
-          <CodeBlock language="facts">
-            {JSON.stringify(result.facts, null, 2)}
-          </CodeBlock>
+        <div className="mt-4">
+          <button
+            className="text-xs font-medium text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+            onClick={() => setShowDetails((v) => !v)}
+          >
+            {showDetails ? '▾ Hide probe details' : '▸ Show probe details'}
+          </button>
+          {showDetails && (
+            <div className="mt-3 grid gap-3 xl:grid-cols-2">
+              <CodeBlock language="probe detail">
+                {JSON.stringify(result.probe_detail, null, 2)}
+              </CodeBlock>
+              <CodeBlock language="facts">
+                {JSON.stringify(result.facts, null, 2)}
+              </CodeBlock>
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>
@@ -1268,13 +1339,15 @@ function ConnectorWizard({
   const [name, setName] = useState('')
   const [type, setType] = useState('paloalto')
   const [host, setHost] = useState('')
-  const [apiKey, setApiKey] = useState('')
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
 
-  const isSSH = SSH_CONNECTORS.has(type)
   const steps = ['Type & Name', 'Connection']
-  const canNext = step === 0 ? name.trim() !== '' : host.trim() !== '' && (isSSH ? username.trim() !== '' : true)
+  const canNext = step === 0 ? name.trim() !== '' : host.trim() !== '' && username.trim() !== ''
+
+  function buildConfig(): Record<string, unknown> {
+    return { host, username, password }
+  }
 
   return (
     <div className="space-y-6">
@@ -1314,8 +1387,9 @@ function ConnectorWizard({
                 <option value="paloalto">Palo Alto</option>
                 <option value="fortinet">Fortinet</option>
                 <option value="checkpoint">Check Point</option>
-                <option value="cisco-ftd">Cisco FTD</option>
-                <option value="cisco">Cisco (SSH)</option>
+                <option value="cisco-ftd">Cisco FTD (API)</option>
+                <option value="cisco">Cisco Switch / IOS (SSH)</option>
+                <option value="cisco-router">Cisco Router (SSH)</option>
                 <option value="juniper">Juniper (SSH)</option>
               </Select>
             </div>
@@ -1325,36 +1399,16 @@ function ConnectorWizard({
           <motion.div key="s1" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-4">
             <div>
               <Label htmlFor="wiz-host">Host / IP Address</Label>
-              <Input id="wiz-host" placeholder={isSSH ? '10.100.0.20' : 'https://10.100.0.10'} value={host} onChange={(e) => setHost(e.target.value)} />
+              <Input id="wiz-host" placeholder="10.100.0.20" value={host} onChange={(e) => setHost(e.target.value)} />
             </div>
-            {isSSH ? (
-              <>
-                <div>
-                  <Label htmlFor="wiz-user">Username</Label>
-                  <Input id="wiz-user" placeholder="admin" value={username} onChange={(e) => setUsername(e.target.value)} />
-                </div>
-                <div>
-                  <Label htmlFor="wiz-pass">Password</Label>
-                  <Input id="wiz-pass" type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} />
-                </div>
-              </>
-            ) : type === 'checkpoint' ? (
-              <>
-                <div>
-                  <Label htmlFor="wiz-user">Username</Label>
-                  <Input id="wiz-user" placeholder="admin" value={username} onChange={(e) => setUsername(e.target.value)} />
-                </div>
-                <div>
-                  <Label htmlFor="wiz-pass">Password</Label>
-                  <Input id="wiz-pass" type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} />
-                </div>
-              </>
-            ) : (
-              <div>
-                <Label htmlFor="wiz-key">API Key / Token</Label>
-                <Input id="wiz-key" type="password" placeholder="API key or token" value={apiKey} onChange={(e) => setApiKey(e.target.value)} />
-              </div>
-            )}
+            <div>
+              <Label htmlFor="wiz-user">Username</Label>
+              <Input id="wiz-user" placeholder="admin" value={username} onChange={(e) => setUsername(e.target.value)} />
+            </div>
+            <div>
+              <Label htmlFor="wiz-pass">Password</Label>
+              <Input id="wiz-pass" type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} />
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -1373,17 +1427,186 @@ function ConnectorWizard({
           <Button
             disabled={!canNext || loading}
             loading={loading}
-            onClick={() => onSubmit({
-              name,
-              connector_type: type,
-              config: isSSH || type === 'checkpoint'
-                ? { host, username, password }
-                : { host, api_key: apiKey },
-            })}
+            onClick={() => onSubmit({ name, connector_type: type, config: buildConfig() })}
           >
             Create
           </Button>
         )}
+      </div>
+    </div>
+  )
+}
+
+/* ---------- Bulk Connector Wizard ---------- */
+
+type BulkDevice = {
+  id: number
+  name: string
+  host: string
+  type: string
+}
+
+const BULK_TYPE_OPTIONS = [
+  { value: 'cisco',        label: 'Cisco Switch / IOS (SSH)' },
+  { value: 'cisco-router', label: 'Cisco Router (SSH)' },
+  { value: 'cisco-ftd',   label: 'Cisco FTD (HTTPS API)' },
+  { value: 'paloalto',    label: 'Palo Alto' },
+  { value: 'fortinet',    label: 'Fortinet' },
+  { value: 'checkpoint',  label: 'Check Point' },
+  { value: 'juniper',     label: 'Juniper (SSH)' },
+]
+
+const FTD_TYPES = new Set(['cisco-ftd', 'paloalto', 'fortinet', 'checkpoint'])
+
+let _bulkIdCounter = 1
+
+function BulkConnectorWizard({
+  onSubmit,
+  loading,
+  error,
+}: {
+  onSubmit: (items: Record<string, unknown>[]) => void
+  loading: boolean
+  error?: string
+}) {
+  const [sshUser, setSshUser] = useState('')
+  const [sshPass, setSshPass] = useState('')
+  const [apiUser, setApiUser] = useState('')
+  const [apiPass, setApiPass] = useState('')
+  const [devices, setDevices] = useState<BulkDevice[]>([
+    { id: _bulkIdCounter++, name: '', host: '', type: 'cisco' },
+  ])
+
+  const addRow = useCallback(() => {
+    setDevices((prev) => [...prev, { id: _bulkIdCounter++, name: '', host: '', type: 'cisco' }])
+  }, [])
+
+  const removeRow = useCallback((id: number) => {
+    setDevices((prev) => prev.filter((d) => d.id !== id))
+  }, [])
+
+  const updateRow = useCallback((id: number, field: keyof BulkDevice, value: string) => {
+    setDevices((prev) => prev.map((d) => (d.id === id ? { ...d, [field]: value } : d)))
+  }, [])
+
+  const canSubmit = devices.length > 0 &&
+    devices.every((d) => d.host.trim() && d.name.trim()) &&
+    sshUser.trim() !== ''
+
+  function buildPayload(): Record<string, unknown>[] {
+    return devices.map((d) => {
+      const isFtd = FTD_TYPES.has(d.type)
+      const config: Record<string, unknown> = isFtd
+        ? { host: d.host.trim(), username: apiUser.trim(), password: apiPass }
+        : { host: d.host.trim(), username: sshUser.trim(), password: sshPass }
+      return { name: d.name.trim(), connector_type: d.type, config }
+    })
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Credential blocks */}
+      <div className="grid gap-4 md:grid-cols-2">
+        <div className="rounded-xl border border-slate-200 dark:border-slate-700 p-4 space-y-3">
+          <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">SSH Credentials</p>
+          <p className="text-xs text-slate-400">Utilisé pour : Cisco IOS, Router, Juniper</p>
+          <div>
+            <Label htmlFor="bulk-ssh-user">Username</Label>
+            <Input id="bulk-ssh-user" placeholder="iptadmin" value={sshUser} onChange={(e) => setSshUser(e.target.value)} />
+          </div>
+          <div>
+            <Label htmlFor="bulk-ssh-pass">Password</Label>
+            <Input id="bulk-ssh-pass" type="password" placeholder="••••••••" value={sshPass} onChange={(e) => setSshPass(e.target.value)} />
+          </div>
+        </div>
+        <div className="rounded-xl border border-slate-200 dark:border-slate-700 p-4 space-y-3">
+          <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">API / HTTPS Credentials</p>
+          <p className="text-xs text-slate-400">Utilisé pour : Cisco FTD, Palo Alto, Fortinet, Check Point</p>
+          <div>
+            <Label htmlFor="bulk-api-user">Username</Label>
+            <Input id="bulk-api-user" placeholder="admin" value={apiUser} onChange={(e) => setApiUser(e.target.value)} />
+          </div>
+          <div>
+            <Label htmlFor="bulk-api-pass">Password</Label>
+            <Input id="bulk-api-pass" type="password" placeholder="••••••••" value={apiPass} onChange={(e) => setApiPass(e.target.value)} />
+          </div>
+        </div>
+      </div>
+
+      {/* Device table */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Devices ({devices.length})</p>
+          <Button variant="secondary" size="xs" onClick={addRow}>
+            <Plus className="h-3.5 w-3.5" />
+            Add Row
+          </Button>
+        </div>
+
+        <div className="rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+          <table className="w-full text-sm">
+            <thead className="bg-slate-50 dark:bg-slate-800/60 text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+              <tr>
+                <th className="px-3 py-2.5 text-left">Name</th>
+                <th className="px-3 py-2.5 text-left">Host / IP</th>
+                <th className="px-3 py-2.5 text-left">Type</th>
+                <th className="px-3 py-2.5" />
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-700/60">
+              {devices.map((d) => (
+                <tr key={d.id} className="bg-white dark:bg-transparent">
+                  <td className="px-2 py-1.5">
+                    <Input
+                      placeholder="FTD1-2 (HA)"
+                      value={d.name}
+                      onChange={(e) => updateRow(d.id, 'name', e.target.value)}
+                    />
+                  </td>
+                  <td className="px-2 py-1.5">
+                    <Input
+                      placeholder="192.168.170.10"
+                      value={d.host}
+                      onChange={(e) => updateRow(d.id, 'host', e.target.value)}
+                    />
+                  </td>
+                  <td className="px-2 py-1.5">
+                    <Select
+                      value={d.type}
+                      onChange={(e) => updateRow(d.id, 'type', e.target.value)}
+                    >
+                      {BULK_TYPE_OPTIONS.map((opt) => (
+                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                      ))}
+                    </Select>
+                  </td>
+                  <td className="px-2 py-1.5 text-center">
+                    <button
+                      onClick={() => removeRow(d.id)}
+                      disabled={devices.length === 1}
+                      className="rounded p-1 text-slate-400 hover:text-red-500 disabled:opacity-30 transition-colors"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {error && <p className="text-sm text-red-500 dark:text-red-400">{error}</p>}
+
+      <div className="flex justify-end">
+        <Button
+          disabled={!canSubmit || loading}
+          loading={loading}
+          onClick={() => onSubmit(buildPayload())}
+        >
+          <CheckCircle2 className="h-4 w-4" />
+          Create {devices.length} Connector{devices.length > 1 ? 's' : ''}
+        </Button>
       </div>
     </div>
   )

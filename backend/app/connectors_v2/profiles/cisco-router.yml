@@ -1,0 +1,31 @@
+name: cisco-router
+vendor: cisco
+os: ios
+match_banner: []
+match_cmd_output: []
+transports:
+  - type: ssh
+    priority: 10
+    device_type: cisco_ios
+commands:
+  show_version: "show version"
+  show_interfaces: "show interfaces"
+  show_ip_route: "show ip route"
+  show_bgp: "show ip bgp summary"
+command_groups:
+  all:
+    refs: ["show_version", "show_interfaces", "show_ip_route", "show_bgp"]
+parsers:
+  show_version: textfsm
+  show_interfaces: textfsm
+neo4j_labels:
+  device: "Device"
+  interface: "Interface"
+  route: "Route"
+  bgp_peer: "BGPPeer"
+fallback:
+  transport: ssh
+  device_type: cisco_ios
+  commands:
+    - "show version"
+    - "show interfaces"

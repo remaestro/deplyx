@@ -6,6 +6,15 @@ services:
     restart: unless-stopped
     env_file:
       - .env
+    environment:
+      - SSH_CONN_TIMEOUT=3
+      - SSH_BANNER_TIMEOUT=3
+      - SSH_AUTH_TIMEOUT=4
+      - POSTGRES_PORT=5432
+      - LLM_PROVIDER=${LLM_PROVIDER:-opencode}
+      - LLM_API_KEY=${LLM_API_KEY:-}
+      - LLM_MODEL=${LLM_MODEL:-deepseek-v4-pro}
+      - LLM_BASE_URL=${LLM_BASE_URL:-https://opencode.ai/zen/go/v1}
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     healthcheck:
       test: ["CMD", "curl", "-sf", "http://localhost:8000/health"]
@@ -98,7 +107,7 @@ services:
       - POSTGRES_USER=${POSTGRES_USER:-deplyx}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-deplyx}
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      - "${POSTGRES_HOST_PORT:-5432}:5432"
     volumes:
       - pg_data:/var/lib/postgresql/data
 
@@ -111,6 +120,8 @@ services:
       - redis_data:/data
 
 networks:
+  default:
+    name: deplyx-default-net
   lab-net:
     name: deplyx-lab-net
     external: true

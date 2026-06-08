@@ -33,3 +33,11 @@ lab/update_ssh_creds.py
 create_all_connectors.py
 delete_all_connectors.py
 backend/tmp_smoke_pipeline.py
+recon.py
+deplyx-recon.py
+manual_sync_ftd.py
+test_key.py
+test_llm.py
+*.summary.md
+nmap-*.txt
+specs deplyx.md

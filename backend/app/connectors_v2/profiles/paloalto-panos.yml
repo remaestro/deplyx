@@ -1,0 +1,52 @@
+name: paloalto-panos
+vendor: paloalto
+os: panos
+match_banner:
+  - "Palo Alto"
+  - "PAN-OS"
+match_cmd_output:
+  - "palo"
+  - "panos"
+  - "PAN-OS"
+
+transports:
+  - type: api
+    priority: 20
+    api_base: /restapi/v10.1
+    auth: api_key
+  - type: api
+    priority: 15
+    api_base: /restapi/v11.0
+    auth: api_key
+  - type: api
+    priority: 10
+    api_base: /api
+    auth: api_key
+
+api_discovery:
+  - "/Policies/SecurityRules?location=vsys&vsys=vsys1"
+  - '/api/?type=op&amp;cmd=<show><system><info></info></system></show>'
+
+commands:
+  show_system: "show system info"
+  show_interfaces: "show interface all"
+
+command_groups:
+  system:
+    refs: ["show_system"]
+  interfaces:
+    refs: ["show_interfaces"]
+  all:
+    refs: ["show_system", "show_interfaces"]
+
+neo4j_labels:
+  device: "Device"
+  interface: "Interface"
+  rule: "Rule"
+
+fallback:
+  transport: ssh
+  device_type: linux
+  commands:
+    - "show system info"
+    - "show interface all"

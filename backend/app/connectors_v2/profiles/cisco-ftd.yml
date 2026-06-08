@@ -1,0 +1,28 @@
+name: cisco-ftd
+vendor: cisco
+os: ftd
+match_banner:
+  - "FTD"
+  - "Firepower"
+match_cmd_output:
+  - "ftd"
+  - "firepower"
+  - "Cisco Firepower"
+
+transports:
+  - type: ssh
+    priority: 20
+    device_type: cisco_ftd
+    legacy_kex: true
+
+commands:
+  show_version: "show version"
+  show_network: "show network"
+
+command_groups:
+  system:
+    refs: ["show_version", "show_network"]
+  interfaces:
+    refs: ["show_network"]
+  all:
+    refs: ["show_version", "show_network"]

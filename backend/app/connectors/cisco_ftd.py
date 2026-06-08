@@ -202,6 +202,11 @@ class CiscoFTDConnector(BaseConnector):
             raise last_exc
         raise RuntimeError("No Cisco FTD API endpoint candidates were provided")
 
+    @staticmethod
+    def _is_not_found_error(exc: Exception) -> bool:
+        response = getattr(exc, "response", None)
+        return getattr(response, "status_code", None) == 404
+
     def _discover_access_policy_id(self, api_base: str, token: str) -> str:
         _path, payload = self._api_get_first_success(
             api_base,
@@ -356,17 +361,28 @@ class CiscoFTDConnector(BaseConnector):
     def _parse_api_interfaces(self, payload: Any) -> list[dict[str, str]]:
         interfaces: list[dict[str, str]] = []
         for item in _first_items(payload):
-            name = str(item.get("name") or item.get("ifname") or "").strip()
+            name = str(item.get("name") or item.get("ifname") or item.get("hardwareName") or "").strip()
             if not name:
                 continue
             enabled = item.get("enabled")
             status = "up" if enabled is True else "down" if enabled is False else "unknown"
             ip_address = ""
+            mask = ""
             if isinstance(item.get("ipAddress"), dict):
                 ip_address = str(item["ipAddress"].get("value") or "").strip()
             elif isinstance(item.get("ipAddress"), str):
                 ip_address = item.get("ipAddress", "").strip()
-            interfaces.append({"name": name, "status": status, "ip_address": ip_address})
+            elif isinstance(item.get("ipv4"), dict):
+                ipv4 = item["ipv4"]
+                if isinstance(ipv4.get("ipAddress"), dict):
+                    ip_address = str(ipv4["ipAddress"].get("value") or "").strip()
+                elif isinstance(ipv4.get("ipAddress"), str):
+                    ip_address = str(ipv4.get("ipAddress") or "").strip()
+                if isinstance(ipv4.get("netMask"), dict):
+                    mask = str(ipv4["netMask"].get("value") or "").strip()
+                elif isinstance(ipv4.get("netMask"), str):
+                    mask = ipv4.get("netMask", "").strip()
+                interfaces.append({"name": name, "status": status, "ip": ip_address, "mask": mask, "ip_address": ip_address})
         return interfaces
 
     def _parse_routes(self, output: str) -> list[dict[str, str]]:
@@ -570,7 +586,9 @@ class CiscoFTDConnector(BaseConnector):
                 "id": iface_id,
                 "name": interface["name"],
                 "status": interface["status"],
-                "ip_address": interface.get("ip_address", ""),
+                "ip": interface.get("ip", ""),
+                "mask": interface.get("mask", ""),
+                "ip_address": interface.get("ip", ""),
                 "display_name": display_name.interface(interface["name"], device_dn),
             })
             await neo4j_client.create_relationship("Device", device_id, "HAS_INTERFACE", "Interface", iface_id)
@@ -641,10 +659,9 @@ class CiscoFTDConnector(BaseConnector):
                         api_base,
                         token,
                         [
+                            "/devicesettings/default/deviceinformation",
                             "/devices/default/deviceversion",
                             "/devices/default",
-                            "/devices/default/devices/default",
-                            "/devices/default/device",
                         ],
                     )
                     facts = self._parse_api_device_facts(device_payload)
@@ -678,9 +695,10 @@ class CiscoFTDConnector(BaseConnector):
                         api_base,
                         token,
                         [
+                            "/devices/default/interfaces?limit=200",
                             "/devices/default/interfaces/physicalinterfaces?limit=200",
                             "/devices/default/interfaces/ethernetinterfaces?limit=200",
-                            "/devices/default/interfaces?limit=200",
+                            "/devices/default/physicalinterfaces?limit=200",
                         ],
                     )
                     interfaces = self._parse_api_interfaces(iface_payload)
@@ -695,11 +713,14 @@ class CiscoFTDConnector(BaseConnector):
                         [
                             "/devices/default/routing/ipv4staticroutes?limit=200",
                             "/devices/default/routing/ipv4staticroutes",
+                            "/devices/default/ipv4staticroutes?limit=200",
+                            "/devices/default/ipv4staticroutes",
                         ],
                     )
                     routes = self._parse_api_routes(route_payload)
                 except Exception as exc:
-                    result.record_failure("routes", f"api: {exc}")
+                    if not self._is_not_found_error(exc):
+                        result.record_failure("routes", f"api: {exc}")
 
                 try:
                     policy_id = await asyncio.to_thread(self._discover_access_policy_id, api_base, token)
@@ -730,7 +751,8 @@ class CiscoFTDConnector(BaseConnector):
                     )
                     tunnels = self._parse_api_vpn_tunnels(vpn_payload)
                 except Exception as exc:
-                    result.record_failure("vpn_tunnels", f"api: {exc}")
+                    if not self._is_not_found_error(exc):
+                        result.record_failure("vpn_tunnels", f"api: {exc}")
 
                 await self._merge_inventory(
                     result,

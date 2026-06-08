@@ -154,6 +154,8 @@ def _build_llm_first_response(
                 }
 
     indirectly_impacted = list(indirect_map.values())
+    if not indirectly_impacted:
+        indirectly_impacted = list(graph_result.get("indirectly_impacted") or [])
     affected_applications = [item for item in indirectly_impacted if item.get("label") == "Application"]
     affected_services = [item for item in indirectly_impacted if item.get("label") == "Service"]
     affected_vlans = [item for item in indirectly_impacted if item.get("label") == "VLAN"]

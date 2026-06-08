@@ -1,0 +1,71 @@
+name: cisco-ios
+vendor: cisco
+os: ios
+match_banner:
+  - "Cisco"
+  - "IOS"
+match_cmd_output:
+  - "cisco"
+  - "ios"
+  - "Cisco IOS Software"
+
+transports:
+  - type: ssh
+    priority: 10
+    device_type: cisco_ios
+  - type: ssh
+    priority: 5
+    device_type: cisco_ios_telnet
+  - type: ssh
+    priority: 5
+    device_type: cisco_ios_telnet
+
+commands:
+  show_version: "show version"
+  show_interfaces: "show interfaces"
+  show_ip_route: "show ip route"
+  show_vlan: "show vlan brief"
+  show_mac: "show mac address-table"
+  show_cdp: "show cdp neighbors detail"
+  show_bgp: "show ip bgp summary"
+  show_ospf: "show ip ospf neighbor"
+  show_spanning_tree: "show spanning-tree"
+  show_ip_int_brief: "show ip interface brief"
+
+command_groups:
+  system:
+    refs: ["show_version", "show_ip_int_brief"]
+  interfaces:
+    refs: ["show_interfaces", "show_ip_int_brief"]
+  routing:
+    refs: ["show_ip_route", "show_bgp", "show_ospf"]
+  switching:
+    refs: ["show_vlan", "show_mac", "show_spanning_tree"]
+  topology:
+    refs: ["show_cdp"]
+  all:
+    refs: ["show_version", "show_interfaces", "show_ip_route",
+           "show_vlan", "show_mac", "show_cdp", "show_bgp",
+           "show_ospf", "show_spanning_tree"]
+
+parsers:
+  show_version: textfsm
+  show_interfaces: textfsm
+  show_ip_route: textfsm
+  show_vlan: textfsm
+  show_cdp: textfsm
+  show_bgp: textfsm
+
+neo4j_labels:
+  device: "Device"
+  interface: "Interface"
+  route: "Route"
+  vlan: "VLAN"
+  bgp_peer: "BGPPeer"
+
+fallback:
+  transport: ssh
+  device_type: cisco_ios_telnet
+  commands:
+    - "show version"
+    - "show interfaces"

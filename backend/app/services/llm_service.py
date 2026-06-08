@@ -1,10 +1,8 @@
-"""LLM-powered impact analysis using Google Gemini Flash.
+"""LLM-powered impact analysis.
 
-Sends a pruned subgraph (multi-hop neighbourhood of targets) to Gemini and asks it to:
-1. Identify all critical dependency paths from targets to impacted endpoints
-2. Classify impacted nodes (direct / indirect / applications / services / VLANs)
-3. Assess risk severity with reasoning
-4. Suggest mitigations
+Supports multiple providers:
+- Google Gemini (via google.generativeai)
+- OpenAI-compatible APIs (DeepSeek, opencode, etc.) via httpx
 
 Falls back to rule-based analysis if the LLM is unavailable or returns invalid JSON.
 """
@@ -13,6 +11,8 @@ import asyncio
 import json
 import time
 from typing import Any
+
+import httpx
 
 from app.core.config import settings
 from app.utils.logging import get_logger
@@ -24,8 +24,9 @@ _model = None
 # Models to try in order — 2.0-flash is much faster for structured JSON output;
 # 2.5-flash has "thinking" overhead that adds 30-50s latency.
 _MODEL_CANDIDATES = [
-    "gemini-2.0-flash",
     "gemini-2.5-flash",
+    "gemini-2.0-flash-001",
+    "gemini-flash-latest",
 ]
 
 
@@ -207,28 +208,125 @@ async def _try_model(model, user_prompt: str, model_name: str = "unknown", max_o
         raise
 
 
+async def _call_openai_compatible(prompt: str, user_prompt: str) -> dict[str, Any] | None:
+    """Call an OpenAI-compatible API (DeepSeek, opencode, etc.) via httpx."""
+    api_key = settings.llm_api_key or ""
+    base_url = settings.llm_base_url.rstrip("/")
+    model = settings.llm_model
+
+    headers = {
+        "Content-Type": "application/json",
+    }
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
+
+    payload = {
+        "model": model,
+        "messages": [
+            {"role": "system", "content": prompt},
+            {"role": "user", "content": user_prompt},
+        ],
+        "temperature": 0.1,
+        "max_tokens": 8192,
+        "response_format": {"type": "json_object"},
+    }
+
+    t0 = time.monotonic()
+    logger.info("[LLM-DIAG] >>> Sending request to %s model=%s (prompt: %d chars)",
+                base_url, model, len(prompt) + len(user_prompt))
+
+    try:
+        async with httpx.AsyncClient(timeout=120) as client:
+            response = await client.post(
+                f"{base_url}/chat/completions",
+                headers=headers,
+                json=payload,
+            )
+            response.raise_for_status()
+            data = response.json()
+    except Exception as e:
+        logger.error("[LLM-DIAG] OpenAI-compatible call FAILED: %s", str(e)[:300])
+        return None
+
+    t_response = time.monotonic() - t0
+    logger.info("[LLM-DIAG] <<< Response in %.1fs", t_response)
+
+    # Extract content from the standard OpenAI chat format
+    try:
+        text = data["choices"][0]["message"]["content"].strip()
+    except (KeyError, IndexError, TypeError) as e:
+        logger.error("[LLM-DIAG] Unexpected response format: %s — %s", e, str(data)[:300])
+        return None
+
+    if not text:
+        logger.error("[LLM-DIAG] Empty response")
+        return None
+
+    # Strip markdown fences if present
+    if text.startswith("```"):
+        text = text.split("\n", 1)[1] if "\n" in text else text[3:]
+    if text.endswith("```"):
+        text = text[:-3].strip()
+    if text.startswith("json"):
+        text = text[4:].strip()
+
+    try:
+        parsed = json.loads(text)
+        logger.info("[LLM-DIAG] JSON parsed OK in %.1fs total — keys: %s",
+                    time.monotonic() - t0, list(parsed.keys()))
+        return parsed
+    except json.JSONDecodeError as e:
+        logger.error("[LLM-DIAG] JSON parse FAILED: %s — text[:300]=%s", e, text[:300])
+        return None
+
+
+async def _is_provider_available() -> bool:
+    """Check if the configured LLM provider is available."""
+    provider = settings.llm_provider.strip().lower()
+    if provider == "gemini":
+        return settings.gemini_api_key != ""
+    elif provider == "openai_compatible":
+        return settings.llm_base_url != "" and settings.llm_model != ""
+    return False
+
+
 async def analyze_with_llm(
     topology: dict[str, Any],
     change_details: dict[str, Any],
 ) -> dict[str, Any] | None:
-    """Send topology + change context to Gemini and parse structured response.
+    """Send topology + change context to configured LLM provider and parse structured response.
 
-    Tries multiple models and retries on rate limit (429).
+    Supports Gemini (native) and OpenAI-compatible providers (DeepSeek, opencode, etc.).
     Returns None if all attempts fail — caller should fall back.
     """
     t_start = time.monotonic()
-    model = _get_model()
-    if model is None:
-        logger.warning("[LLM-DIAG] No model available (API key missing?)")
-        return None
+    provider = settings.llm_provider.strip().lower()
 
     user_prompt = _build_prompt(topology, change_details)
     logger.info("[LLM-DIAG] ========== NEW ANALYSIS REQUEST ==========")
-    logger.info("[LLM-DIAG] Change: action=%s, targets=%s, type=%s",
-                change_details.get("action"), change_details.get("target_node_ids"), change_details.get("change_type"))
+    logger.info("[LLM-DIAG] Provider: %s, Change: action=%s, targets=%s, type=%s",
+                provider, change_details.get("action"), change_details.get("target_node_ids"), change_details.get("change_type"))
     logger.info("[LLM-DIAG] Topology: %d nodes, %d edges",
                 len(topology.get("nodes", [])), len(topology.get("edges", [])))
     logger.info("[LLM-DIAG] Prompt size: %d chars", len(user_prompt))
+
+    # ── OpenAI-compatible provider path (openai_compatible, opencode) ──
+    if provider in ("openai_compatible", "opencode"):
+        result = await _call_openai_compatible(SYSTEM_PROMPT, user_prompt)
+        if result:
+            t_total = time.monotonic() - t_start
+            paths = len(result.get("critical_paths", [])) if result else 0
+            logger.info("[LLM-DIAG] SUCCESS (OpenAI-compatible, %.1fs total): %d critical paths",
+                        t_total, paths)
+            return result
+        logger.error("[LLM-DIAG] OpenAI-compatible provider returned no result")
+        return None
+
+    # ── Gemini provider path ─────────────────────────────────────
+    model = _get_model()
+    if model is None:
+        logger.warning("[LLM-DIAG] No Gemini model available (API key missing?)")
+        return None
 
     # Try primary model with retry
     max_tokens = 8192
@@ -336,4 +434,7 @@ def _build_prompt(topology: dict[str, Any], change_details: dict[str, Any]) -> s
 
 def is_available() -> bool:
     """Check if LLM service is configured and available."""
+    provider = settings.llm_provider.strip().lower()
+    if provider in ("openai_compatible", "opencode"):
+        return bool(settings.llm_base_url and settings.llm_model)
     return bool(settings.gemini_api_key)

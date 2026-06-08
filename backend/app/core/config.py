@@ -27,6 +27,13 @@ class Settings(BaseSettings):
     cors_allowed_origins: list[str] = ["http://localhost:5173", "http://localhost:3000"]
 
     gemini_api_key: str = ""
+
+    # OpenAI-compatible LLM provider (DeepSeek, opencode, etc.)
+    llm_provider: str = "gemini"  # "gemini" or "openai_compatible"
+    llm_api_key: str = ""
+    llm_model: str = "deepseek-v4-pro"
+    llm_base_url: str = "https://opencode.ai/zen/go/v1"
+
     slack_webhook_url: str = ""
     governance_threshold_artifact: str = ""
     neo4j_query_timeout_seconds: int = 10
