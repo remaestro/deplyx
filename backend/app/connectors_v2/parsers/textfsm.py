@@ -43,7 +43,13 @@ class TextFSMParser:
                 row = {}
                 for i, h in enumerate(headers):
                     if i < len(record):
-                        row[h.lower()] = record[i].strip() if record[i] else ""
+                        val = record[i]
+                        if isinstance(val, str):
+                            row[h.lower()] = val.strip() if val else ""
+                        elif isinstance(val, list):
+                            row[h.lower()] = [v.strip() if isinstance(v, str) else v for v in val]
+                        else:
+                            row[h.lower()] = val
                 if row:
                     result.append(row)
             return result
@@ -72,6 +78,13 @@ class TextFSMParser:
         candidates = [
             f"{vendor}_{cmd_clean}.textfsm",
         ]
+
+        # Try stripping "brief" or "detail" suffix for commands like
+        # show vlan brief → show vlan, show standby brief → show standby
+        for suffix in ["_brief", "_detail", "_summary", "_all"]:
+            if cmd_clean.endswith(suffix):
+                base = cmd_clean[: -len(suffix)]
+                candidates.append(f"{vendor}_{base}.textfsm")
 
         if "|" in cmd_clean:
             base_cmd = cmd_clean.split("|")[0].strip()

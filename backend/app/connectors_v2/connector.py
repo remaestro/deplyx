@@ -747,15 +747,33 @@ class UnifiedConnector:
             return routes
         return [{"network": r.get("network", r.get("prefix", ""))} for r in parsed if r.get("network") or r.get("prefix")]
 
-    def _normalize_vlans(self, parsed: list[dict[str, str]], raw: str) -> list[dict[str, str]]:
+    def _normalize_vlans(self, parsed: list[dict[str, str]], raw: str) -> list[dict[str, Any]]:
         if parsed and parsed[0].get("raw"):
             vlans, seen = [], set()
             for line in raw.splitlines():
                 m = re.match(r"^\s*(\d+)\s+(\S+)", line.strip())
                 if m and m.group(1).isdigit() and m.group(1) not in seen:
-                    vlans.append({"vlan_id": m.group(1), "name": m.group(2)}); seen.add(m.group(1))
+                    vlans.append({"vlan_id": m.group(1), "name": m.group(2), "interfaces": []}); seen.add(m.group(1))
             return vlans
-        return [{"vlan_id": v.get("vlan_id", v.get("id", "")), "name": v.get("name", "")} for v in parsed]
+        result = []
+        seen_ids = set()
+        for v in parsed:
+            vid = v.get("vlan_id", v.get("id", ""))
+            if not vid or vid in seen_ids:
+                continue
+            seen_ids.add(vid)
+            raw_ports = v.get("interfaces", v.get("ports", ""))
+            ports = []
+            if isinstance(raw_ports, list):
+                ports = [p.strip() for p in raw_ports if p.strip()]
+            elif isinstance(raw_ports, str) and raw_ports.strip():
+                ports = [x.strip() for x in raw_ports.replace(",", " ").split() if x.strip()]
+            result.append({
+                "vlan_id": vid,
+                "name": v.get("name", v.get("vlan_name", "")),
+                "interfaces": ports,
+            })
+        return result
 
     def _normalize_bgp(self, parsed: list[dict[str, str]], raw: str) -> list[dict[str, str]]:
         if parsed and parsed[0].get("raw"):
@@ -975,6 +993,17 @@ class UnifiedConnector:
         except Exception as e:
             data.setdefault("errors", []).append(f"neo4j device: {e}")
 
+        # Build VLAN-to-interfaces index
+        vlan_ifaces: dict[str, list[str]] = {}
+        for vlan in data.get("vlans", []):
+            vid = vlan.get("vlan_id", "")
+            ifaces = vlan.get("interfaces", [])
+            if vid and ifaces:
+                for ifname in ifaces:
+                    if ifname not in vlan_ifaces:
+                        vlan_ifaces[ifname] = []
+                    vlan_ifaces[ifname].append(vid)
+
         seen_ifaces: set[str] = set()
         acl_index: dict[str, dict[str, str]] = {}
         for b in data.get("acl_bindings", []):
@@ -998,6 +1027,9 @@ class UnifiedConnector:
                     acl_props["acl_in"] = acl_index[ifname]["in"]
                 if "out" in acl_index[ifname]:
                     acl_props["acl_out"] = acl_index[ifname]["out"]
+            vlan_info = {}
+            if ifname in vlan_ifaces:
+                vlan_info["vlans"] = ",".join(vlan_ifaces[ifname])
             try:
                 await neo4j_client.merge_node("Interface", iface_id, {
                     "id": iface_id, "name": ifname,

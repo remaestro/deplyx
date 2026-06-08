@@ -219,6 +219,12 @@ Rules:
     the impact is LOW — HTTP is not running.
   * If the device has HTTP enabled, blocking port 80 would impact management access.
   * Services running on management interfaces (Vlan1, Mgmt) affect only administrative access.
+- **VLAN-to-interface mapping**: Interface nodes may have a `vlans` property (comma-separated \
+  VLAN IDs) indicating which VLANs are carried on that interface. Use this to determine \
+  the blast radius of VLAN changes:
+  * If a VLAN is deleted/modified, all interfaces carrying that VLAN are affected.
+  * An interface carrying multiple VLANs (trunk) will propagate changes to all those VLANs.
+  * Access ports in a single VLAN have a limited blast radius (only that VLAN's endpoints).
 - Be specific about WHY each path is critical for this particular action, referencing \
   the action category, device role, and redundancy status in your reasoning.
 - Return ONLY valid JSON, no markdown fences, no comments
@@ -497,7 +503,7 @@ def _build_prompt(topology: dict[str, Any], change_details: dict[str, Any]) -> s
         for key in ["type", "role", "criticality", "vendor", "hostname", "name",
                      "status", "vlan_id", "port", "protocol",
                      "has_redundancy", "redundancy_protocol",
-                     "acl_in", "acl_out", "services"]:
+                     "acl_in", "acl_out", "services", "vlans"]:
             if key in props:
                 trimmed[key] = props[key]
         trimmed_nodes.append(trimmed)
