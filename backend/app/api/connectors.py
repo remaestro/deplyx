@@ -145,6 +145,7 @@ async def sync_all_connectors(
                 "status": result.get("status", "ok"),
                 "topology_neighbors": result.get("topology_neighbors", []),
                 "interfaces_count": len(result.get("interfaces", [])),
+                "has_redundancy": result.get("redundancy", {}).get("has_redundancy", False) if isinstance(result.get("redundancy"), dict) else False,
                 "errors": result.get("errors", []),
             })
             c.last_sync_at = datetime.now(timezone.utc)

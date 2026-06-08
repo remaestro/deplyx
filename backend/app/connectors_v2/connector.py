@@ -473,6 +473,8 @@ class UnifiedConnector:
             "rules": [],
             "bgp_peers": [],
             "mac_table": [],
+            "topology_neighbors": [],
+            "redundancy": {},
             "errors": [],
         }
 
@@ -528,6 +530,18 @@ class UnifiedConnector:
                     protocol = "cdp" if "cdp" in iso else "lldp"
                     existing = result.get("topology_neighbors", [])
                     result["topology_neighbors"] = existing + self._normalize_neighbors(parsed, protocol)
+                elif "standby" in iso or "hsrp" in iso:
+                    hsrp_data = self._normalize_redundancy(parsed, "hsrp", raw_out)
+                    result["redundancy"] = {**result.get("redundancy", {}), **hsrp_data}
+                elif "vrrp" in iso:
+                    vrrp_data = self._normalize_redundancy(parsed, "vrrp", raw_out)
+                    result["redundancy"] = {**result.get("redundancy", {}), **vrrp_data}
+                elif "etherchannel" in iso or "port-channel" in iso:
+                    ec_data = self._normalize_etherchannel(parsed, raw_out)
+                    result["redundancy"] = {**result.get("redundancy", {}), **ec_data}
+                elif "redundancy" in iso and "standby" not in iso and "vrrp" not in iso:
+                    gen_data = self._normalize_redundancy_general(parsed, raw_out)
+                    result["redundancy"] = {**result.get("redundancy", {}), **gen_data}
                 elif "network" in iso:
                     self._parse_ftd_network(raw_out, result)
                 elif "manager" in iso:
@@ -744,6 +758,86 @@ class UnifiedConnector:
             return peers
         return [{"neighbor": p.get("neighbor", p.get("bgp_peer", ""))} for p in parsed if p.get("neighbor") or p.get("bgp_peer")]
 
+    # ── Redundancy normalization (HSRP, VRRP, EtherChannel, Stack) ──
+    def _normalize_redundancy(self, parsed: list[dict], protocol: str, raw: str) -> dict[str, Any]:
+        """Normalize HSRP/VRRP standby data into a structured format."""
+        result: dict[str, Any] = {
+            "protocol": protocol,
+            "groups": [],
+            "has_redundancy": False,
+        }
+        if parsed and not parsed[0].get("raw"):
+            for entry in parsed:
+                group_id = entry.get("group", entry.get("grp_num", ""))
+                virtual_ip = entry.get("virtual_ip", entry.get("ip", ""))
+                state = entry.get("state", "").lower()
+                priority = entry.get("priority", "")
+                active_router = entry.get("active_router", "")
+                standby_router = entry.get("standby_router", "")
+                interface = entry.get("interface", entry.get("iface", ""))
+                if group_id:
+                    result["groups"].append({
+                        "group": group_id,
+                        "virtual_ip": virtual_ip,
+                        "state": state,
+                        "priority": priority,
+                        "active_router": active_router,
+                        "standby_router": standby_router,
+                        "interface": interface,
+                    })
+                    if state == "active" and standby_router and standby_router not in ("unknown", "this"):
+                        result["has_redundancy"] = True
+        if not result["groups"]:
+            # Fallback: parse raw text
+            for line in raw.splitlines():
+                m = re.search(r"Group\s+(\d+).*state\s+(Active|Standby|Init|Listen)", line, re.IGNORECASE)
+                if m:
+                    result["groups"].append({"group": m.group(1), "state": m.group(2).lower()})
+                    result["has_redundancy"] = True
+        return result
+
+    def _normalize_etherchannel(self, parsed: list[dict], raw: str) -> dict[str, Any]:
+        """Normalize EtherChannel/port-channel data."""
+        result: dict[str, Any] = {
+            "protocol": "etherchannel",
+            "channels": [],
+            "has_redundancy": False,
+        }
+        if parsed and not parsed[0].get("raw"):
+            for entry in parsed:
+                channel = entry.get("channel", entry.get("group", entry.get("port_channel", "")))
+                ports = entry.get("ports", entry.get("member_interfaces", ""))
+                protocol = entry.get("protocol", entry.get("mode", ""))
+                status = entry.get("status", entry.get("state", ""))
+                if channel:
+                    result["channels"].append({
+                        "channel": channel,
+                        "ports": ports,
+                        "protocol": protocol,
+                        "status": status,
+                    })
+                    if len(ports.split(",")) if ports else 0 >= 2:
+                        result["has_redundancy"] = True
+        return result
+
+    def _normalize_redundancy_general(self, parsed: list[dict], raw: str) -> dict[str, Any]:
+        """Normalize general 'show redundancy' output."""
+        result: dict[str, Any] = {
+            "protocol": "redundancy",
+            "has_redundancy": False,
+            "details": {},
+        }
+        # Parse key-value pairs from show redundancy
+        for line in raw.splitlines():
+            m = re.search(r"System Redundancy Protocol\s*=\s*(\S+)", line, re.IGNORECASE)
+            if m:
+                result["details"]["protocol"] = m.group(1)
+            m = re.search(r"Redundancy.*State\s*=\s*(\S+)", line, re.IGNORECASE)
+            if m:
+                result["details"]["state"] = m.group(1).lower()
+                result["has_redundancy"] = m.group(1).lower() != "none"
+        return result
+
     # ── Neo4j push (upsert par hostname+ip) ──────────────────────
     async def _push_to_neo4j(self, data: dict[str, Any]) -> None:
         hostname = data.get("hostname", self.host)
@@ -758,6 +852,19 @@ class UnifiedConnector:
             existing = await self._find_device_by_hostname_ip(hostname, ip)
             if existing:
                 device_id = existing["id"]
+            redundancy = data.get("redundancy", {})
+            has_redundancy = redundancy.get("has_redundancy", False) if isinstance(redundancy, dict) else False
+            redundancy_protocol = ""
+            if isinstance(redundancy, dict):
+                if redundancy.get("groups"):
+                    redundancy_protocol = f"hsrp_{len(redundancy['groups'])}_groups"
+                elif redundancy.get("channels"):
+                    redundancy_protocol = f"etherchannel_{len(redundancy['channels'])}_channels"
+                elif redundancy.get("details", {}).get("protocol"):
+                    redundancy_protocol = redundancy["details"]["protocol"]
+            elif redundancy:
+                redundancy_protocol = "unknown"
+
             await neo4j_client.merge_node("Device", device_id, {
                 "id": device_id,
                 "type": role,
@@ -768,6 +875,8 @@ class UnifiedConnector:
                 "serial": serial,
                 "ip": ip,
                 "role": role,
+                "has_redundancy": has_redundancy,
+                "redundancy_protocol": redundancy_protocol,
                 "display_name": display_name,
             })
             data["device_id"] = device_id

@@ -15,16 +15,27 @@ commands:
   show_cdp: "show cdp neighbors detail"
   show_lldp: "show lldp neighbors detail"
   show_bgp: "show ip bgp summary"
+  show_standby: "show standby brief"
+  show_vrrp: "show vrrp brief"
+  show_etherchannel: "show etherchannel summary"
+  show_redundancy: "show redundancy"
 command_groups:
   topology:
     refs: ["show_cdp", "show_lldp"]
+  redundancy:
+    refs: ["show_standby", "show_vrrp", "show_etherchannel", "show_redundancy"]
   all:
-    refs: ["show_version", "show_interfaces", "show_ip_route", "show_cdp", "show_lldp", "show_bgp"]
+    refs: ["show_version", "show_interfaces", "show_ip_route", "show_cdp", "show_lldp", "show_bgp",
+           "show_standby", "show_vrrp", "show_etherchannel", "show_redundancy"]
 parsers:
   show_version: textfsm
   show_interfaces: textfsm
   show_cdp: textfsm
   show_lldp: textfsm
+  show_standby: textfsm
+  show_vrrp: textfsm
+  show_etherchannel: textfsm
+  show_redundancy: textfsm
 neo4j_labels:
   device: "Device"
   interface: "Interface"

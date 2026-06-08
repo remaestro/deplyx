@@ -194,8 +194,17 @@ Rules:
   * `wlc` / `ap` — Medium risk: affects wireless clients but not wired infrastructure.
   * If no role is shown, infer it from the device's position in the graph topology \
     (how many edges, what kind of neighbors, upstream/downstream position).
+- **Device-level redundancy**: Each node may have `has_redundancy` (true/false) and \
+  `redundancy_protocol` (e.g. "hsrp_2_groups", "etherchannel_3_channels", "SSO") fields. \
+  Use these to determine if a device is a single point of failure (SPOF):
+  * `has_redundancy: true` with HSRP/VRRP groups means another router can take over \
+    if this one fails — lower the criticality for traffic-impacting changes on this device.
+  * `has_redundancy: true` with EtherChannel means the link aggregation has multiple \
+    member links — a single link failure won't disrupt connectivity.
+  * `has_redundancy: false` on a core-router or distribution-switch means it's a SPOF \
+    — any traffic-impacting change on it is HIGH or CRITICAL risk.
 - Be specific about WHY each path is critical for this particular action, referencing \
-  the action category and device role in your reasoning.
+  the action category, device role, and redundancy status in your reasoning.
 - Return ONLY valid JSON, no markdown fences, no comments
 """
 
@@ -469,7 +478,9 @@ def _build_prompt(topology: dict[str, Any], change_details: dict[str, Any]) -> s
             "label": node.get("label"),
         }
         props = node.get("properties", {})
-        for key in ["type", "role", "criticality", "vendor", "hostname", "name", "status", "vlan_id", "port", "protocol"]:
+        for key in ["type", "role", "criticality", "vendor", "hostname", "name",
+                     "status", "vlan_id", "port", "protocol",
+                     "has_redundancy", "redundancy_protocol"]:
             if key in props:
                 trimmed[key] = props[key]
         trimmed_nodes.append(trimmed)

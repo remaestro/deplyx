@@ -32,6 +32,10 @@ commands:
   show_ospf: "show ip ospf neighbor"
   show_spanning_tree: "show spanning-tree"
   show_ip_int_brief: "show ip interface brief"
+  show_standby: "show standby brief"
+  show_vrrp: "show vrrp brief"
+  show_etherchannel: "show etherchannel summary"
+  show_redundancy: "show redundancy"
 
 command_groups:
   system:
@@ -44,10 +48,13 @@ command_groups:
     refs: ["show_vlan", "show_mac", "show_spanning_tree"]
   topology:
     refs: ["show_cdp", "show_lldp"]
+  redundancy:
+    refs: ["show_standby", "show_vrrp", "show_etherchannel", "show_redundancy"]
   all:
     refs: ["show_version", "show_interfaces", "show_ip_route",
            "show_vlan", "show_mac", "show_cdp", "show_lldp", "show_bgp",
-           "show_ospf", "show_spanning_tree"]
+           "show_ospf", "show_spanning_tree", "show_standby", "show_vrrp",
+           "show_etherchannel", "show_redundancy"]
 
 parsers:
   show_version: textfsm
@@ -57,6 +64,10 @@ parsers:
   show_cdp: textfsm
   show_lldp: textfsm
   show_bgp: textfsm
+  show_standby: textfsm
+  show_vrrp: textfsm
+  show_etherchannel: textfsm
+  show_redundancy: textfsm
 
 neo4j_labels:
   device: "Device"
