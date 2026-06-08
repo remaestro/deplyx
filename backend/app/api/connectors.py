@@ -148,6 +148,7 @@ async def sync_all_connectors(
                 "topology_neighbors": result.get("topology_neighbors", []),
                 "interfaces_count": len(ifaces),
                 "total_input_errors": total_input_errors,
+                "arp_count": len(result.get("arp_entries", [])),
                 "has_redundancy": result.get("redundancy", {}).get("has_redundancy", False) if isinstance(result.get("redundancy"), dict) else False,
                 "errors": result.get("errors", []),
             })

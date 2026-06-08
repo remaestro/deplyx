@@ -232,6 +232,13 @@ Rules:
   * High `input_errors` or `output_errors` suggests the interface is degraded.
   * Near-saturation (`input_rate` or `output_rate` close to interface bandwidth) means \
     the interface is a bottleneck — any disruption will have amplified impact.
+- **ARP table (direct endpoints)**: Device nodes may have an `arp_entries` field (array of \
+  objects with `ip`, `mac`, `interface`, `type`). This shows which endpoints are directly \
+  connected to each interface. Use this to determine the real-world blast radius:
+  * If a change affects a specific port, the ARP entries on that port show exactly which \
+    IP/MAC peers are behind it.
+  * A port with many ARP entries means many active endpoints will be impacted.
+  * Static ARP entries indicate critical infrastructure mappings that should not be disrupted.
 - Be specific about WHY each path is critical for this particular action, referencing \
   the action category, device role, and redundancy status in your reasoning.
 - Return ONLY valid JSON, no markdown fences, no comments
@@ -512,7 +519,7 @@ def _build_prompt(topology: dict[str, Any], change_details: dict[str, Any]) -> s
                      "has_redundancy", "redundancy_protocol",
                      "acl_in", "acl_out", "services", "vlans",
                      "input_rate", "output_rate", "input_errors",
-                     "output_errors", "crc"]:
+                     "output_errors", "crc", "arp_entries"]:
             if key in props:
                 trimmed[key] = props[key]
         trimmed_nodes.append(trimmed)

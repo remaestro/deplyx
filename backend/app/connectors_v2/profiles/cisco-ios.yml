@@ -39,6 +39,7 @@ commands:
   show_ip_interface: "show ip interface"
   show_access_list: "show access-list"
   show_http_status: "show ip http server status"
+  show_arp: "show arp"
 
 command_groups:
   system:
@@ -57,6 +58,8 @@ command_groups:
     refs: ["show_ip_interface", "show_access_list"]
   services:
     refs: ["show_http_status"]
+  endpoints:
+    refs: ["show_arp"]
   all:
     refs: ["show_version", "show_interfaces", "show_ip_route",
            "show_vlan", "show_mac", "show_cdp", "show_lldp", "show_bgp",
@@ -79,6 +82,7 @@ parsers:
   show_ip_interface: textfsm
   show_access_list: textfsm
   show_http_status: textfsm
+  show_arp: textfsm
 
 neo4j_labels:
   device: "Device"

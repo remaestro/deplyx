@@ -478,6 +478,7 @@ class UnifiedConnector:
             "acl_bindings": [],
             "access_lists": [],
             "services": [],
+            "arp_entries": [],
             "errors": [],
         }
 
@@ -551,6 +552,8 @@ class UnifiedConnector:
                     result["access_lists"] = self._normalize_access_lists(parsed, raw_out)
                 elif "http" in iso and ("server" in iso or "status" in iso):
                     result["services"] = self._normalize_http_service(raw_out, parsed)
+                elif "arp" in iso and "acl" not in iso:
+                    result["arp_entries"] = self._normalize_arp(parsed, raw_out)
                 elif "network" in iso:
                     self._parse_ftd_network(raw_out, result)
                 elif "manager" in iso:
@@ -947,6 +950,42 @@ class UnifiedConnector:
         if enabled:
             logger.info("Service detected: HTTP (port %d) on %s", port, self.host)
         return services
+
+    # ── ARP normalization ────────────────────────────────────────
+    def _normalize_arp(self, parsed: list[dict], raw: str) -> list[dict[str, Any]]:
+        """Normalize ARP table entries."""
+        if parsed and not parsed[0].get("raw"):
+            result = []
+            seen = set()
+            for entry in parsed:
+                ip = entry.get("address", entry.get("ip_address", entry.get("ip", "")))
+                mac = entry.get("mac", entry.get("mac_address", ""))
+                interface = entry.get("interface", entry.get("intf", ""))
+                if ip and ip not in seen:
+                    seen.add(ip)
+                    result.append({
+                        "ip": ip,
+                        "mac": mac,
+                        "interface": interface,
+                        "type": entry.get("type", "dynamic"),
+                    })
+            return result
+        # Fallback parsing for raw ARP output
+        result = []
+        seen = set()
+        for line in raw.splitlines():
+            m = re.match(r"^Internet\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)", line, re.IGNORECASE)
+            if m:
+                ip = m.group(1)
+                if ip not in seen:
+                    seen.add(ip)
+                    result.append({
+                        "ip": ip,
+                        "mac": m.group(3),
+                        "interface": m.group(4),
+                        "type": m.group(2).lower(),
+                    })
+        return result
 
     # ── Neo4j push (upsert par hostname+ip) ──────────────────────
     async def _push_to_neo4j(self, data: dict[str, Any]) -> None:
