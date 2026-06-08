@@ -699,7 +699,7 @@ class UnifiedConnector:
             if m: result["os_version"] = m.group(1)
 
     # ── interface parser ────────────────────────────────────────
-    def _normalize_interfaces(self, parsed: list[dict[str, str]], raw: str) -> list[dict[str, str]]:
+    def _normalize_interfaces(self, parsed: list[dict[str, str]], raw: str) -> list[dict[str, Any]]:
         if parsed and parsed[0].get("raw"):
             return self._parse_interfaces_raw(raw)
         normalized, seen = [], set()
@@ -708,12 +708,23 @@ class UnifiedConnector:
             if not name or name in seen:
                 continue
             seen.add(name)
-            normalized.append({
+            entry: dict[str, Any] = {
                 "name": name,
                 "status": iface.get("status", iface.get("link", "unknown")),
                 "ip": iface.get("ip_address", iface.get("ipaddr", iface.get("ip", ""))),
                 "mask": iface.get("mask", iface.get("subnet", "")),
-            })
+            }
+            # Extract error counters and metrics if available
+            for metric_key in ["input_rate", "output_rate", "input_errors",
+                               "output_errors", "crc", "runts", "giants", "frame",
+                               "input_packets", "output_packets"]:
+                val = iface.get(metric_key, iface.get(metric_key.upper(), ""))
+                if val not in (None, "", "0"):
+                    try:
+                        entry[metric_key] = int(val)
+                    except (ValueError, TypeError):
+                        entry[metric_key] = val
+            normalized.append(entry)
         if not normalized:
             return self._parse_interfaces_raw(raw)
         return normalized
@@ -1030,6 +1041,13 @@ class UnifiedConnector:
             vlan_info = {}
             if ifname in vlan_ifaces:
                 vlan_info["vlans"] = ",".join(vlan_ifaces[ifname])
+            # Interface health metrics
+            metrics = {}
+            for m_key in ["input_rate", "output_rate", "input_errors",
+                          "output_errors", "crc", "runts", "giants", "frame"]:
+                val = iface.get(m_key)
+                if val not in (None, "", 0):
+                    metrics[m_key] = int(val) if isinstance(val, (int, float, str)) and str(val).isdigit() else val
             try:
                 await neo4j_client.merge_node("Interface", iface_id, {
                     "id": iface_id, "name": ifname,
@@ -1037,6 +1055,8 @@ class UnifiedConnector:
                     "ip": iface.get("ip", ""), "mask": iface.get("mask", ""),
                     "display_name": f"{ifname} ({hostname})",
                     **acl_props,
+                    **vlan_info,
+                    **metrics,
                 })
                 await neo4j_client.create_relationship("Device", device_id, "HAS_INTERFACE", "Interface", iface_id)
             except Exception:

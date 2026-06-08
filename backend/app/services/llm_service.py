@@ -225,6 +225,13 @@ Rules:
   * If a VLAN is deleted/modified, all interfaces carrying that VLAN are affected.
   * An interface carrying multiple VLANs (trunk) will propagate changes to all those VLANs.
   * Access ports in a single VLAN have a limited blast radius (only that VLAN's endpoints).
+- **Interface health metrics**: Interface nodes may have `input_errors`, `output_errors`, \
+  `crc`, `input_rate`, `output_rate` fields. Use these to assess risk level:
+  * High CRC errors (>0.1% of packets) indicates a physical layer issue — touching this \
+    interface (shutdown, config change) carries higher risk of failure.
+  * High `input_errors` or `output_errors` suggests the interface is degraded.
+  * Near-saturation (`input_rate` or `output_rate` close to interface bandwidth) means \
+    the interface is a bottleneck — any disruption will have amplified impact.
 - Be specific about WHY each path is critical for this particular action, referencing \
   the action category, device role, and redundancy status in your reasoning.
 - Return ONLY valid JSON, no markdown fences, no comments
@@ -503,7 +510,9 @@ def _build_prompt(topology: dict[str, Any], change_details: dict[str, Any]) -> s
         for key in ["type", "role", "criticality", "vendor", "hostname", "name",
                      "status", "vlan_id", "port", "protocol",
                      "has_redundancy", "redundancy_protocol",
-                     "acl_in", "acl_out", "services", "vlans"]:
+                     "acl_in", "acl_out", "services", "vlans",
+                     "input_rate", "output_rate", "input_errors",
+                     "output_errors", "crc"]:
             if key in props:
                 trimmed[key] = props[key]
         trimmed_nodes.append(trimmed)

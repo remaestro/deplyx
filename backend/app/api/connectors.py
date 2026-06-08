@@ -137,6 +137,8 @@ async def sync_all_connectors(
         try:
             instance = UnifiedConnector({**c.config, "_connector_type": c.connector_type})
             result = await instance.sync()
+            ifaces = result.get("interfaces", [])
+            total_input_errors = sum(i.get("input_errors", 0) for i in ifaces if isinstance(i.get("input_errors"), (int, float)))
             results.append({
                 "id": c.id,
                 "name": c.name,
@@ -144,7 +146,8 @@ async def sync_all_connectors(
                 "role": result.get("role"),
                 "status": result.get("status", "ok"),
                 "topology_neighbors": result.get("topology_neighbors", []),
-                "interfaces_count": len(result.get("interfaces", [])),
+                "interfaces_count": len(ifaces),
+                "total_input_errors": total_input_errors,
                 "has_redundancy": result.get("redundancy", {}).get("has_redundancy", False) if isinstance(result.get("redundancy"), dict) else False,
                 "errors": result.get("errors", []),
             })
