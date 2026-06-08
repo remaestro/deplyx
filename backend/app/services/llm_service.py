@@ -203,6 +203,14 @@ Rules:
     member links — a single link failure won't disrupt connectivity.
   * `has_redundancy: false` on a core-router or distribution-switch means it's a SPOF \
     — any traffic-impacting change on it is HIGH or CRITICAL risk.
+- **ACLs on interfaces**: Interface nodes may have `acl_in` and `acl_out` properties \
+  indicating which access-lists are applied inbound/outbound. Use this to determine \
+  if a proposed ACL change would actually affect traffic on a given interface:
+  * If a rule change targets an ACL that is NOT applied to any interface, the impact \
+    is LOW (the ACL exists but is not actively filtering).
+  * If an ACL is applied inbound on an interface facing a specific device, only that \
+    device's traffic is affected.
+  * ACLs applied to management interfaces (Vlan1, Mgmt) have limited blast radius.
 - Be specific about WHY each path is critical for this particular action, referencing \
   the action category, device role, and redundancy status in your reasoning.
 - Return ONLY valid JSON, no markdown fences, no comments
@@ -480,7 +488,8 @@ def _build_prompt(topology: dict[str, Any], change_details: dict[str, Any]) -> s
         props = node.get("properties", {})
         for key in ["type", "role", "criticality", "vendor", "hostname", "name",
                      "status", "vlan_id", "port", "protocol",
-                     "has_redundancy", "redundancy_protocol"]:
+                     "has_redundancy", "redundancy_protocol",
+                     "acl_in", "acl_out"]:
             if key in props:
                 trimmed[key] = props[key]
         trimmed_nodes.append(trimmed)

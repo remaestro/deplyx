@@ -19,14 +19,19 @@ commands:
   show_vrrp: "show vrrp brief"
   show_etherchannel: "show etherchannel summary"
   show_redundancy: "show redundancy"
+  show_ip_interface: "show ip interface"
+  show_access_list: "show access-list"
 command_groups:
   topology:
     refs: ["show_cdp", "show_lldp"]
   redundancy:
     refs: ["show_standby", "show_vrrp", "show_etherchannel", "show_redundancy"]
+  security:
+    refs: ["show_ip_interface", "show_access_list"]
   all:
     refs: ["show_version", "show_interfaces", "show_ip_route", "show_cdp", "show_lldp", "show_bgp",
-           "show_standby", "show_vrrp", "show_etherchannel", "show_redundancy"]
+           "show_standby", "show_vrrp", "show_etherchannel", "show_redundancy",
+           "show_ip_interface", "show_access_list"]
 parsers:
   show_version: textfsm
   show_interfaces: textfsm
@@ -36,6 +41,8 @@ parsers:
   show_vrrp: textfsm
   show_etherchannel: textfsm
   show_redundancy: textfsm
+  show_ip_interface: textfsm
+  show_access_list: textfsm
 neo4j_labels:
   device: "Device"
   interface: "Interface"

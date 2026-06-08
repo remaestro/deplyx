@@ -475,6 +475,8 @@ class UnifiedConnector:
             "mac_table": [],
             "topology_neighbors": [],
             "redundancy": {},
+            "acl_bindings": [],
+            "access_lists": [],
             "errors": [],
         }
 
@@ -542,6 +544,10 @@ class UnifiedConnector:
                 elif "redundancy" in iso and "standby" not in iso and "vrrp" not in iso:
                     gen_data = self._normalize_redundancy_general(parsed, raw_out)
                     result["redundancy"] = {**result.get("redundancy", {}), **gen_data}
+                elif "ip interface" in iso and "brief" not in iso:
+                    result["acl_bindings"] = self._parse_acl_bindings(raw_out)
+                elif "access-list" in iso or "access" in iso and "list" in iso:
+                    result["access_lists"] = self._normalize_access_lists(parsed, raw_out)
                 elif "network" in iso:
                     self._parse_ftd_network(raw_out, result)
                 elif "manager" in iso:
@@ -838,6 +844,50 @@ class UnifiedConnector:
                 result["has_redundancy"] = m.group(1).lower() != "none"
         return result
 
+    # ── ACL parsing ──────────────────────────────────────────────
+    def _parse_acl_bindings(self, raw: str) -> list[dict[str, str]]:
+        """Parse 'show ip interface' output to extract ACL bindings per interface."""
+        bindings: list[dict[str, str]] = []
+        current_iface = ""
+        for line in raw.splitlines():
+            m = re.match(r"^(\S+)\s+is", line.strip())
+            if m:
+                current_iface = m.group(1)
+            m_in = re.search(r"Inbound\s+access list\s+is\s+(.+)$", line, re.IGNORECASE)
+            if m_in and current_iface:
+                acl_name = m_in.group(1).strip()
+                if acl_name.lower() != "not set":
+                    bindings.append({"interface": current_iface, "direction": "in", "acl": acl_name})
+            m_out = re.search(r"Outgoing\s+access list\s+is\s+(.+)$", line, re.IGNORECASE)
+            if m_out and current_iface:
+                acl_name = m_out.group(1).strip()
+                if acl_name.lower() != "not set":
+                    bindings.append({"interface": current_iface, "direction": "out", "acl": acl_name})
+        return bindings
+
+    def _normalize_access_lists(self, parsed: list[dict], raw: str) -> list[dict[str, Any]]:
+        """Normalize 'show access-list' output."""
+        acls: list[dict[str, Any]] = []
+        if parsed and not parsed[0].get("raw"):
+            for entry in parsed:
+                acl_id = entry.get("acl_id", entry.get("id", entry.get("number", "")))
+                acl_name = entry.get("name", acl_id)
+                acl_type = entry.get("type", "ip")
+                entries = entry.get("entries", entry.get("access_control_entries", []))
+                if acl_id:
+                    acls.append({"id": acl_id, "name": acl_name, "type": acl_type, "entries": entries})
+        if not acls:
+            # Fallback: parse raw output
+            current_acl = None
+            for line in raw.splitlines():
+                m = re.match(r"^(?:Standard|Extended)\s+IP\s+access\s+list\s+(.+)$", line, re.IGNORECASE)
+                if m:
+                    current_acl = {"id": m.group(1).strip(), "name": m.group(1).strip(), "type": "ip", "entries": []}
+                    acls.append(current_acl)
+                elif current_acl and line.strip() and not line.startswith(" "):
+                    current_acl = None
+        return acls
+
     # ── Neo4j push (upsert par hostname+ip) ──────────────────────
     async def _push_to_neo4j(self, data: dict[str, Any]) -> None:
         hostname = data.get("hostname", self.host)
@@ -865,6 +915,10 @@ class UnifiedConnector:
             elif redundancy:
                 redundancy_protocol = "unknown"
 
+            # Serialize ACL bindings for Neo4j storage
+            acl_bindings = data.get("acl_bindings", [])
+            acl_bindings_json = json.dumps(acl_bindings) if acl_bindings else ""
+
             await neo4j_client.merge_node("Device", device_id, {
                 "id": device_id,
                 "type": role,
@@ -877,6 +931,7 @@ class UnifiedConnector:
                 "role": role,
                 "has_redundancy": has_redundancy,
                 "redundancy_protocol": redundancy_protocol,
+                "acl_bindings": acl_bindings_json,
                 "display_name": display_name,
             })
             data["device_id"] = device_id
@@ -885,18 +940,35 @@ class UnifiedConnector:
             data.setdefault("errors", []).append(f"neo4j device: {e}")
 
         seen_ifaces: set[str] = set()
+        acl_index: dict[str, dict[str, str]] = {}
+        for b in data.get("acl_bindings", []):
+            ifname = b.get("interface", "")
+            direction = b.get("direction", "")
+            acl_name = b.get("acl", "")
+            if ifname:
+                if ifname not in acl_index:
+                    acl_index[ifname] = {}
+                acl_index[ifname][direction] = acl_name
+
         for iface in data.get("interfaces", []):
             ifname = iface.get("name", "")
             if not ifname or ifname in seen_ifaces:
                 continue
             seen_ifaces.add(ifname)
             iface_id = f"IF-{serial}-{ifname}"
+            acl_props = {}
+            if ifname in acl_index:
+                if "in" in acl_index[ifname]:
+                    acl_props["acl_in"] = acl_index[ifname]["in"]
+                if "out" in acl_index[ifname]:
+                    acl_props["acl_out"] = acl_index[ifname]["out"]
             try:
                 await neo4j_client.merge_node("Interface", iface_id, {
                     "id": iface_id, "name": ifname,
                     "status": iface.get("status", "unknown"),
                     "ip": iface.get("ip", ""), "mask": iface.get("mask", ""),
                     "display_name": f"{ifname} ({hostname})",
+                    **acl_props,
                 })
                 await neo4j_client.create_relationship("Device", device_id, "HAS_INTERFACE", "Interface", iface_id)
             except Exception:
