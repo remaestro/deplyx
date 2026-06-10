@@ -41,3 +41,18 @@ test_llm.py
 *.summary.md
 nmap-*.txt
 specs deplyx.md
+
+# Ad-hoc tests / transient reports
+browser_test.py
+deplyx-lovable-brief.md
+presentation.html
+*-summary.md
+Network Guardian.zip
+Network Guardian_2.zip
+
+# Vite / Build cache
+.vite/
+
+# Lovable project config
+.lovable/
+
