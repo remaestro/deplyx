@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Couches Fonctionnelles — Deplyx</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    background: #0f172a;
+    color: #e2e8f0;
+    padding: 2rem;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  h1 {
+    font-size: 1.8rem;
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+    background: linear-gradient(135deg, #a78bfa, #60a5fa);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .subtitle {
+    color: #64748b;
+    font-size: 0.9rem;
+    margin-bottom: 2.5rem;
+  }
+  .container {
+    max-width: 1200px;
+    width: 100%;
+  }
+
+  /* ── Section headers ── */
+  .section-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #94a3b8;
+    margin: 2.5rem 0 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .section-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, #334155, transparent);
+  }
+
+  /* ── Layers grid ── */
+  .layers-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  .layer-row {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+    border-radius: 0.75rem;
+    overflow: hidden;
+    background: #1e293b;
+    border: 1px solid #334155;
+    transition: box-shadow 0.2s;
+    min-height: 80px;
+  }
+  .layer-row:hover {
+    box-shadow: 0 0 0 2px rgba(99,102,241,0.3), 0 4px 20px rgba(0,0,0,0.3);
+  }
+
+  .layer-label {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    min-width: 110px;
+    padding: 0.75rem 0.5rem;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #fff;
+    writing-mode: vertical-lr;
+    text-orientation: mixed;
+  }
+  .layer-label .icon { font-size: 1.2rem; writing-mode: horizontal-tb; }
+
+  .layer-body {
+    flex: 1;
+    padding: 0.75rem 1rem;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .layer-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.3rem 0.65rem;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 500;
+    background: #334155;
+    color: #cbd5e1;
+    border: 1px solid #475569;
+  }
+  .layer-tag .rel {
+    font-size: 0.6rem;
+    color: #64748b;
+    font-weight: 400;
+  }
+
+  .layer-influence {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-width: 60px;
+    padding: 0 0.5rem;
+    font-size: 0.65rem;
+    color: #64748b;
+    text-align: center;
+    border-left: 1px dashed #334155;
+    gap: 0.25rem;
+  }
+  .layer-influence .arrow { font-size: 1rem; }
+
+  /* ── Layer colors ── */
+  .layer-physique  .layer-label { background: #1e3a5f; }
+  .layer-reseau    .layer-label { background: #1e3a5f; }
+  .layer-securite  .layer-label { background: #5f1e1e; }
+  .layer-app       .layer-label { background: #1e5f2e; }
+  .layer-observ    .layer-label { background: #4a1e5f; }
+
+  /* ── Critical Path ── */
+  .path-container {
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 0.75rem;
+    padding: 1.5rem;
+    overflow-x: auto;
+  }
+  .path-flow {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    min-width: fit-content;
+  }
+  .path-node {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.6rem 1rem;
+    border-radius: 0.5rem;
+    font-size: 0.78rem;
+    font-weight: 500;
+    min-width: 90px;
+    text-align: center;
+    border: 1px solid;
+    position: relative;
+  }
+  .path-node .sub {
+    font-size: 0.6rem;
+    font-weight: 400;
+    opacity: 0.7;
+  }
+  .path-node .layer-badge {
+    font-size: 0.55rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 0.15rem 0.5rem;
+    border-radius: 999px;
+    margin-top: 0.15rem;
+    background: rgba(0,0,0,0.3);
+  }
+  .path-arrow {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0 0.35rem;
+    font-size: 0.55rem;
+    color: #64748b;
+    gap: 0.1rem;
+    min-width: 50px;
+  }
+  .path-arrow .rel-type {
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .path-arrow .chevron { font-size: 1rem; line-height: 1; }
+  .path-arrow svg { width: 40px; height: 20px; }
+
+  .pn-device     { background: #1e3a5f; border-color: #3b82f6; color: #bfdbfe; }
+  .pn-firewall   { background: #5f1e1e; border-color: #ef4444; color: #fecaca; }
+  .pn-rule       { background: #5f1e1e; border-color: #f97316; color: #fed7aa; }
+  .pn-app        { background: #1e5f2e; border-color: #22c55e; color: #bbf7d0; }
+  .pn-service    { background: #1e5f2e; border-color: #10b981; color: #a7f3d0; }
+  .pn-switch     { background: #1e3a5f; border-color: #06b6d4; color: #cffafe; }
+  .pn-vlan       { background: #1e3a5f; border-color: #8b5cf6; color: #ddd6fe; }
+  .pn-impact     { background: #4a1e5f; border-color: #a855f7; color: #e9d5ff; }
+  .pn-change     { background: #5f3a1e; border-color: #f59e0b; color: #fde68a; }
+
+  /* ── Influence map ── */
+  .influence-map {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 1rem;
+    margin: 1rem 0;
+  }
+  .inf-layer {
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 0.75rem;
+    padding: 1rem;
+    text-align: center;
+    font-size: 0.78rem;
+  }
+  .inf-layer .icon { font-size: 1.5rem; }
+  .inf-layer .name { font-weight: 600; margin: 0.3rem 0 0.2rem; }
+  .inf-layer .desc { color: #64748b; font-size: 0.68rem; }
+  .inf-layer .out-list {
+    margin-top: 0.5rem;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.25rem;
+  }
+  .inf-layer .out-tag {
+    font-size: 0.6rem;
+    padding: 0.15rem 0.4rem;
+    border-radius: 4px;
+    background: #334155;
+    color: #94a3b8;
+  }
+
+  .inf-arrows {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0;
+  }
+  .inf-arrow-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    width: 100%;
+  }
+  .inf-arrow-row .from, .inf-arrow-row .to {
+    font-size: 0.65rem;
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    font-weight: 500;
+  }
+  .inf-arrow-row .arr {
+    color: #64748b;
+    font-size: 1.2rem;
+  }
+
+  /* Legend */
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+    margin-top: 2rem;
+    padding: 1rem 1.5rem;
+    background: #1e293b;
+    border-radius: 0.75rem;
+    border: 1px solid #334155;
+    font-size: 0.78rem;
+  }
+  .legend-item { display: flex; align-items: center; gap: 0.4rem; }
+  .legend-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    border: 1px solid rgba(255,255,255,0.2);
+  }
+
+  /* ── Responsive ── */
+  @media (max-width: 768px) {
+    .influence-map { grid-template-columns: 1fr; }
+    .layer-label { writing-mode: horizontal-tb; min-width: 80px; }
+    .layer-label .icon { font-size: 1rem; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <h1>🏗️ Couches Fonctionnelles</h1>
+  <p class="subtitle">Modèle de couches pour l'analyse d'impact dans Deplyx</p>
+
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <!-- SECTION 1 : Les couches                                           -->
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <div class="section-title">📋 Les 5 couches fonctionnelles</div>
+
+  <div class="layers-grid">
+
+    <!-- Couche 1 : Physique -->
+    <div class="layer-row layer-physique">
+      <div class="layer-label">
+        <span class="icon">🏗️</span>
+        <span>Physique</span>
+      </div>
+      <div class="layer-body">
+        <span class="layer-tag">📡 Datacenter</span>
+        <span class="layer-tag">🔌 Cable</span>
+        <span class="layer-tag">🔌 Port</span>
+        <span class="layer-tag">📦 Châssis</span>
+        <span class="layer-tag" style="background:#1e3a5f;border-color:#3b82f6;">
+          <span class="rel">relation</span> LOCATED_IN
+        </span>
+        <span class="layer-tag" style="background:#1e3a5f;border-color:#3b82f6;">
+          <span class="rel">relation</span> CONNECTED_TO
+        </span>
+      </div>
+      <div class="layer-influence">
+        <span class="arrow">⬇️</span>
+        <span>influence</span>
+        <span style="color:#94a3b8;">Réseau</span>
+      </div>
+    </div>
+
+    <!-- Couche 2 : Réseau -->
+    <div class="layer-row layer-reseau">
+      <div class="layer-label">
+        <span class="icon">🌐</span>
+        <span>Réseau</span>
+      </div>
+      <div class="layer-body">
+        <span class="layer-tag">🔀 Switch</span>
+        <span class="layer-tag">🌍 Routeur</span>
+        <span class="layer-tag">📡 Interface</span>
+        <span class="layer-tag">🏷️ VLAN</span>
+        <span class="layer-tag">📟 IP</span>
+        <span class="layer-tag">🗺️ Route</span>
+        <span class="layer-tag" style="background:#1e3a5f;border-color:#3b82f6;">
+          <span class="rel">relation</span> HAS_INTERFACE
+        </span>
+        <span class="layer-tag" style="background:#1e3a5f;border-color:#3b82f6;">
+          <span class="rel">relation</span> HOSTS
+        </span>
+        <span class="layer-tag" style="background:#1e3a5f;border-color:#3b82f6;">
+          <span class="rel">relation</span> ROUTES_TO
+        </span>
+      </div>
+      <div class="layer-influence">
+        <span class="arrow">⬇️</span>
+        <span>influence</span>
+        <span style="color:#94a3b8;">Sécurité</span>
+      </div>
+    </div>
+
+    <!-- Couche 3 : Sécurité -->
+    <div class="layer-row layer-securite">
+      <div class="layer-label">
+        <span class="icon">🛡️</span>
+        <span>Sécurité</span>
+      </div>
+      <div class="layer-body">
+        <span class="layer-tag">🔥 Firewall</span>
+        <span class="layer-tag">📜 Règles</span>
+        <span class="layer-tag">🔐 VPN</span>
+        <span class="layer-tag">👁️ IDS/IPS</span>
+        <span class="layer-tag" style="background:#5f1e1e;border-color:#ef4444;">
+          <span class="rel">relation</span> HAS_RULE
+        </span>
+        <span class="layer-tag" style="background:#5f1e1e;border-color:#ef4444;">
+          <span class="rel">relation</span> PROTECTS
+        </span>
+        <span class="layer-tag" style="background:#5f1e1e;border-color:#ef4444;">
+          <span class="rel">relation</span> HAS_VPN_TUNNEL
+        </span>
+      </div>
+      <div class="layer-influence">
+        <span class="arrow">⬇️</span>
+        <span>influence</span>
+        <span style="color:#94a3b8;">Application</span>
+      </div>
+    </div>
+
+    <!-- Couche 4 : Application -->
+    <div class="layer-row layer-app">
+      <div class="layer-label">
+        <span class="icon">📦</span>
+        <span>Application</span>
+      </div>
+      <div class="layer-body">
+        <span class="layer-tag">📱 Application</span>
+        <span class="layer-tag">⚙️ Service</span>
+        <span class="layer-tag">🗄️ Base de données</span>
+        <span class="layer-tag">🔄 Cache (Redis)</span>
+        <span class="layer-tag" style="background:#1e5f2e;border-color:#22c55e;">
+          <span class="rel">relation</span> DEPENDS_ON
+        </span>
+        <span class="layer-tag" style="background:#1e5f2e;border-color:#22c55e;">
+          <span class="rel">relation</span> RUNS
+        </span>
+      </div>
+      <div class="layer-influence">
+        <span class="arrow">⬇️</span>
+        <span>influence</span>
+        <span style="color:#94a3b8;">Observabilité</span>
+      </div>
+    </div>
+
+    <!-- Couche 5 : Observabilité -->
+    <div class="layer-row layer-observ">
+      <div class="layer-label">
+        <span class="icon">📊</span>
+        <span>Observabilité</span>
+      </div>
+      <div class="layer-body">
+        <span class="layer-tag">📈 Prometheus</span>
+        <span class="layer-tag">📉 Grafana</span>
+        <span class="layer-tag">🔍 Elasticsearch</span>
+        <span class="layer-tag">📋 Logs</span>
+        <span class="layer-tag" style="background:#4a1e5f;border-color:#a855f7;">
+          <span class="rel">relation</span> HAS_SCRAPE_TARGET
+        </span>
+        <span class="layer-tag" style="background:#4a1e5f;border-color:#a855f7;">
+          <span class="rel">relation</span> HAS_DATASOURCE
+        </span>
+      </div>
+      <div class="layer-influence" style="border-left-color:transparent; color: #475569;">
+        <span style="font-size:0.6rem;">(consommateur)</span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <!-- SECTION 2 : Influences                                             -->
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <div class="section-title">🔄 Relations d'influence entre couches</div>
+
+  <div class="influence-map">
+
+    <div class="inf-layer" style="border-color:#3b82f6;">
+      <div class="icon">🏗️</div>
+      <div class="name">Physique</div>
+      <div class="desc">Câbles, ports, datacenters</div>
+      <div class="out-list">
+        <span class="out-tag">→ Héberge</span>
+        <span class="out-tag">→ Connecte</span>
+      </div>
+    </div>
+
+    <div class="inf-layer" style="border-color:#06b6d4;">
+      <div class="icon">🌐</div>
+      <div class="name">Réseau</div>
+      <div class="desc">Switches, routeurs, VLANs</div>
+      <div class="out-list">
+        <span class="out-tag">→ Achemine</span>
+        <span class="out-tag">→ Transporte</span>
+        <span class="out-tag">→ Segmente</span>
+      </div>
+    </div>
+
+    <div class="inf-layer" style="border-color:#ef4444;">
+      <div class="icon">🛡️</div>
+      <div class="name">Sécurité</div>
+      <div class="desc">Firewalls, règles, VPN</div>
+      <div class="out-list">
+        <span class="out-tag">→ Filtre</span>
+        <span class="out-tag">→ Protège</span>
+        <span class="out-tag">→ Autorise/Refuse</span>
+      </div>
+    </div>
+
+    <div class="inf-layer" style="border-color:#22c55e;">
+      <div class="icon">📦</div>
+      <div class="name">Application</div>
+      <div class="desc">Services, bases de données</div>
+      <div class="out-list">
+        <span class="out-tag">→ Dépend de</span>
+        <span class="out-tag">→ Consomme</span>
+        <span class="out-tag">→ Expose</span>
+      </div>
+    </div>
+
+    <div class="inf-layer" style="border-color:#a855f7;">
+      <div class="icon">📊</div>
+      <div class="name">Observabilité</div>
+      <div class="desc">Monitoring, logs, métriques</div>
+      <div class="out-list">
+        <span class="out-tag">→ Scrute</span>
+        <span class="out-tag">→ Visualise</span>
+        <span class="out-tag">→ Alerte</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Influence arrows as a flow -->
+  <div class="path-container" style="margin-top:0.75rem; text-align:center;">
+    <div style="display:flex; align-items:center; justify-content:center; gap:0.75rem; flex-wrap:wrap; font-size:0.85rem;">
+      <span style="color:#3b82f6; font-weight:600;">🏗️ Physique</span>
+      <span style="color:#64748b;">→</span>
+      <span style="color:#06b6d4; font-weight:600;">🌐 Réseau</span>
+      <span style="color:#64748b;">→</span>
+      <span style="color:#ef4444; font-weight:600;">🛡️ Sécurité</span>
+      <span style="color:#64748b;">→</span>
+      <span style="color:#22c55e; font-weight:600;">📦 Application</span>
+      <span style="color:#64748b;">→</span>
+      <span style="color:#a855f7; font-weight:600;">📊 Observabilité</span>
+    </div>
+    <p style="color:#64748b; font-size:0.7rem; margin-top:0.5rem;">
+      Une défaillance dans une couche impacte toutes les couches supérieures
+    </p>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <!-- SECTION 3 : Chemin critique                                        -->
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <div class="section-title">🔗 Exemple de chemin critique transverse</div>
+
+  <div class="path-container">
+    <div class="path-flow">
+
+      <!-- Changement -->
+      <div class="path-node pn-change">
+        <span style="font-size:1.1rem;">⚡</span>
+        <span>Modification règle</span>
+        <span class="sub">disable_rule</span>
+        <span class="layer-badge">CHANGEMENT</span>
+      </div>
+
+      <div class="path-arrow">
+        <svg viewBox="0 0 40 20"><path d="M2,10 L38,10" stroke="#f59e0b" stroke-width="2"/><polygon points="35,6 40,10 35,14" fill="#f59e0b"/></svg>
+        <span class="rel-type">HAS_RULE</span>
+      </div>
+
+      <!-- Firewall -->
+      <div class="path-node pn-firewall">
+        <span style="font-size:1.1rem;">🔥</span>
+        <span>fw-edge-01</span>
+        <span class="sub">Fortinet</span>
+        <span class="layer-badge">🛡️ SÉCURITÉ</span>
+      </div>
+
+      <div class="path-arrow">
+        <svg viewBox="0 0 40 20"><path d="M2,10 L38,10" stroke="#ef4444" stroke-width="2"/><polygon points="35,6 40,10 35,14" fill="#ef4444"/></svg>
+        <span class="rel-type">HAS_RULE</span>
+      </div>
+
+      <!-- Rule -->
+      <div class="path-node pn-rule">
+        <span style="font-size:1.1rem;">📜</span>
+        <span>Allow HTTP 80</span>
+        <span class="sub">règle firewall</span>
+        <span class="layer-badge">🛡️ SÉCURITÉ</span>
+      </div>
+
+      <div class="path-arrow">
+        <svg viewBox="0 0 40 20"><path d="M2,10 L38,10" stroke="#f97316" stroke-width="2"/><polygon points="35,6 40,10 35,14" fill="#f97316"/></svg>
+        <span class="rel-type">PROTECTS</span>
+      </div>
+
+      <!-- Application -->
+      <div class="path-node pn-app">
+        <span style="font-size:1.1rem;">🌍</span>
+        <span>web-gw-01</span>
+        <span class="sub">nginx (reverse proxy)</span>
+        <span class="layer-badge">📦 APPLICATION</span>
+      </div>
+
+      <div class="path-arrow">
+        <svg viewBox="0 0 40 20"><path d="M2,10 L38,10" stroke="#22c55e" stroke-width="2"/><polygon points="35,6 40,10 35,14" fill="#22c55e"/></svg>
+        <span class="rel-type">DEPENDS_ON</span>
+      </div>
+
+      <!-- Service DB -->
+      <div class="path-node pn-service">
+        <span style="font-size:1.1rem;">🗄️</span>
+        <span>db-main-01</span>
+        <span class="sub">PostgreSQL</span>
+        <span class="layer-badge">📦 APPLICATION</span>
+      </div>
+
+      <div class="path-arrow">
+        <svg viewBox="0 0 40 20"><path d="M2,10 L38,10" stroke="#10b981" stroke-width="2"/><polygon points="35,6 40,10 35,14" fill="#10b981"/></svg>
+        <span class="rel-type">HAS_INTERFACE</span>
+      </div>
+
+      <!-- Interface -->
+      <div class="path-node pn-device" style="background:#1e3a5f;border-color:#06b6d4;">
+        <span style="font-size:1.1rem;">🔀</span>
+        <span>sw-core-01</span>
+        <span class="sub">switch (chemin réseau)</span>
+        <span class="layer-badge">🌐 RÉSEAU</span>
+      </div>
+
+      <div class="path-arrow">
+        <svg viewBox="0 0 40 20"><path d="M2,10 L38,10" stroke="#06b6d4" stroke-width="2"/><polygon points="35,6 40,10 35,14" fill="#06b6d4"/></svg>
+        <span class="rel-type">HOSTS</span>
+      </div>
+
+      <!-- VLAN -->
+      <div class="path-node pn-vlan">
+        <span style="font-size:1.1rem;">🏷️</span>
+        <span>VLAN 30</span>
+        <span class="sub">DMZ</span>
+        <span class="layer-badge">🌐 RÉSEAU</span>
+      </div>
+
+      <div class="path-arrow">
+        <svg viewBox="0 0 40 20"><path d="M2,10 L38,10" stroke="#8b5cf6" stroke-width="2"/><polygon points="35,6 40,10 35,14" fill="#8b5cf6"/></svg>
+        <span class="rel-type">ROUTES_TO</span>
+      </div>
+
+      <!-- App impactée -->
+      <div class="path-node pn-impact">
+        <span style="font-size:1.1rem;">💥</span>
+        <span>api-backend</span>
+        <span class="sub">application impactée</span>
+        <span class="layer-badge">IMPACT</span>
+      </div>
+
+    </div>
+  </div>
+
+  <div style="margin-top:0.75rem; display:flex; gap:0.5rem; flex-wrap:wrap; justify-content:center;">
+    <span style="display:inline-flex;align-items:center;gap:0.3rem;padding:0.3rem 0.6rem;border-radius:999px;background:#5f3a1e;border:1px solid #f59e0b;font-size:0.72rem;color:#fde68a;">⚡ Changement →</span>
+    <span style="display:inline-flex;align-items:center;gap:0.3rem;padding:0.3rem 0.6rem;border-radius:999px;background:#5f1e1e;border:1px solid #ef4444;font-size:0.72rem;color:#fecaca;">🛡️ Sécurité (2 nœuds)</span>
+    <span style="display:inline-flex;align-items:center;gap:0.3rem;padding:0.3rem 0.6rem;border-radius:999px;background:#1e5f2e;border:1px solid #22c55e;font-size:0.72rem;color:#bbf7d0;">📦 Application (2 nœuds)</span>
+    <span style="display:inline-flex;align-items:center;gap:0.3rem;padding:0.3rem 0.6rem;border-radius:999px;background:#1e3a5f;border:1px solid #06b6d4;font-size:0.72rem;color:#cffafe;">🌐 Réseau (2 nœuds)</span>
+    <span style="display:inline-flex;align-items:center;gap:0.3rem;padding:0.3rem 0.6rem;border-radius:999px;background:#4a1e5f;border:1px solid #a855f7;font-size:0.72rem;color:#e9d5ff;">💥 Impact final</span>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <!-- SECTION 4 : Types d'impact entre couches                           -->
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <div class="section-title">📊 Matrice d'impact inter-couches</div>
+
+  <div style="overflow-x:auto; background:#1e293b; border:1px solid #334155; border-radius:0.75rem;">
+    <table style="width:100%; border-collapse:collapse; font-size:0.78rem;">
+      <thead>
+        <tr style="border-bottom:1px solid #334155;">
+          <th style="padding:0.75rem 1rem; text-align:left; color:#94a3b8; font-weight:500;">Changement ↓</th>
+          <th style="padding:0.75rem 1rem; text-align:center; color:#3b82f6;">🏗️ Physique</th>
+          <th style="padding:0.75rem 1rem; text-align:center; color:#06b6d4;">🌐 Réseau</th>
+          <th style="padding:0.75rem 1rem; text-align:center; color:#ef4444;">🛡️ Sécurité</th>
+          <th style="padding:0.75rem 1rem; text-align:center; color:#22c55e;">📦 Application</th>
+          <th style="padding:0.75rem 1rem; text-align:center; color:#a855f7;">📊 Observabilité</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr style="border-bottom:1px solid #1e293b;">
+          <td style="padding:0.6rem 1rem; font-weight:500;">Désactiver port switch</td>
+          <td style="padding:0.6rem 1rem; text-align:center; color:#3b82f6;">🔴 Direct</td>
+          <td style="padding:0.6rem 1rem; text-align:center; color:#06b6d4;">🔴 Direct</td>
+          <td style="padding:0.6rem 1rem; text-align:center; color:#64748b;">—</td>
+          <td style="padding:0.6rem 1rem; text-align:center; color:#22c55e;">🟡 Indirect</td>
+          <td style="padding:0.6rem 1rem; text-align:center; color:#64748b;">—</td>
+        </tr>
+        <tr style="border-bottom:1px solid #1e293b;">
+          <td style="padding:0.6rem 1rem; font-weight:500;">Modifier règle firewall</td>
+          <td style="padding:0.6rem 1rem; text-align:center; color:#64748b;">—</td>
+          <td style="padding:0.6rem 1rem; text-align:center; color:#06b6d4;">🟡 Indirect</td>
+          <td style="padding:0.6rem 1rem; text-align:center; color:#ef4444;">🔴 Direct</td>
+          <td style="padding:0.6rem 1rem; text-align:center; color:#22c55e;">🔴 Direct</td>
+          <td style="padding:0.6rem 1rem; text-align:center; color:#a855f7;">🟡 Indirect</td>
+        </tr>
+        <tr style="border-bottom:1px solid #1e293b;">
+          <td style="padding:0.6rem 1rem; font-weight:500;">Reboot routeur core</td>
+          <td style="padding:0.6rem 1rem; text-align:center; color:#3b82f6;">🟡 Indirect</td>
+          <td style="padding:0.6rem 1rem; text-align:center; color:#06b6d4;">🔴 Direct</td>
+          <td style="padding:0.6rem 1rem; text-align:center; color:#ef4444;">🟡 Indirect</td>
+          <td style="padding:0.6rem 1rem; text-align:center; color:#22c55e;">🔴 Direct</td>
+          <td style="padding:0.6rem 1rem; text-align:center; color:#a855f7;">🟡 Indirect</td>
+        </tr>
+        <tr>
+          <td style="padding:0.6rem 1rem; font-weight:500;">Arrêt base de données</td>
+          <td style="padding:0.6rem 1rem; text-align:center; color:#64748b;">—</td>
+          <td style="padding:0.6rem 1rem; text-align:center; color:#64748b;">—</td>
+          <td style="padding:0.6rem 1rem; text-align:center; color:#64748b;">—</td>
+          <td style="padding:0.6rem 1rem; text-align:center; color:#22c55e;">🔴 Direct</td>
+          <td style="padding:0.6rem 1rem; text-align:center; color:#a855f7;">🟡 Indirect</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Legend -->
+  <div class="legend">
+    <span class="legend-item"><span class="legend-dot" style="background:#3b82f6;"></span> Couche Physique</span>
+    <span class="legend-item"><span class="legend-dot" style="background:#06b6d4;"></span> Couche Réseau</span>
+    <span class="legend-item"><span class="legend-dot" style="background:#ef4444;"></span> Couche Sécurité</span>
+    <span class="legend-item"><span class="legend-dot" style="background:#22c55e;"></span> Couche Application</span>
+    <span class="legend-item"><span class="legend-dot" style="background:#a855f7;"></span> Couche Observabilité</span>
+    <span class="legend-item" style="color:#f59e0b;">🔴 Direct — 🟡 Indirect — — Aucun</span>
+  </div>
+
+  <div style="text-align:center; margin-top:2rem; color:#475569; font-size:0.7rem;">
+    Deplyx — Modèle de couches fonctionnelles · Généré le 2026-06-09
+  </div>
+
+</div>
+</body>
+</html>

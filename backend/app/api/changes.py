@@ -77,6 +77,7 @@ async def _serialize_change(change):
         "created_at": change.created_at,
         "updated_at": change.updated_at,
         "impacted_components": enriched_components,
+        "analysis": change.impact_cache,
     }
 
 
@@ -202,6 +203,38 @@ async def submit_change(
         enqueue_analysis(change_id=change_id)
     except Exception:
         logger.warning("Failed to enqueue analysis for change %s – Celery/Redis may be unavailable", change_id)
+    await db.refresh(change)
+    return await _serialize_change(change)
+
+
+@router.post("/{change_id}/reanalyze", response_model=ChangeRead)
+async def reanalyze_change(
+    change_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Re-trigger the full analysis pipeline for an already-submitted change."""
+    change = await change_service.get_change(db, change_id)
+    if change is None:
+        raise HTTPException(status_code=404, detail="Change not found")
+
+    if change.status in ("Draft", "Executing", "Completed", "RolledBack"):
+        raise HTTPException(status_code=400, detail="Change cannot be reanalyzed in its current status")
+
+    change.risk_score = None
+    change.risk_level = None
+    change.impact_cache = None
+    await change_service.set_analysis_stage(db, change_id, "pending", error=None)
+
+    if change.status in ("Approved", "Rejected"):
+        await change_service.transition_status(db, change_id, "Pending")
+
+    from app.tasks.analyze_change import enqueue_analysis
+    try:
+        enqueue_analysis(change_id=change_id)
+    except Exception:
+        logger.warning("Failed to enqueue reanalysis for change %s", change_id)
+
     await db.refresh(change)
     return await _serialize_change(change)
 

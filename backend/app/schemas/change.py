@@ -124,6 +124,7 @@ class ChangeRead(BaseModel):
     created_at: datetime
     updated_at: datetime
     impacted_components: list[ImpactedComponentRead] = []
+    analysis: dict | None = None
 
     model_config = {"from_attributes": True}
 

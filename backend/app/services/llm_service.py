@@ -139,39 +139,41 @@ firewalls/rules or alternate network paths. You MUST use this data to:
   protection is less critical than one that becomes a single point of failure
 - Mention redundancy in `risk_assessment.factors` and `mitigations`
 
-Return a JSON object with EXACTLY this structure (no markdown, no extra keys):
+Return a JSON object with EXACTLY this structure (no markdown, no extra keys).
+Each incident listed under `risk_factors` MUST be a concrete, wire-level consequence
+of the change — not a generic risk statement.
+
 {
-  "critical_paths": [
+  "risk_factors": [
     {
-      "source_id": "<target node id>",
-      "endpoint_id": "<impacted endpoint id>",
-      "endpoint_label": "<node type: Device|Application|Service|VLAN|...>",
-      "criticality": "critical|high|medium|low",
-      "hops": <number of hops>,
-      "path_description": "<one-line description of dependency chain>",
-      "nodes": [{"id": "<id>", "label": "<type>"}],
-      "edges": [{"type": "<rel type>", "source": "<from id>", "target": "<to id>"}],
-      "reasoning": "<why this path matters for this specific action, factoring action category>"
+      "label": "<concise description of the concrete issue, e.g. 'Return traffic routes asymmetrically via FTD-EDGE-02 → half-open sessions dropped' or 'New rule shadowed by upstream deny on DMZ-INBOUND:12'>",
+      "severity": "blocker|warning|info",
+      "policy": "<optional: name of the policy or ACL that detected this>",
+      "reason": "<optional: longer explanation of why this happens and what the impact is>",
+      "evidence": ["<optional: raw evidence lines, e.g. show access-list output>"]
     }
   ],
-  "risk_assessment": {
-    "severity": "critical|high|medium|low",
-    "summary": "<2-3 sentence risk summary that accounts for action category>",
-    "factors": ["<factor 1>", "<factor 2>", ...],
-    "mitigations": ["<mitigation 1>", "<mitigation 2>", ...]
-  },
+  "services": [
+    {
+      "name": "<service name>",
+      "owner": "<team name>",
+      "on_call": "<on-call contact>",
+      "sla_tier": "T1|T2|T3",
+      "rps": <requests per second number>,
+      "expected_disruption": "none|brief|full"
+    }
+  ],
   "blast_radius": {
     "total_impacted": <number>,
-    "critical_services_at_risk": ["<service/app id>", ...],
-    "redundancy_available": true|false,
-    "redundancy_details": "<explanation of failover options>"
-  },
-  "action_analysis": {
-    "action": "<the change action>",
-    "traversal_strategy": "<what kind of traversal makes sense>",
-    "explanation": "<why this traversal strategy is appropriate, including action category>"
+    "directly_impacted_ids": ["<node id>", ...],
+    "indirectly_impacted_ids": ["<node id>", ...]
   }
 }
+
+Severity rules:
+- "blocker" = the change WILL fail at deploy time (e.g. rule shadowed, syntax error, ACL order). These must be resolved before approval.
+- "warning" = the change WILL cause runtime degradation (e.g. asymmetric routing, half-open sessions, dropped return traffic).
+- "info" = expected side-effect (e.g. N active sessions reset, temporary traffic shift). These do not block approval but should be documented.
 
 Rules:
 - Order critical_paths by criticality (critical first, then high, medium, low)

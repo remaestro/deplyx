@@ -1,77 +1,32 @@
-type BadgeColor = 'critical' | 'warning' | 'success' | 'info' | 'neutral' | 'purple' | 'orange'
+import * as React from "react";
+import { cva, type VariantProps } from "class-variance-authority";
 
-const colorClasses: Record<BadgeColor, string> = {
-  critical: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300',
-  warning: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300',
-  success: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300',
-  info: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300',
-  neutral: 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300',
-  purple: 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300',
-  orange: 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300',
+import { cn } from "@/lib/utils";
+
+const badgeVariants = cva(
+  "inline-flex items-center rounded-md border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+  {
+    variants: {
+      variant: {
+        default: "border-transparent bg-primary text-primary-foreground shadow hover:bg-primary/80",
+        secondary:
+          "border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80",
+        destructive:
+          "border-transparent bg-destructive text-destructive-foreground shadow hover:bg-destructive/80",
+        outline: "text-foreground",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+    },
+  },
+);
+
+export interface BadgeProps
+  extends React.HTMLAttributes<HTMLDivElement>, VariantProps<typeof badgeVariants> {}
+
+function Badge({ className, variant, ...props }: BadgeProps) {
+  return <div className={cn(badgeVariants({ variant }), className)} {...props} />;
 }
 
-const STATUS_COLOR_MAP: Record<string, BadgeColor> = {
-  Draft: 'neutral',
-  Pending: 'warning',
-  Analyzing: 'info',
-  Approved: 'success',
-  Executing: 'purple',
-  Completed: 'success',
-  Rejected: 'critical',
-  RolledBack: 'orange',
-}
-
-const RISK_COLOR_MAP: Record<string, BadgeColor> = {
-  low: 'success',
-  medium: 'warning',
-  high: 'critical',
-}
-
-type BadgeProps = {
-  color?: BadgeColor
-  children: React.ReactNode
-  className?: string
-  dot?: boolean
-}
-
-export default function Badge({ color = 'neutral', children, className = '', dot }: BadgeProps) {
-  return (
-    <span
-      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${colorClasses[color]} ${className}`}
-    >
-      {dot && (
-        <span
-          className={`h-1.5 w-1.5 rounded-full ${
-            color === 'success'
-              ? 'bg-emerald-500'
-              : color === 'critical'
-                ? 'bg-red-500'
-                : color === 'warning'
-                  ? 'bg-amber-500'
-                  : color === 'info'
-                    ? 'bg-blue-500'
-                    : 'bg-slate-500'
-          }`}
-        />
-      )}
-      {children}
-    </span>
-  )
-}
-
-export function StatusBadge({ status }: { status: string }) {
-  return (
-    <Badge color={STATUS_COLOR_MAP[status] ?? 'neutral'} dot>
-      {status}
-    </Badge>
-  )
-}
-
-export function RiskBadge({ level }: { level: string | null }) {
-  if (!level) return <span className="text-xs text-slate-400 dark:text-slate-500">—</span>
-  return (
-    <Badge color={RISK_COLOR_MAP[level] ?? 'neutral'}>
-      {level}
-    </Badge>
-  )
-}
+export { Badge, badgeVariants };

@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import ipaddress
+import json
 import os
 import re
 import time
@@ -1139,14 +1140,25 @@ class UnifiedConnector:
             nbr_host = neighbor.get("hostname", "")
             nbr_local_if = neighbor.get("local_interface", "")
             nbr_remote_if = neighbor.get("neighbor_interface", "")
-            if not nbr_host:
+            nbr_ip = neighbor.get("ip", "")
+            if not nbr_host and not nbr_ip:
                 continue
             try:
-                # Find the neighbor device in Neo4j
-                found = await neo4j_client.run_query(
-                    "MATCH (d:Device) WHERE d.hostname = $host RETURN d.id LIMIT 1",
-                    {"host": nbr_host},
-                )
+                found = None
+                # Strip FQDN suffix for matching (cdp gives "sw1.ipt.com", Neo4j has "sw1")
+                short_host = nbr_host.split(".")[0] if nbr_host else ""
+                if nbr_host:
+                    found = await neo4j_client.run_query(
+                        "MATCH (d:Device) WHERE d.hostname = $host "
+                        "OR d.hostname = $short OR d.ip = $host "
+                        "OR d.hostname CONTAINS $short RETURN d.id LIMIT 1",
+                        {"host": nbr_host, "short": short_host},
+                    )
+                if not found and nbr_ip:
+                    found = await neo4j_client.run_query(
+                        "MATCH (d:Device) WHERE d.ip = $ip RETURN d.id LIMIT 1",
+                        {"ip": nbr_ip},
+                    )
                 if found:
                     nbr_id = found[0]["d.id"]
                     props = {"source": neighbor.get("protocol", "cdp")}
@@ -1157,6 +1169,43 @@ class UnifiedConnector:
                     await neo4j_client.create_relationship(
                         "Device", device_id, "CONNECTED_TO", "Device", nbr_id, props,
                     )
+            except Exception:
+                pass
+
+        # ── ARP entries ──────────────────────────────────────────────────
+        for arp in data.get("arp_entries", []):
+            arp_ip = arp.get("ip", "")
+            arp_mac = arp.get("mac", "")
+            arp_iface = arp.get("interface", "")
+            if not arp_ip:
+                continue
+            arp_id = f"ARP-{serial}-{arp_ip.replace('.', '_')}"
+            try:
+                await neo4j_client.merge_node("ARP", arp_id, {
+                    "id": arp_id, "ip_address": arp_ip,
+                    "mac": arp_mac, "interface": arp_iface,
+                    "display_name": f"ARP {arp_ip} ({hostname})",
+                })
+                await neo4j_client.create_relationship("Device", device_id, "HAS_ARP", "ARP", arp_id)
+            except Exception:
+                pass
+
+        # ── Services ─────────────────────────────────────────────────────
+        for svc in data.get("services", []):
+            svc_name = svc.get("name", "")
+            svc_port = svc.get("port", "")
+            svc_proto = svc.get("protocol", "")
+            if not svc_name:
+                continue
+            svc_id = f"SVC-{serial}-{svc_name}-{svc_port}"
+            try:
+                await neo4j_client.merge_node("Service", svc_id, {
+                    "id": svc_id, "name": svc_name,
+                    "port": str(svc_port), "protocol": svc_proto,
+                    "enabled": svc.get("enabled", False),
+                    "display_name": f"{svc_name}:{svc_port} ({hostname})",
+                })
+                await neo4j_client.create_relationship("Device", device_id, "RUNS", "Service", svc_id)
             except Exception:
                 pass
 

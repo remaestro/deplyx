@@ -12,9 +12,12 @@ logger = get_logger(__name__)
 
 ALLOWED_REL_TYPES: frozenset[str] = frozenset({
     "HAS_INTERFACE",
+    "HAS_VLAN",
     "HAS_RULE",
     "HOSTS",
     "HAS_IP",
+    "HAS_ARP",
+    "RUNS",
     "PROTECTS",
     "CONNECTED_TO",
     "HAS_BGP_PEER",

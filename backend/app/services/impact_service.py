@@ -129,6 +129,10 @@ def _build_llm_first_response(
     blast_radius = llm_result.get("blast_radius") or {}
     action_analysis = llm_result.get("action_analysis") or {}
 
+    # New incident-based format
+    risk_factors = llm_result.get("risk_factors") or []
+    services = llm_result.get("services") or []
+
     direct_map = {
         item.get("id"): item
         for item in (graph_result.get("directly_impacted") or [])
@@ -157,7 +161,7 @@ def _build_llm_first_response(
     if not indirectly_impacted:
         indirectly_impacted = list(graph_result.get("indirectly_impacted") or [])
     affected_applications = [item for item in indirectly_impacted if item.get("label") == "Application"]
-    affected_services = [item for item in indirectly_impacted if item.get("label") == "Service"]
+    affected_services_list = [item for item in indirectly_impacted if item.get("label") == "Service"]
     affected_vlans = [item for item in indirectly_impacted if item.get("label") == "VLAN"]
 
     total_dependency_count = blast_radius.get("total_impacted")
@@ -175,11 +179,11 @@ def _build_llm_first_response(
         blast_radius["redundancy_details"] = redundancy.get("details", blast_radius.get("redundancy_details", ""))
         blast_radius["redundancy_per_application"] = redundancy.get("per_application", {})
 
-    return {
+    result = {
         "directly_impacted": directly_impacted,
         "indirectly_impacted": indirectly_impacted,
         "affected_applications": affected_applications,
-        "affected_services": affected_services,
+        "affected_services": affected_services_list,
         "affected_vlans": affected_vlans,
         "total_dependency_count": total_dependency_count,
         "max_criticality": max_criticality,
@@ -191,6 +195,14 @@ def _build_llm_first_response(
         "redundancy": redundancy,
         "llm_powered": True,
     }
+
+    # Add new incident-based fields if present
+    if risk_factors:
+        result["risk_factors"] = risk_factors
+    if services:
+        result["services"] = services
+
+    return result
 
 
 async def _graph_based_analysis(

@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Topologie par couches fonctionnelles — Deplyx</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    background: #0b1120;
+    color: #e2e8f0;
+    padding: 1.5rem;
+    min-height: 100vh;
+  }
+  h1 {
+    font-size: 1.4rem;
+    font-weight: 600;
+    margin-bottom: 0.2rem;
+    background: linear-gradient(135deg, #a78bfa, #60a5fa);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .subtitle { color: #64748b; font-size: 0.8rem; margin-bottom: 1.5rem; }
+  .legend {
+    display: flex; flex-wrap: wrap; gap: 1rem 2rem;
+    padding: 0.75rem 1rem;
+    background: #131c31;
+    border-radius: 0.5rem;
+    border: 1px solid #1e2d4a;
+    margin-bottom: 1.5rem;
+    font-size: 0.72rem;
+  }
+  .legend-item { display: flex; align-items: center; gap: 0.4rem; }
+  .legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+  .legend-line { width: 20px; height: 2px; }
+
+  /* ── SVG Topology ── */
+  .topo-wrapper {
+    background: #0f172a;
+    border: 1px solid #1e2d4a;
+    border-radius: 0.75rem;
+    overflow: hidden;
+    position: relative;
+  }
+  .topo-controls {
+    display: flex; gap: 0.5rem; align-items: center;
+    padding: 0.5rem 1rem;
+    background: #131c31;
+    border-bottom: 1px solid #1e2d4a;
+    font-size: 0.72rem;
+  }
+  .topo-controls button {
+    background: #1e2d4a; color: #cbd5e1; border: none;
+    padding: 0.25rem 0.6rem; border-radius: 4px;
+    cursor: pointer; font-size: 0.7rem;
+    transition: background 0.15s;
+  }
+  .topo-controls button:hover { background: #334155; }
+  .topo-controls button.active { background: #3b82f6; color: #fff; }
+  .topo-controls .sep { color: #334155; margin: 0 0.25rem; }
+
+  #topo-svg {
+    width: 100%;
+    height: 800px;
+    display: block;
+  }
+  #topo-svg text {
+    font-family: 'JetBrains Mono', 'Inter', monospace;
+    user-select: none;
+    pointer-events: none;
+  }
+
+  /* Tooltip */
+  .tooltip {
+    position: fixed;
+    background: #1e293b;
+    border: 1px solid #475569;
+    border-radius: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.7rem;
+    pointer-events: none;
+    z-index: 1000;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+    max-width: 280px;
+    display: none;
+  }
+  .tooltip .tt-name { color: #f1f5f9; font-weight: 600; }
+  .tooltip .tt-detail { color: #94a3b8; margin-top: 0.15rem; }
+  .tooltip .tt-row { display: flex; justify-content: space-between; gap: 1rem; color: #64748b; }
+</style>
+</head>
+<body>
+
+<h1>🗺️ Topologie réelle — Couches fonctionnelles</h1>
+<p class="subtitle">Données Neo4j · 75 nœuds, 60 relations · Lab CISCO/FTD</p>
+
+<div class="legend">
+  <span class="legend-item"><span class="legend-dot" style="background:#3b82f6;"></span> 🔀 Réseau (routeurs/switches)</span>
+  <span class="legend-item"><span class="legend-dot" style="background:#ef4444;"></span> 🛡️ Sécurité (firewalls/règles)</span>
+  <span class="legend-item"><span class="legend-dot" style="background:#22c55e;"></span> 📦 Routes</span>
+  <span class="legend-item"><span class="legend-dot" style="background:#8b5cf6;"></span> 🔌 Interfaces</span>
+  <span class="legend-item"><span class="legend-dot" style="background:#f59e0b;"></span> ⚡ Chemin critique</span>
+  <span class="legend-item" style="margin-left:auto;color:#475569;">Cliquez sur un nœud pour voir ses propriétés</span>
+</div>
+
+<div class="topo-wrapper">
+  <div class="topo-controls">
+    <span style="color:#94a3b8;">🔍</span>
+    <button onclick="zoomIn()">+</button>
+    <button onclick="zoomOut()">−</button>
+    <button onclick="resetZoom()">↺</button>
+    <span class="sep">|</span>
+    <button id="btn-all" class="active" onclick="showLayer('all')">Tout</button>
+    <button id="btn-reseau" onclick="showLayer('reseau')">🌐 Réseau</button>
+    <button id="btn-securite" onclick="showLayer('securite')">🛡️ Sécurité</button>
+    <button id="btn-route" onclick="showLayer('route')">🗺️ Routes</button>
+    <button id="btn-iface" onclick="showLayer('iface')">🔌 Interfaces</button>
+    <span class="sep">|</span>
+    <span style="color:#94a3b8;">💡</span>
+    <button id="btn-path" onclick="togglePath()">Chemin critique</button>
+    <span style="margin-left:auto;color:#64748b;font-size:0.65rem;" id="node-count"></span>
+  </div>
+  <svg id="topo-svg"></svg>
+</div>
+
+<div class="tooltip" id="tooltip"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════
+// DONNÉES — extraites de Neo4j
+// ═══════════════════════════════════════════════════════════════════════
+
+const DEVICES = {
+  "R5":      { id: "DEV-67676163", label: "R5",           type: "core-router",   vendor: "cisco",   ip: "192.168.170.5",  interfaces: 4, routes: 6 },
+  "sw1":     { id: "DEV-67678210", label: "sw1",          type: "access-switch", vendor: "cisco",   ip: "192.168.170.101", interfaces: 12, routes: 2 },
+  "SW2":     { id: "DEV-67667969", label: "SW2",          type: "access-switch", vendor: "cisco",   ip: "192.168.170.102", interfaces: 12, routes: 2 },
+  "FTD-10":  { id: "FTD-0FDFD844", label: "192.168.170.10", type: "firewall",   vendor: "cisco-ftd", ip: "192.168.170.10", interfaces: 5, rules: 2 },
+  "FTD-13":  { id: "FTD-10E4881C", label: "192.168.170.13", type: "firewall",   vendor: "cisco-ftd", ip: "192.168.170.13", interfaces: 5, rules: 2 },
+};
+
+const RULES = [
+  { id: "R1a", label: "VPN-Traffic",      device: "FTD-10", action: "permit" },
+  { id: "R1b", label: "Inside_Outside_Rule", device: "FTD-10", action: "permit" },
+  { id: "R2a", label: "VPN-Traffic",      device: "FTD-13", action: "permit" },
+  { id: "R2b", label: "Inside_Outside_Rule", device: "FTD-13", action: "permit" },
+];
+
+// PROTECTS relationships: firewall → target
+const PROTECTS = [
+  { from: "FTD-10", to: "R5" },
+  { from: "FTD-10", to: "sw1" },
+  { from: "FTD-13", to: "R5" },
+  { from: "FTD-13", to: "sw1" },
+  { from: "FTD-10", to: "SW2" },
+  { from: "FTD-13", to: "SW2" },
+];
+
+// Chemin critique : FTD-10 → PROTECTS → R5 → HAS_ROUTE → routes
+// Un changement de règle sur FTD-10 impacte R5 et ses routes
+const CRITICAL_PATH = {
+  nodes: ["FTD-10", "R5", "sw1", "SW2"],
+  edges: [
+    { from: "FTD-10", to: "R5", label: "PROTECTS" },
+    { from: "FTD-10", to: "sw1", label: "PROTECTS" },
+    { from: "FTD-10", to: "SW2", label: "PROTECTS" },
+  ],
+  highlight_rule: "Inside_Outside_Rule",
+  highlight_device: "FTD-10",
+};
+
+// ═══════════════════════════════════════════════════════════════════════
+// LAYOUT
+// ═══════════════════════════════════════════════════════════════════════
+
+const W = 1100, H = 700;
+const LAYER_Y = {
+  reseau:  120,   // Routeurs & switches
+  securite: 300,  // Firewalls & rules
+  route:    500,  // Routes
+  iface:    650,  // Interfaces (off-screen, scrolled)
+};
+
+const DEVICE_X = {
+  "R5":     200,
+  "sw1":    500,
+  "SW2":    800,
+  "FTD-10": 350,
+  "FTD-13": 650,
+};
+
+let currentLayer = 'all';
+let showPath = false;
+let zoomLevel = 1;
+let panX = 0, panY = 0;
+
+// ═══════════════════════════════════════════════════════════════════════
+// RENDER
+// ═══════════════════════════════════════════════════════════════════════
+
+const SVG = document.getElementById('topo-svg');
+const NS = 'http://www.w3.org/2000/svg';
+const TOOLTIP = document.getElementById('tooltip');
+
+function g(tag, attrs = {}, children = []) {
+  const el = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
+  for (const c of children) {
+    if (typeof c === 'string') el.appendChild(document.createTextNode(c));
+    else el.appendChild(c);
+  }
+  return el;
+}
+
+function render() {
+  SVG.innerHTML = '';
+  const gMain = g('g', { transform: `translate(${panX},${panY}) scale(${zoomLevel})` });
+
+  // ── Background layers ──
+  const layerDefs = [
+    { id: 'reseau',   y: 60,  h: 170, label: '🌐 Couche Réseau — Switches & Routeur', color: '#1e3a5f33' },
+    { id: 'securite', y: 250, h: 170, label: '🛡️ Couche Sécurité — Firewalls & Règles', color: '#5f1e1e33' },
+    { id: 'route',    y: 440, h: 100, label: '🗺️ Couche Routage — Routes', color: '#3a5f1e33' },
+  ];
+  for (const l of layerDefs) {
+    const vis = currentLayer === 'all' || currentLayer === l.id;
+    gMain.appendChild(g('rect', {
+      x: 30, y: l.y, width: W - 60, height: l.h,
+      fill: l.color, rx: 8,
+      stroke: '#1e2d4a', 'stroke-width': 1,
+      'stroke-dasharray': vis ? 'none' : '4,4',
+      opacity: vis ? 1 : 0.3,
+    }));
+    gMain.appendChild(g('text', {
+      x: 45, y: l.y + 18, fill: '#475569', 'font-size': '11px', 'font-weight': '600',
+      'text-transform': 'uppercase', 'letter-spacing': '0.05em',
+      opacity: vis ? 1 : 0.3,
+    }, [l.label]));
+  }
+
+  // ── Edges (PROTECTS) ──
+  for (const p of PROTECTS) {
+    const sx = DEVICE_X[p.from], sy = LAYER_Y.securite;
+    const tx = DEVICE_X[p.to], ty = LAYER_Y.reseau;
+    const isActive = showPath && (p.from === 'FTD-10' || p.to === 'SW2');
+    
+    const path = g('path', {
+      d: `M ${sx} ${sy+20} C ${sx} ${(sy+ty)/2}, ${tx} ${(sy+ty)/2}, ${tx} ${ty-30}`,
+      fill: 'none',
+      stroke: isActive ? '#f59e0b' : '#ef444466',
+      'stroke-width': isActive ? 3 : 1.5,
+      'stroke-dasharray': isActive ? 'none' : '8,4',
+      opacity: isActive ? 1 : 0.5,
+      'data-from': p.from, 'data-to': p.to,
+      class: 'edge-protects',
+    });
+    gMain.appendChild(path);
+
+    // Label
+    if (isActive || currentLayer === 'all') {
+      gMain.appendChild(g('text', {
+        x: (sx + tx) / 2, y: (sy + ty) / 2 - 4,
+        fill: isActive ? '#f59e0b' : '#ef444488',
+        'font-size': '9px', 'text-anchor': 'middle',
+        'font-weight': isActive ? '600' : '400',
+      }, ['PROTECTS']));
+    }
+  }
+
+  // ── Devices ──
+  for (const [key, d] of Object.entries(DEVICES)) {
+    const isReseau = d.type === 'core-router' || d.type === 'access-switch';
+    const isSecurite = d.type === 'firewall';
+    const layer = isReseau ? 'reseau' : 'securite';
+    const vis = currentLayer === 'all' || currentLayer === layer;
+    const y = isReseau ? LAYER_Y.reseau : LAYER_Y.securite;
+    const x = DEVICE_X[key];
+
+    const inPath = showPath && (key === 'R5' || key === 'sw1' || key === 'FTD-10' || key === 'SW2');
+    const glow = inPath ? 'filter:drop-shadow(0 0 6px #f59e0b);' : '';
+
+    const colors = isReseau ? { bg: '#1e3a5f', border: '#3b82f6', text: '#bfdbfe' }
+      : { bg: '#5f1e1e', border: '#ef4444', text: '#fecaca' };
+
+    const gDev = g('g', {
+      transform: `translate(${x-60},${y-15})`,
+      opacity: vis ? 1 : 0.15,
+      class: 'device-node',
+      'data-key': key,
+      style: 'cursor:pointer;' + glow,
+    });
+
+    // Card background
+    gDev.appendChild(g('rect', {
+      width: 120, height: 30, rx: 6,
+      fill: colors.bg, stroke: inPath ? '#f59e0b' : colors.border,
+      'stroke-width': inPath ? 2.5 : 1.5,
+    }));
+
+    // Icon + name
+    const icon = isReseau ? '🔀' : '🔥';
+    gDev.appendChild(g('text', {
+      x: 8, y: 19, 'font-size': '16px',
+    }, [icon]));
+    gDev.appendChild(g('text', {
+      x: 30, y: 14, fill: colors.text,
+      'font-size': '11px', 'font-weight': '600',
+    }, [d.label]));
+    gDev.appendChild(g('text', {
+      x: 30, y: 24, fill: '#64748b',
+      'font-size': '8px',
+    }, [d.type]));
+
+    // Tooltip events
+    gDev.addEventListener('mouseenter', (e) => showTooltip(e, d));
+    gDev.addEventListener('mousemove', moveTooltip);
+    gDev.addEventListener('mouseleave', hideTooltip);
+
+    gMain.appendChild(gDev);
+
+    // Sub-elements count badge
+    gMain.appendChild(g('text', {
+      x, y: y + 40, 'text-anchor': 'middle',
+      fill: '#475569', 'font-size': '8px',
+      opacity: vis ? 0.8 : 0,
+    }, [`${d.interfaces} interfaces · ${d.routes || d.rules || 0} ${d.type === 'firewall' ? 'règles' : 'routes'}`]));
+  }
+
+  // ── Rules ──
+  const ruleY = LAYER_Y.securite + 55;
+  for (let i = 0; i < RULES.length; i++) {
+    const r = RULES[i];
+    const devKey = r.device;
+    const vis = currentLayer === 'all' || currentLayer === 'securite';
+    const rx = DEVICE_X[devKey] + (i % 2 === 0 ? -45 : 45);
+    const ry = ruleY + Math.floor(i / 2) * 28;
+
+    const inPath = showPath && r.label === 'Inside_Outside_Rule' && r.device === 'FTD-10';
+    const gRule = g('g', {
+      transform: `translate(${rx-50},${ry})`,
+      opacity: vis ? 0.9 : 0.1,
+      'data-rule': r.id,
+    });
+
+    gRule.appendChild(g('rect', {
+      width: 100, height: 22, rx: 4,
+      fill: inPath ? '#78350f' : '#2d1a1a',
+      stroke: inPath ? '#f59e0b' : '#5f1e1e',
+      'stroke-width': inPath ? 2 : 1,
+    }));
+    gRule.appendChild(g('text', {
+      x: 8, y: 14, fill: inPath ? '#fde68a' : '#fecaca',
+      'font-size': '8px', 'font-weight': inPath ? '600' : '400',
+    }, [`📜 ${r.label}`]));
+
+    // Line to parent firewall
+    gMain.appendChild(g('line', {
+      x1: DEVICE_X[devKey], y1: LAYER_Y.securite + 15,
+      x2: rx, y2: ry,
+      stroke: inPath ? '#f59e0b' : '#5f1e1e44',
+      'stroke-width': inPath ? 2 : 1,
+      'stroke-dasharray': '4,3',
+      opacity: vis ? 1 : 0,
+    }));
+
+    gMain.appendChild(gRule);
+  }
+
+  // ── Routes layer ──
+  const routeY = LAYER_Y.route + 30;
+  const routeDevices = [
+    { dev: 'R5',  routes: ['10.0.0.0/24', '10.0.0.1/24', '20.0.0.0/24', '20.0.0.1/24', '192.168.170.0/24', '192.168.170.5'] },
+    { dev: 'sw1', routes: ['192.168.170.0/24', '192.168.170.101'] },
+    { dev: 'SW2', routes: ['192.168.170.0/24', '192.168.170.102'] },
+  ];
+  for (const rd of routeDevices) {
+    const vis = currentLayer === 'all' || currentLayer === 'route';
+    const bx = DEVICE_X[rd.dev];
+    rd.routes.forEach((r, i) => {
+      const col = Math.floor(i / 3);
+      const row = i % 3;
+      const rx = bx + (col === 0 ? -70 : col === 1 ? 0 : 70);
+      const ry = routeY + row * 22;
+
+      gMain.appendChild(g('rect', {
+        x: rx-4, y: ry-8, width: 68, height: 18, rx: 3,
+        fill: '#1a2e1a', stroke: '#22c55e44', 'stroke-width': 1,
+        opacity: vis ? 0.8 : 0,
+      }));
+      gMain.appendChild(g('text', {
+        x: rx, y: ry + 4, fill: '#4ade80',
+        'font-size': '7px', 'text-anchor': 'middle',
+        opacity: vis ? 0.7 : 0,
+        'font-family': 'monospace',
+      }, [r]));
+    });
+  }
+
+  SVG.appendChild(gMain);
+  updateCount();
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// TOOLTIP
+// ═══════════════════════════════════════════════════════════════════════
+
+function showTooltip(e, d) {
+  const tt = TOOLTIP;
+  tt.style.display = 'block';
+  tt.innerHTML = `
+    <div class="tt-name">${d.label}</div>
+    <div class="tt-detail">${d.vendor} · ${d.type}</div>
+    <div class="tt-row"><span>IP</span><span>${d.ip}</span></div>
+    <div class="tt-row"><span>Interfaces</span><span>${d.interfaces}</span></div>
+    <div class="tt-row"><span>Routes</span><span>${d.routes}</span></div>
+    <div class="tt-row"><span>ID</span><span style="font-size:0.6rem;">${d.id}</span></div>
+  `;
+  moveTooltip(e);
+}
+function moveTooltip(e) {
+  TOOLTIP.style.left = (e.clientX + 12) + 'px';
+  TOOLTIP.style.top = (e.clientY - 10) + 'px';
+}
+function hideTooltip() { TOOLTIP.style.display = 'none'; }
+
+// ═══════════════════════════════════════════════════════════════════════
+// CONTROLS
+// ═══════════════════════════════════════════════════════════════════════
+
+function showLayer(layer) {
+  currentLayer = layer;
+  document.querySelectorAll('.topo-controls button[id^="btn-"]').forEach(b => b.classList.remove('active'));
+  const btn = document.getElementById(`btn-${layer}`);
+  if (btn) btn.classList.add('active');
+  render();
+}
+
+function togglePath() {
+  showPath = !showPath;
+  document.getElementById('btn-path').classList.toggle('active');
+  render();
+}
+
+function zoomIn() { zoomLevel = Math.min(2, zoomLevel + 0.2); render(); }
+function zoomOut() { zoomLevel = Math.max(0.3, zoomLevel - 0.2); render(); }
+function resetZoom() { zoomLevel = 1; panX = 0; panY = 0; render(); }
+
+function updateCount() {
+  document.getElementById('node-count').textContent =
+    `${Object.keys(DEVICES).length} équipements · ${RULES.length} règles · 60 relations`;
+}
+
+// ── Pan with mouse drag ──
+let isDragging = false, startX, startY;
+SVG.addEventListener('mousedown', (e) => {
+  if (e.target === SVG || e.target.tagName === 'g') {
+    isDragging = true;
+    startX = e.clientX - panX;
+    startY = e.clientY - panY;
+  }
+});
+window.addEventListener('mousemove', (e) => {
+  if (isDragging) {
+    panX = e.clientX - startX;
+    panY = e.clientY - startY;
+    render();
+  }
+});
+window.addEventListener('mouseup', () => { isDragging = false; });
+
+// ═══════════════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════════════
+
+// ═══════════════════════════════════════════════════════════════════════
+// INFO PANEL : chemin critique détaillé
+// ═══════════════════════════════════════════════════════════════════════
+
+function showCriticalPathDetail() {
+  const info = document.getElementById('path-info');
+  if (!info) return;
+  info.style.display = showPath ? 'block' : 'none';
+  if (!showPath) return;
+
+  info.innerHTML = `
+    <div style="font-weight:600;color:#f59e0b;margin-bottom:0.5rem;">
+      ⚡ Chemin critique actif — modification règle sur FTD-10 (192.168.170.10)
+    </div>
+    <div class="cp-row">
+      <span class="cp-layer" style="background:#5f1e1e;">🛡️ SÉCURITÉ</span>
+      <span class="cp-node">🔥 FTD-10</span>
+      <span class="cp-arr">→</span>
+      <span class="cp-rel">HAS_RULE</span>
+      <span class="cp-arr">→</span>
+      <span class="cp-node">📜 Inside_Outside_Rule</span>
+      <span class="cp-arr" style="color:#f59e0b;">⬇️</span>
+    </div>
+    <div class="cp-row">
+      <span class="cp-layer" style="background:#5f1e1e;">🛡️ SÉCURITÉ</span>
+      <span class="cp-node">📜 Inside_Outside_Rule</span>
+      <span class="cp-arr">→</span>
+      <span class="cp-rel">PROTECTS</span>
+      <span class="cp-arr">→</span>
+      <span class="cp-node">🌐 R5 · sw1 · SW2</span>
+      <span class="cp-arr" style="color:#f59e0b;">⬇️</span>
+    </div>
+    <div class="cp-row">
+      <span class="cp-layer" style="background:#1e3a5f;">🌐 RÉSEAU</span>
+      <span class="cp-node">🔀 R5 (core-router)</span>
+      <span class="cp-arr">→</span>
+      <span class="cp-rel">HAS_ROUTE</span>
+      <span class="cp-arr">→</span>
+      <span class="cp-node">🗺️ 6 routes réseau</span>
+      <span class="cp-arr" style="color:#f59e0b;">⬇️</span>
+    </div>
+    <div class="cp-row">
+      <span class="cp-layer" style="background:#1e3a5f;">🌐 RÉSEAU</span>
+      <span class="cp-node">🔀 sw1 · SW2 (switches)</span>
+      <span class="cp-arr">→</span>
+      <span class="cp-rel">HAS_INTERFACE</span>
+      <span class="cp-arr">→</span>
+      <span class="cp-node">🔌 24 interfaces total</span>
+    </div>
+    <div style="margin-top:0.5rem;padding:0.4rem 0.6rem;background:#131c31;border-radius:4px;font-size:0.68rem;color:#94a3b8;">
+      💡 <strong>Impact :</strong> une modification de la règle <em>Inside_Outside_Rule</em> sur le firewall FTD-10 
+      affecte le routage de R5 et la connectivité des switches sw1 et SW2 — 
+      soit <strong>3 couches fonctionnelles</strong> traversées (Sécurité → Réseau → Connectivité).
+    </div>
+  `;
+}
+
+// Append info panel after SVG
+const infoPanel = document.createElement('div');
+infoPanel.id = 'path-info';
+infoPanel.style.cssText = `
+  display:none; margin:0.75rem; padding:0.75rem 1rem;
+  background:#131c31; border:1px solid #f59e0b33; border-radius:0.5rem;
+  font-size:0.75rem;
+`;
+document.querySelector('.topo-wrapper').appendChild(infoPanel);
+
+// Add styles for path info
+const style2 = document.createElement('style');
+style2.textContent = `
+  .cp-row { display:flex; align-items:center; gap:0.4rem; flex-wrap:wrap; margin-bottom:0.35rem; }
+  .cp-layer { font-size:0.6rem; font-weight:600; padding:0.1rem 0.4rem; border-radius:3px; }
+  .cp-node { font-weight:500; color:#e2e8f0; }
+  .cp-rel { font-size:0.6rem; color:#64748b; font-weight:500; padding:0.1rem 0.3rem; background:#1e293b; border-radius:3px; }
+  .cp-arr { color:#475569; font-weight:600; }
+`;
+document.head.appendChild(style2);
+
+// Patch togglePath to show info
+const origToggle = togglePath;
+togglePath = function() {
+  origToggle();
+  showCriticalPathDetail();
+};
+
+render();
+showCriticalPathDetail();
+</script>
+</body>
+</html>
