@@ -1,33 +1,15 @@
 import asyncio
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from typing import Any
 from time import perf_counter
+
+import yaml
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.connectors.base import BaseConnector
-from app.connectors.cisco import CiscoConnector
-from app.connectors.checkpoint import CheckPointConnector
-from app.connectors.fortinet import FortinetConnector
-from app.connectors.juniper import JuniperConnector
-from app.connectors.paloalto import PaloAltoConnector
-from app.connectors.aruba_switch import ArubaSwitchConnector
-from app.connectors.aruba_ap import ArubaAPConnector
-from app.connectors.cisco_nxos import CiscoNXOSConnector
-from app.connectors.cisco_ftd import CiscoFTDConnector
-from app.connectors.cisco_router import CiscoRouterConnector
-from app.connectors.cisco_wlc import CiscoWLCConnector
-from app.connectors.vyos import VyOSConnector
-from app.connectors.strongswan_vpn import StrongSwanVPNConnector
-from app.connectors.snort_ids import SnortIDSConnector
-from app.connectors.openldap import OpenLDAPConnector
-from app.connectors.nginx_app import NginxAppConnector
-from app.connectors.postgres_app import PostgresAppConnector
-from app.connectors.redis_app import RedisAppConnector
-from app.connectors.elasticsearch import ElasticsearchConnector
-from app.connectors.grafana import GrafanaConnector
-from app.connectors.prometheus import PrometheusConnector
 from app.connectors_v2.connector import UnifiedConnector
 from app.models.connector import Connector
 from app.services import change_service
@@ -35,49 +17,71 @@ from app.utils.logging import get_logger
 
 logger = get_logger(__name__)
 
-# Allow all connectors to sync concurrently.  Each connector already
-# offloads blocking I/O to a thread via asyncio.to_thread(), and
-# per-command timeouts (30 s) + overall operation timeout (90 s) prevent
-# any single sync from monopolising resources.
+# ── Dynamic V2 type detection ─────────────────────────────────────
+
+_PROFILES_DIR = Path(__file__).resolve().parent.parent / "connectors_v2" / "profiles"
+_V2_TYPE_CACHE: tuple[float, set[str]] | None = None
+_V2_TYPE_CACHE_TTL = 30.0  # secondes avant re-scan
+
+
+def _get_v2_types() -> set[str]:
+    """Scanne les profils YAML pour déterminer les types supportés en V2."""
+    global _V2_TYPE_CACHE
+    import time
+
+    now = time.time()
+    if _V2_TYPE_CACHE is not None and now - _V2_TYPE_CACHE[0] < _V2_TYPE_CACHE_TTL:
+        return _V2_TYPE_CACHE[1]
+
+    types: set[str] = set()
+    if _PROFILES_DIR.exists():
+        for f in sorted(_PROFILES_DIR.glob("*.yml")):
+            try:
+                with open(f) as fh:
+                    data = yaml.safe_load(fh)
+                if not data or not data.get("vendor"):
+                    continue
+                stem = f.stem
+                prefix = stem.split("-", 1)[0]
+                if prefix:
+                    types.add(prefix)
+            except Exception:
+                continue
+
+    _V2_TYPE_CACHE = (now, types)
+    return types
+
+
+# ── V1 legacy connectors (sans équivalent V2) — déprécié ─────────
+# Tous les connecteurs réseau ont migré vers V2 (profils YAML).
+
+_V1_CONNECTOR_CLASSES: dict[str, type] = {}
+
+
+def _get_v1_classes() -> dict[str, type]:
+    """Import paresseux des classes V1 — actuellement vide (tout est en V2)."""
+    return _V1_CONNECTOR_CLASSES
+
+
 _SYNC_SEMAPHORE = asyncio.Semaphore(20)
-
-CONNECTOR_CLASSES: dict[str, type] = {
-    "paloalto": PaloAltoConnector,
-    "fortinet": FortinetConnector,
-    "cisco": CiscoConnector,
-    "checkpoint": CheckPointConnector,
-    "juniper": JuniperConnector,
-    "aruba-switch": ArubaSwitchConnector,
-    "aruba-ap": ArubaAPConnector,
-    "cisco-nxos": CiscoNXOSConnector,
-    "cisco-ftd": CiscoFTDConnector,
-    "cisco-router": CiscoRouterConnector,
-    "cisco-wlc": CiscoWLCConnector,
-    "vyos": VyOSConnector,
-    "strongswan": StrongSwanVPNConnector,
-    "snort": SnortIDSConnector,
-    "openldap": OpenLDAPConnector,
-    "nginx": NginxAppConnector,
-    "postgres": PostgresAppConnector,
-    "redis": RedisAppConnector,
-    "elasticsearch": ElasticsearchConnector,
-    "grafana": GrafanaConnector,
-    "prometheus": PrometheusConnector,
-}
-
-_V2_TYPES = {"cisco", "cisco-router", "cisco-ftd", "cisco-nxos",
-             "juniper", "vyos", "aruba-switch", "aruba-ap",
-             "fortinet", "paloalto", "checkpoint"}
 
 
 def _get_connector_instance(connector: Connector) -> BaseConnector:
+    """Retourne l'instance de connecteur appropriée (V2 ou V1 legacy)."""
     ctype = connector.connector_type
-    if ctype in _V2_TYPES:
+    v2_types = _get_v2_types()
+
+    if ctype in v2_types:
         logger.info("Using UnifiedConnector V2 for %s (%s)", connector.name, ctype)
         return UnifiedConnector({**connector.config, "_connector_type": ctype})
-    cls = CONNECTOR_CLASSES.get(ctype)
+
+    cls = _get_v1_classes().get(ctype)
     if cls is None:
-        raise ValueError(f"Unknown connector type: {ctype}")
+        raise ValueError(
+            f"Unknown connector type: {ctype!r}. "
+            f"V2 types: {sorted(v2_types)} | "
+            f"V1 types: {sorted(_get_v1_classes())}"
+        )
     return cls(connector.config)
 
 

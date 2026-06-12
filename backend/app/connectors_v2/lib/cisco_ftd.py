@@ -23,8 +23,7 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 logger = get_logger(__name__)
 
 
-def _safe_id(value: str) -> str:
-    return re.sub(r"[^A-Za-z0-9_-]+", "_", value.strip()).strip("_") or "unknown"
+from app.connectors_v2.normalizers import safe_id as _safe_id
 
 
 def _clean_value(value: str) -> str:

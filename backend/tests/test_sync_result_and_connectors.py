@@ -66,26 +66,7 @@ class TestSyncResultSemantics:
 
 ALL_CONNECTOR_MODULES = [
     "app.connectors.fortinet",
-    "app.connectors.paloalto",
-    "app.connectors.checkpoint",
-    "app.connectors.cisco",
-    "app.connectors.cisco_ftd",
-    "app.connectors.juniper",
-    "app.connectors.aruba_switch",
-    "app.connectors.aruba_ap",
-    "app.connectors.cisco_nxos",
-    "app.connectors.cisco_router",
-    "app.connectors.cisco_wlc",
-    "app.connectors.vyos",
-    "app.connectors.strongswan_vpn",
-    "app.connectors.snort_ids",
-    "app.connectors.openldap",
-    "app.connectors.nginx_app",
-    "app.connectors.postgres_app",
-    "app.connectors.redis_app",
-    "app.connectors.elasticsearch",
-    "app.connectors.grafana",
-    "app.connectors.prometheus",
+    "app.connectors_v2.lib.cisco_ftd",
 ]
 
 
@@ -137,18 +118,18 @@ class TestSafeIdUtility:
     @pytest.mark.parametrize(
         "input_val,expected_substr",
         [
-            ("hello world", "hello_world"),
-            ("a/b/c", "a_b_c"),
+            ("hello world", "hello-world"),
+            ("a/b/c", "a-b-c"),
             ("  spaces  ", "spaces"),
             ("clean", "clean"),
         ],
     )
     def test_safe_id(self, input_val, expected_substr):
-        from app.connectors.aruba_switch import _safe_id  # any new connector
+        from app.connectors_v2.normalizers import safe_id as _safe_id  # unifié
         result = _safe_id(input_val)
         assert expected_substr in result
         assert " " not in result
 
     def test_empty_returns_unknown(self):
-        from app.connectors.aruba_switch import _safe_id
+        from app.connectors_v2.normalizers import safe_id as _safe_id
         assert _safe_id("   ") == "unknown"

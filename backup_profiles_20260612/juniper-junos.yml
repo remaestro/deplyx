@@ -1,0 +1,56 @@
+name: juniper-junos
+vendor: juniper
+os: junos
+match_banner:
+  - "Juniper"
+  - "Junos"
+match_cmd_output:
+  - "junos"
+  - "Juniper"
+
+transports:
+  - type: ssh
+    priority: 10
+    device_type: juiper_junos
+
+commands:
+  show_version: "show version"
+  show_interfaces: "show interfaces terse"
+  show_route: "show route"
+  show_vlan: "show vlans"
+  show_bgp: "show bgp summary"
+  show_ospf: "show ospf neighbor"
+  show_config: "show configuration | display set"
+
+command_groups:
+  system:
+    refs: ["show_version"]
+  interfaces:
+    refs: ["show_interfaces"]
+  routing:
+    refs: ["show_route", "show_bgp", "show_ospf"]
+  switching:
+    refs: ["show_vlan"]
+  all:
+    refs: ["show_version", "show_interfaces", "show_route",
+           "show_vlan", "show_bgp", "show_ospf"]
+
+parsers:
+  show_version: textfsm
+  show_interfaces: textfsm
+  show_route: textfsm
+  show_bgp: textfsm
+
+neo4j_labels:
+  device: "Device"
+  interface: "Interface"
+  route: "Route"
+  vlan: "VLAN"
+  bgp_peer: "BGPPeer"
+
+fallback:
+  transport: ssh
+  device_type: juiper_junos
+  commands:
+    - "show version"
+    - "show interfaces terse"

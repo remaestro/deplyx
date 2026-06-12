@@ -18,6 +18,8 @@ from app.schemas.connector import (
     ConnectorOperationResult,
     ConnectorRead,
     ConnectorUpdate,
+    ProfileGenerateRequest,
+    ProfileGenerateResult,
 )
 from app.graph.neo4j_client import neo4j_client
 from app.connectors_v2.connector import UnifiedConnector
@@ -272,3 +274,33 @@ async def connector_sync_history(
         })
 
     return entries
+
+
+@router.post("/generate-profile", response_model=ProfileGenerateResult)
+async def generate_connector_profile(
+    body: ProfileGenerateRequest,
+    _=Depends(require_role(Role.ADMIN)),
+):
+    """Génère un profil YAML pour un constructeur/OS.
+
+    Deux modes :
+    - **Mode auto** : fournir ``host`` (avec optionnellement username/password)
+    - **Mode manuel** : fournir ``vendor`` et ``os_name``
+    """
+    from app.connectors_v2.generator import generate_profile
+
+    result = await generate_profile(
+        host=body.host,
+        vendor=body.vendor,
+        os_name=body.os_name,
+        username=body.username,
+        password=body.password,
+        snmp_community=body.snmp_community,
+        output_path=body.output_path,
+        overwrite=body.overwrite,
+    )
+
+    if result["status"] == "error":
+        raise HTTPException(status_code=400, detail=result["errors"])
+
+    return result

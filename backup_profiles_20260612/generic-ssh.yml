@@ -1,0 +1,33 @@
+name: generic-ssh
+vendor: ""
+os: ""
+match_banner: []
+match_cmd_output: []
+
+transports:
+  - type: ssh
+    priority: 10
+    device_type: cisco_ios
+  - type: ssh
+    priority: 5
+    device_type: linux
+
+commands:
+  show_version: "show version"
+  hostname: "hostname"
+
+command_groups:
+  system:
+    refs: ["hostname", "show_version"]
+  all:
+    refs: ["hostname", "show_version"]
+
+neo4j_labels:
+  device: "Device"
+
+fallback:
+  transport: ssh
+  device_type: linux
+  commands:
+    - "hostname"
+    - "uname -a"

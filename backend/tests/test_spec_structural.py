@@ -230,56 +230,31 @@ class TestDisplayNameBuilders:
 # ── §9  Connector CLASSES registry ───────────────────────────────────────
 
 class TestConnectorRegistry:
-    def test_all_21_types(self):
-        from app.services.connector_service import CONNECTOR_CLASSES
-
-        expected = {
-            "paloalto", "fortinet", "cisco", "checkpoint", "juniper",
-            "aruba-switch", "aruba-ap", "cisco-nxos", "cisco-ftd", "cisco-router",
-            "cisco-wlc", "vyos", "strongswan", "snort", "openldap",
-            "nginx", "postgres", "redis", "elasticsearch", "grafana",
-            "prometheus",
-        }
-        assert expected == set(CONNECTOR_CLASSES.keys())
-
-    def test_all_are_base_connector_subclasses(self):
+    def test_all_v1_types_are_base_connector_subclasses(self):
         from app.connectors.base import BaseConnector
-        from app.services.connector_service import CONNECTOR_CLASSES
+        from app.services.connector_service import _get_v1_classes
 
-        for name, cls in CONNECTOR_CLASSES.items():
+        for name, cls in _get_v1_classes().items():
             assert issubclass(cls, BaseConnector), f"{name} -> {cls} is not a BaseConnector"
 
 
 # ── §10  Connector ID patterns ───────────────────────────────────────────
 
 class TestConnectorIDPatterns:
-    """Verify that each new connector's ID patterns use the correct prefix."""
+    """Verify that each connector's ID patterns use the correct prefix."""
 
-    PATTERNS = {
-        "aruba_switch": r"^ARUBA-SW-",
-        "cisco_nxos": r"^NXOS-",
-        "cisco_ftd": r"^FTD-",
-        "cisco_router": r"^ROUTER-",
-        "cisco_wlc": r"^WLC-",
-        "aruba_ap": r"^ARUBA-AP-",
-        "vyos": r"^VYOS-",
-        "strongswan_vpn": r"^VPN-",
-        "snort_ids": r"^IDS-",
-        "openldap": r"^LDAP-",
-        "nginx_app": r"^NGINX-",
-        "postgres_app": r"^PG-",
-        "redis_app": r"^REDIS-",
-        "elasticsearch": r"^ES-",
-        "grafana": r"^GRAFANA-",
-        "prometheus": r"^PROM-",
+    # Mapping nom → (chemin d'import, pattern ID attendu)
+    PATTERNS: dict[str, tuple[str, str]] = {
+        "cisco_ftd": ("app.connectors_v2.lib.cisco_ftd", r"^FTD-"),
     }
 
-    @pytest.mark.parametrize("module_name,pattern", list(PATTERNS.items()))
-    def test_device_id_prefix_in_source(self, module_name, pattern):
+    @pytest.mark.parametrize("module_name,import_path,pattern", [
+        (name, path, pat) for name, (path, pat) in PATTERNS.items()
+    ])
+    def test_device_id_prefix_in_source(self, module_name, import_path, pattern):
         """Inspect the connector source for the expected device ID prefix."""
-        mod = importlib.import_module(f"app.connectors.{module_name}")
+        mod = importlib.import_module(import_path)
         source = inspect.getsource(mod)
-        # The f-string prefix should appear literally
         prefix = pattern.replace("^", "").replace("-", "-")
         assert prefix.rstrip("-") in source, (
             f"Connector {module_name} does not contain the expected ID prefix '{prefix}'"

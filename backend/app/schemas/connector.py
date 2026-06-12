@@ -44,6 +44,26 @@ class ConnectorOperationRequest(BaseModel):
     target: dict[str, Any] = Field(default_factory=dict)
 
 
+class ProfileGenerateRequest(BaseModel):
+    """Requête de génération de profil YAML."""
+    host: str | None = None
+    vendor: str | None = None
+    os_name: str | None = None
+    username: str | None = None
+    password: str | None = None
+    snmp_community: str = "public"
+    output_path: str | None = None
+    overwrite: bool = False
+
+
+class ProfileGenerateResult(BaseModel):
+    status: str
+    profile: dict[str, Any] = Field(default_factory=dict)
+    path: str | None = None
+    yaml_str: str = ""
+    errors: list[str] = Field(default_factory=list)
+
+
 class ConnectorOperationError(BaseModel):
     code: str = "connector_error"
     message: str

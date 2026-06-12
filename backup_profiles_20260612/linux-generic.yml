@@ -1,0 +1,45 @@
+name: linux-generic
+vendor: linux
+os: linux
+match_banner:
+  - "Linux"
+match_cmd_output:
+  - "linux"
+
+transports:
+  - type: ssh
+    priority: 10
+    device_type: linux
+
+commands:
+  hostname: "hostname"
+  uname: "uname -a"
+  ip_addr: "ip addr show"
+  ip_route: "ip route show"
+  df: "df -h"
+
+command_groups:
+  system:
+    refs: ["hostname", "uname"]
+  interfaces:
+    refs: ["ip_addr"]
+  routing:
+    refs: ["ip_route"]
+  all:
+    refs: ["hostname", "uname", "ip_addr", "ip_route"]
+
+parsers:
+  ip_addr: textfsm
+
+neo4j_labels:
+  device: "Device"
+  interface: "Interface"
+  route: "Route"
+
+fallback:
+  transport: ssh
+  device_type: linux
+  commands:
+    - "hostname"
+    - "uname -a"
+    - "ip addr show"

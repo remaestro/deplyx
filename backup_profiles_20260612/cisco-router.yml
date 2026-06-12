@@ -1,0 +1,64 @@
+name: cisco-router
+vendor: cisco
+os: ios
+device_role: router
+match_banner: []
+match_cmd_output: []
+transports:
+  - type: ssh
+    priority: 10
+    device_type: cisco_ios
+commands:
+  show_version: "show version"
+  show_interfaces: "show interfaces"
+  show_ip_route: "show ip route"
+  show_cdp: "show cdp neighbors detail"
+  show_lldp: "show lldp neighbors detail"
+  show_bgp: "show ip bgp summary"
+  show_standby: "show standby brief"
+  show_vrrp: "show vrrp brief"
+  show_etherchannel: "show etherchannel summary"
+  show_redundancy: "show redundancy"
+  show_ip_interface: "show ip interface"
+  show_access_list: "show access-list"
+  show_http_status: "show ip http server status"
+  show_arp: "show arp"
+command_groups:
+  topology:
+    refs: ["show_cdp", "show_lldp"]
+  redundancy:
+    refs: ["show_standby", "show_vrrp", "show_etherchannel", "show_redundancy"]
+  security:
+    refs: ["show_ip_interface", "show_access_list"]
+  services:
+    refs: ["show_http_status"]
+  endpoints:
+    refs: ["show_arp"]
+  all:
+    refs: ["show_version", "show_interfaces", "show_ip_route", "show_cdp", "show_lldp", "show_bgp",
+           "show_standby", "show_vrrp", "show_etherchannel", "show_redundancy",
+           "show_ip_interface", "show_access_list", "show_http_status", "show_arp"]
+parsers:
+  show_version: textfsm
+  show_interfaces: textfsm
+  show_cdp: textfsm
+  show_lldp: textfsm
+  show_standby: textfsm
+  show_vrrp: textfsm
+  show_etherchannel: textfsm
+  show_redundancy: textfsm
+  show_ip_interface: textfsm
+  show_access_list: textfsm
+  show_http_status: textfsm
+  show_arp: textfsm
+neo4j_labels:
+  device: "Device"
+  interface: "Interface"
+  route: "Route"
+  bgp_peer: "BGPPeer"
+fallback:
+  transport: ssh
+  device_type: cisco_ios
+  commands:
+    - "show version"
+    - "show interfaces"
