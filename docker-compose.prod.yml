@@ -38,7 +38,7 @@ services:
       - traefik.docker.network=edge
       - traefik.http.routers.deplyx-api.rule=Host(`deplyx.digita-energy.com`) && (PathPrefix(`/api/`) || Path(`/health`))
       - traefik.http.routers.deplyx-api.priority=100
-      - traefik.http.routers.deplyx-api.entrypoints=web,websecure
+      - traefik.http.routers.deplyx-api.entrypoints=websecure
       - traefik.http.routers.deplyx-api.tls=true
       - traefik.http.routers.deplyx-api.tls.certresolver=letsencrypt
       - traefik.http.services.deplyx-api.loadbalancer.server.port=8000
@@ -62,12 +62,19 @@ services:
     labels:
       - traefik.enable=true
       - traefik.docker.network=edge
+      # HTTPS router (main)
       - traefik.http.routers.deplyx.rule=Host(`deplyx.digita-energy.com`)
       - traefik.http.routers.deplyx.priority=50
-      - traefik.http.routers.deplyx.entrypoints=web,websecure
+      - traefik.http.routers.deplyx.entrypoints=websecure
       - traefik.http.routers.deplyx.tls=true
       - traefik.http.routers.deplyx.tls.certresolver=letsencrypt
       - traefik.http.services.deplyx.loadbalancer.server.port=8080
+      # HTTP → HTTPS redirect
+      - traefik.http.routers.deplyx-http.rule=Host(`deplyx.digita-energy.com`)
+      - traefik.http.routers.deplyx-http.entrypoints=web
+      - traefik.http.routers.deplyx-http.middlewares=deplyx-redirect
+      - traefik.http.middlewares.deplyx-redirect.redirectscheme.scheme=https
+      - traefik.http.middlewares.deplyx-redirect.redirectscheme.permanent=true
 
   worker:
     image: ghcr.io/remaestro/deplyx-backend:${IMAGE_TAG:-latest}
