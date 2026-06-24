@@ -43,14 +43,19 @@ async function start() {
       const urlPath = new URL(req.url || "/", "http://localhost").pathname;
 
       // ── Serve static files from dist/client/ ───────────────
-      if (req.method === "GET" && !urlPath.startsWith("/api/")) {
+      if ((req.method === "GET" || req.method === "HEAD") && !urlPath.startsWith("/api/")) {
         const filePath = join(CLIENT_DIR, urlPath === "/" ? "index.html" : urlPath);
         if (existsSync(filePath)) {
           const ext = extname(filePath);
           const mime = MIME_TYPES[ext] || "application/octet-stream";
-          const content = readFileSync(filePath);
-          res.writeHead(200, { "Content-Type": mime, "Cache-Control": ext === ".html" ? "no-cache" : "public, max-age=31536000, immutable" });
-          res.end(content);
+          if (req.method === "HEAD") {
+            res.writeHead(200, { "Content-Type": mime, "Cache-Control": ext === ".html" ? "no-cache" : "public, max-age=31536000, immutable" });
+            res.end();
+          } else {
+            const content = readFileSync(filePath);
+            res.writeHead(200, { "Content-Type": mime, "Cache-Control": ext === ".html" ? "no-cache" : "public, max-age=31536000, immutable" });
+            res.end(content);
+          }
           return;
         }
       }
