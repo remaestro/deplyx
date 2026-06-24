@@ -8,7 +8,7 @@ import { api } from "@/lib/api";
 import type { Connector } from "@/lib/types";
 import { useSyncContext } from "@/lib/sync-context";
 import { cn } from "@/lib/utils";
-import { Plus, RefreshCw, Trash2, ScrollText, X, Radar, Loader2 } from "lucide-react";
+import { Plus, RefreshCw, Trash2, ScrollText, X, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/connectors")({
@@ -16,16 +16,14 @@ export const Route = createFileRoute("/_authenticated/connectors")({
   component: ConnectorsPage,
 });
 
-const TYPES = [
-  "paloalto", "fortinet", "cisco", "cisco-ftd", "cisco-nxos", "cisco-router", "cisco-wlc",
-  "juniper", "checkpoint", "aruba-switch", "aruba-ap", "vyos", "strongswan", "snort",
-  "openldap", "nginx", "postgres", "redis", "elasticsearch", "grafana", "prometheus",
-];
+
 
 function ConnectorsPage() {
   const qc = useQueryClient();
-  const [tab, setTab] = useState<"connectors" | "discovery">("connectors");
-  const { data: items = [], isLoading, error } = useQuery(connectorsQuery());
+  const [tab, setTab] = useState<"connectors" | "setup">("connectors");
+  const { data: raw = [], isLoading, error } = useQuery(connectorsQuery());
+  const { data: TYPES = [] } = useQuery({ queryKey: ["connector-types"], queryFn: () => api.listConnectorTypes() });
+  const items: Connector[] = Array.isArray(raw) ? raw : [];
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [typeFilter, setTypeFilter] = useState("");
   const { syncingIds, startSync, finishSync, startBatch } = useSyncContext();
@@ -80,7 +78,7 @@ function ConnectorsPage() {
       />
 
       <div className="flex gap-1 border-b border-border px-8">
-        {(["connectors", "discovery"] as const).map((t) => (
+        {(["connectors", "setup"] as const).map((t) => (
           <button
             key={t} onClick={() => setTab(t)}
             className={`relative px-3 py-2.5 text-sm capitalize transition-colors ${tab === t ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}
@@ -151,7 +149,7 @@ function ConnectorsPage() {
           )}
         </div>
       ) : (
-        <DiscoveryPanel />
+        <QuickSetup />
       )}
 
       {drawerOpen && <AddDrawer onClose={() => setDrawerOpen(false)} onCreate={(c) => createMut.mutate(c)} />}
@@ -159,79 +157,126 @@ function ConnectorsPage() {
   );
 }
 
-function DiscoveryPanel() {
-  const [targets, setTargets] = useState("");
-  const [sessions, setSessions] = useState<{ id: number; name: string; status: string; targets: number; results: { host: string; reachable: boolean; suggested: string }[] }[]>([]);
+function QuickSetup() {
+  const qc = useQueryClient();
+  const [ips, setIps] = useState("");
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [apiUsername, setApiUsername] = useState("");
+  const [apiPassword, setApiPassword] = useState("");
+  const [running, setRunning] = useState(false);
+  const [results, setResults] = useState<{ host: string; status: string; type?: string; id?: number; error?: string }[]>([]);
 
-  const start = () => {
-    const id = sessions.length + 1;
-    setSessions((s) => [{ id, name: `Session ${id}`, status: "running", targets: targets.split(",").length, results: [] }, ...s]);
-    toast.success("Discovery started");
-    setTimeout(() => {
-      setSessions((s) => s.map((x) => x.id === id ? { ...x, status: "completed", results: [
-        { host: targets.split(",")[0]?.trim(), reachable: true, suggested: "cisco" },
-      ]} : x));
-    }, 1500);
+  const generateMut = useMutation({
+    mutationFn: async (host: string) => {
+      const r = await api.generateProfile({
+        host,
+        username: username || undefined,
+        password: password || undefined,
+        api_username: apiUsername || undefined,
+        api_password: apiPassword || undefined,
+
+      });
+      return { host, ...r };
+    },
+    onSuccess: (data) => {
+      setResults((prev) => prev.map((r) =>
+        r.host === data.host ? { ...r, status: data.status === "ok" ? "ok" : "error", type: data.connector?.connector_type, id: data.connector?.id, error: data.errors?.join("; ") } : r
+      ));
+    },
+    onError: (err: Error, host) => {
+      setResults((prev) => prev.map((r) =>
+        r.host === host ? { ...r, status: "error", error: err.message } : r
+      ));
+    },
+  });
+
+  const start = async () => {
+    const hosts = ips.split(",").map((s) => s.trim()).filter(Boolean);
+    if (!hosts.length || !username || !password) {
+      toast.error("IPs, SSH username, and SSH password are required");
+      return;
+    }
+    setRunning(true);
+    setResults(hosts.map((h) => ({ host: h, status: "running" })));
+    for (const host of hosts) {
+      await generateMut.mutateAsync(host);
+    }
+    setRunning(false);
+    qc.invalidateQueries({ queryKey: ["connectors"] });
+    toast.success(`${hosts.length} device(s) processed`);
   };
 
   return (
     <div className="space-y-4 p-8">
       <div className="rounded-lg border border-border bg-card p-5">
-        <div className="mb-3 flex items-center gap-2">
-          <Radar className="size-4 text-primary" />
-          <h3 className="text-sm font-medium">Start a discovery</h3>
-        </div>
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-[1fr_auto]">
+        <h3 className="mb-3 text-sm font-medium">Quick setup — scan &amp; create connectors</h3>
+        <div className="grid grid-cols-1 gap-3">
           <input
-            value={targets} onChange={(e) => setTargets(e.target.value)}
-            placeholder="IPs or CIDRs, comma-separated"
+            value={ips} onChange={(e) => setIps(e.target.value)}
+            placeholder="IPs, comma-separated (e.g. 192.168.1.1, 10.0.0.1)"
             className="w-full rounded-md border border-input bg-input/40 px-3 py-2 text-sm outline-none focus:border-ring"
+            disabled={running}
           />
-          <button onClick={start} className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90">
-            Start discovery
+          <div className="grid grid-cols-2 gap-3">
+            <input
+              value={username} onChange={(e) => setUsername(e.target.value)}
+              placeholder="SSH username"
+              className="w-full rounded-md border border-input bg-input/40 px-3 py-2 text-sm outline-none focus:border-ring"
+              disabled={running}
+            />
+            <input
+              value={password} onChange={(e) => setPassword(e.target.value)}
+              type="password"
+              placeholder="SSH password"
+              className="w-full rounded-md border border-input bg-input/40 px-3 py-2 text-sm outline-none focus:border-ring"
+              disabled={running}
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <input
+              value={apiUsername} onChange={(e) => setApiUsername(e.target.value)}
+              placeholder="API username (optional)"
+              className="w-full rounded-md border border-input bg-input/40 px-3 py-2 text-sm outline-none focus:border-ring"
+              disabled={running}
+            />
+            <input
+              value={apiPassword} onChange={(e) => setApiPassword(e.target.value)}
+              type="password"
+              placeholder="API password (optional)"
+              className="w-full rounded-md border border-input bg-input/40 px-3 py-2 text-sm outline-none focus:border-ring"
+              disabled={running}
+            />
+          </div>
+          <button
+            onClick={start}
+            disabled={running}
+            className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50"
+          >
+            {running ? <><Loader2 className="mr-1.5 inline size-3.5 animate-spin" /> Scanning…</> : "Scan & create connectors"}
           </button>
         </div>
       </div>
 
-      <div className="space-y-2">
-        {sessions.map((s) => (
-          <div key={s.id} className="rounded-lg border border-border bg-card">
-            <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-medium">{s.name}</span>
-                <StatusBadge value={s.status === "completed" ? "active" : s.status === "running" ? "Analyzing" : "inactive"} />
+      {results.length > 0 && (
+        <div className="space-y-2">
+          {results.map((r) => (
+            <div key={r.host} className="flex items-center justify-between rounded-lg border border-border bg-card px-4 py-2.5">
+              <div className="flex items-center gap-3">
+                <span className="font-mono text-sm">{r.host}</span>
+                {r.status === "running" && <Loader2 className="size-3.5 animate-spin text-primary" />}
+                {r.status === "ok" && <StatusBadge value="active" />}
+                {r.status === "error" && <StatusBadge value="error" />}
+                {r.type && <span className="text-[11px] text-muted-foreground">{r.type}</span>}
               </div>
-              <div className="text-[11px] text-muted-foreground">{s.targets} targets · {s.results.length} results</div>
+              <div className="text-xs text-muted-foreground">
+                {r.status === "ok" && r.id && `Connector #${r.id} created`}
+                {r.status === "error" && r.error && <span className="text-destructive">{r.error}</span>}
+              </div>
             </div>
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-[10px] uppercase tracking-wider text-muted-foreground">
-                  <th className="px-4 py-2 font-medium">Host</th>
-                  <th className="px-2 py-2 font-medium">Reachable</th>
-                  <th className="px-2 py-2 font-medium">Suggested type</th>
-                  <th className="px-2 py-2 font-medium"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {s.results.map((r) => (
-                  <tr key={r.host} className="border-t border-border/60">
-                    <td className="px-4 py-2 font-mono text-xs">{r.host}</td>
-                    <td className="px-2 py-2"><StatusBadge value={r.reachable ? "active" : "error"} /></td>
-                    <td className="px-2 py-2 font-mono text-xs">{r.suggested || "—"}</td>
-                    <td className="px-2 py-2 text-right">
-                      {r.reachable && r.suggested && (
-                        <button onClick={() => toast.success(`Bootstrapped ${r.suggested}`)} className="rounded-md border border-border bg-background px-2.5 py-1 text-xs hover:bg-accent">
-                          Bootstrap
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

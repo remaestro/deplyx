@@ -4,7 +4,11 @@ os: linux
 match_banner:
   - "Linux"
 match_cmd_output:
-  - "linux"
+  - "linux version"
+  - "ubuntu"
+  - "debian"
+  - "red hat"
+  - "centos"
 
 transports:
   - type: ssh

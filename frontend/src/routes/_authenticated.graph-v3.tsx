@@ -17,14 +17,33 @@ export const Route = createFileRoute("/_authenticated/graph-v3")({
 
 function isMainNode(n: { id: string }): boolean {
   if (n.id.startsWith("FTD-RULE-")) return false;
-  return n.id.startsWith("DEV-") || n.id.startsWith("FTD-") || n.id.startsWith("SVC-") || n.id.startsWith("APP-");
+  const id = n.id.toLowerCase();
+  return id.startsWith("dev-") || id.startsWith("ftd-") || id.startsWith("svc-") || id.startsWith("app-");
 }
+
+// Map of role/type values → graph layer
+const ROLE_LAYER: Record<string, string> = {
+  firewall: "security",
+  // network infrastructure
+  core_switch: "network", dist_switch: "network", access_switch: "network",
+  wan_router: "network", isp_peer: "network", router: "network", switch: "network",
+  load_balancer: "network", wlc: "network",
+  // application / servers
+  dns: "application", ntp: "application", aaa: "application", syslog: "application",
+  monitoring: "application", web: "application", db: "application", fs: "application",
+  server: "application", linux: "application",
+};
 
 function layerForNode(n: GraphNode): string {
   if (n.layer) return n.layer;
-  if (n.id.startsWith("SVC-") || n.id.startsWith("APP-")) return "application";
-  if (n.id.startsWith("FTD-")) return "security";
+  const id = n.id.toLowerCase();
+  if (id.startsWith("svc-") || id.startsWith("app-")) return "application";
+  if (id.startsWith("ftd-")) return "security";
   const type = (n.properties.type ?? "").toLowerCase();
+  const role = (n.properties.role ?? "").toLowerCase();
+  // Check role first (our seed uses 'role'), then type
+  if (role && ROLE_LAYER[role]) return ROLE_LAYER[role];
+  if (type && ROLE_LAYER[type]) return ROLE_LAYER[type];
   if (type.includes("firewall") || type.includes("ftd") || type.includes("security")) return "security";
   return "network";
 }
@@ -37,25 +56,50 @@ function shortLabel(n: GraphNode): string {
 }
 
 function shortType(n: GraphNode): string {
-  const t = n.properties.type || "device";
+  const t = n.properties.role || n.properties.type || "device";
   return t.length > 14 ? t.slice(0, 12) + "…" : t;
 }
 
 function computeLayout(nodes: GraphNode[]) {
-  const layers = { security: 80, network: 260, application: 460 } as const;
+  const layers = { security: 80, network: 260, application: 490 } as const;
   const groups: Record<string, GraphNode[]> = { security: [], network: [], application: [] };
   nodes.filter(isMainNode).forEach((n) => {
     const l = layerForNode(n);
     if (!groups[l]) groups[l] = [];
     groups[l].push(n);
   });
+
+  // Smart layout: sort by type then hostname, distribute in rows if > 12 nodes
+  for (const list of Object.values(groups)) {
+    list.sort((a, b) => {
+      const ta = shortType(a);
+      const tb = shortType(b);
+      if (ta !== tb) return ta.localeCompare(tb);
+      return (a.display_name || a.id).localeCompare(b.display_name || b.id);
+    });
+  }
+
   const positions: Record<string, { x: number; y: number }> = {};
-  const W = 1000;
+  const MAX_PER_ROW = 14;
+  const COL_W = 130;  // node width 110 + 20 gap
+  const ROW_H = 55;   // node height 36 + 19 gap
+
   for (const [layer, list] of Object.entries(groups)) {
     if (!list.length) continue;
-    const step = W / (list.length + 1);
+    const baseY = layers[layer as keyof typeof layers] ?? 260;
+    const rows = Math.ceil(list.length / MAX_PER_ROW);
     list.forEach((n, i) => {
-      positions[n.id] = { x: step * (i + 1), y: layers[layer as keyof typeof layers] ?? 260 };
+      const row = Math.floor(i / MAX_PER_ROW);
+      const col = i % MAX_PER_ROW;
+      const colsInRow = Math.min(MAX_PER_ROW, list.length - row * MAX_PER_ROW);
+      // Center each row
+      const xOffset = (MAX_PER_ROW - colsInRow) * COL_W / 2;
+      // Center vertically within the layer band if multiple rows
+      const yOffset = rows > 1 ? -(rows - 1) * ROW_H / 2 : 0;
+      positions[n.id] = {
+        x: xOffset + col * COL_W + COL_W / 2,
+        y: baseY + yOffset + row * ROW_H,
+      };
     });
   }
   return positions;
@@ -209,12 +253,12 @@ function TopologyPage() {
 
       <div className="p-8">
         <div className="overflow-hidden rounded-lg border border-border bg-card">
-          <svg viewBox="0 0 1080 580" className="block h-[580px] w-full">
-            {/* Layer bands */}
-            <rect x="0" y="20" width="1080" height="130" fill="oklch(0.22 0.04 350 / 0.35)" />
-            <rect x="0" y="180" width="1080" height="160" fill="oklch(0.22 0.06 220 / 0.35)" />
-            <rect x="0" y="380" width="1080" height="180" fill="oklch(0.22 0.06 145 / 0.35)" />
-            {[["Security", 38, "oklch(0.78 0.13 350)"], ["Network", 198, "oklch(0.78 0.13 220)"], ["Application", 398, "oklch(0.78 0.13 145)"]].map(([label, y, color]) => (
+          <svg viewBox="0 0 1840 650" className="block h-[650px] w-full overflow-x-auto">
+            {/* Layer bands — dynamic height to accommodate multi-row */}
+            <rect x="0" y="20" width="1840" height="130" fill="oklch(0.22 0.04 350 / 0.35)" />
+            <rect x="0" y="180" width="1840" height="220" fill="oklch(0.22 0.06 220 / 0.35)" />
+            <rect x="0" y="420" width="1840" height="210" fill="oklch(0.22 0.06 145 / 0.35)" />
+            {[["Security", 38, "oklch(0.78 0.13 350)"], ["Network", 198, "oklch(0.78 0.13 220)"], ["Application", 438, "oklch(0.78 0.13 145)"]].map(([label, y, color]) => (
               <text key={label as string} x="14" y={y as number} fill={color as string} fontSize="10" fontFamily="JetBrains Mono" letterSpacing="0.15em">
                 {(label as string).toUpperCase()}
               </text>
@@ -273,7 +317,7 @@ function TopologyPage() {
           </header>
           <div className="flex-1 space-y-3 overflow-y-auto p-5 text-sm">
             <Pair k="Label" v={selected.label} />
-            <Pair k="Layer" v={selected.layer || (selected.id.startsWith("FTD-") ? "security" : selected.id.startsWith("SVC-") || selected.id.startsWith("APP-") ? "application" : "network")} />
+            <Pair k="Layer" v={selected.layer || layerForNode(selected)} />
             {Object.entries(selected.properties).filter(([k]) => k !== "type" && k !== "role").map(([k, v]) => v ? <Pair key={k} k={k} v={String(v)} /> : null)}
             <div>
               <div className="mb-1.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Relations</div>

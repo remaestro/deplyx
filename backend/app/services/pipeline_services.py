@@ -18,6 +18,7 @@ class DefaultImpactAnalyzer(ImpactAnalyzer):
         change_type: str | None,
         environment: str | None,
         title: str | None,
+        live_validation: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         return await impact_service.analyze_impact(
             target_node_ids,
@@ -25,6 +26,7 @@ class DefaultImpactAnalyzer(ImpactAnalyzer):
             change_type=change_type,
             environment=environment,
             title=title,
+            live_validation=live_validation,
         )
 
 

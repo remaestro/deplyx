@@ -14,8 +14,8 @@ async def get_device(device_id: str) -> dict[str, Any] | None:
     return await neo4j_client.get_node("Device", device_id)
 
 
-async def list_devices() -> list[dict[str, Any]]:
-    return await neo4j_client.get_all_nodes("Device")
+async def list_devices(site_id: int | None = None) -> list[dict[str, Any]]:
+    return await neo4j_client.get_all_nodes("Device", site_id=site_id)
 
 
 async def update_device(device_id: str, props: dict[str, Any]) -> dict[str, Any] | None:
@@ -263,10 +263,10 @@ async def create_relationship(
 # ── Topology ──────────────────────────────────────────────────────────
 
 
-async def get_topology(center_id: str | None = None, depth: int = 3) -> dict[str, Any]:
+async def get_topology(center_id: str | None = None, depth: int = 3, site_id: int | None = None) -> dict[str, Any]:
     if center_id:
         return await neo4j_client.get_impact_subgraph(center_id, depth)
-    return await neo4j_client.get_full_topology()
+    return await neo4j_client.get_full_topology(site_id=site_id)
 
 
 async def clear_graph() -> None:

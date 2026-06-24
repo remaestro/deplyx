@@ -62,7 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const res = await fetch(`${BASE_URL}/auth/register`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ email, password, role: "admin" }),
     });
     if (!res.ok) throw new Error("Registration failed");
     const { access_token } = await res.json();

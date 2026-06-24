@@ -1,0 +1,68 @@
+[     760ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=9b02266d:20102
+[    2525ms] [ERROR] Invalid hook call. Hooks can only be called inside of the body of a function component. This could happen for one of the following reasons:
+1. You might have mismatching versions of React and the renderer (such as React DOM)
+2. You might be breaking the Rules of Hooks
+3. You might have more than one copy of React in the same app
+See https://react.dev/link/invalid-hook-call for tips about how to debug and fix this problem. @ http://localhost:5173/node_modules/.vite/deps/chunk-42LCURWG.js?v=3543ee2e:391
+[    2536ms] [ERROR] Invalid hook call. Hooks can only be called inside of the body of a function component. This could happen for one of the following reasons:
+1. You might have mismatching versions of React and the renderer (such as React DOM)
+2. You might be breaking the Rules of Hooks
+3. You might have more than one copy of React in the same app
+See https://react.dev/link/invalid-hook-call for tips about how to debug and fix this problem. @ http://localhost:5173/node_modules/.vite/deps/chunk-42LCURWG.js?v=3543ee2e:391
+[    2538ms] [ERROR] TypeError: Cannot read properties of null (reading 'useMemo')
+    at exports.useMemo (http://localhost:5173/node_modules/.vite/deps/chunk-42LCURWG.js?v=3543ee2e:947:35)
+    at useScope (http://localhost:5173/node_modules/.vite/deps/@radix-ui_react-select.js?v=634bf548:70:20)
+    at SelectProvider (http://localhost:5173/node_modules/.vite/deps/@radix-ui_react-select.js?v=634bf548:4361:23)
+    at Object.react_stack_bottom_frame (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=9b02266d:18509:20)
+    at renderWithHooks (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=9b02266d:5654:24)
+    at updateFunctionComponent (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=9b02266d:7475:21)
+    at beginWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=9b02266d:8525:20)
+    at runWithFiberInDEV (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=9b02266d:997:72)
+    at performUnitOfWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=9b02266d:12561:98)
+    at workLoopConcurrentByScheduler (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=9b02266d:12557:11) @ http://localhost:5173/src/routes/__root.tsx:51
+[    2540ms] [ERROR] TypeError: Cannot read properties of null (reading 'useMemo')
+    at exports.useMemo (http://localhost:5173/node_modules/.vite/deps/chunk-42LCURWG.js?v=3543ee2e:947:35)
+    at useScope (http://localhost:5173/node_modules/.vite/deps/@radix-ui_react-select.js?v=634bf548:70:20)
+    at SelectProvider (http://localhost:5173/node_modules/.vite/deps/@radix-ui_react-select.js?v=634bf548:4361:23)
+    at Object.react_stack_bottom_frame (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=9b02266d:18509:20)
+    at renderWithHooks (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=9b02266d:5654:24)
+    at updateFunctionComponent (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=9b02266d:7475:21)
+    at beginWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=9b02266d:8525:20)
+    at runWithFiberInDEV (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=9b02266d:997:72)
+    at performUnitOfWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=9b02266d:12561:98)
+    at workLoopConcurrentByScheduler (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=9b02266d:12557:11) @ http://localhost:5173/src/routes/__root.tsx:51
+[    2542ms] [ERROR] %o
+
+%s
+
+%s
+ TypeError: Cannot read properties of null (reading 'useMemo')
+    at exports.useMemo (http://localhost:5173/node_modules/.vite/deps/chunk-42LCURWG.js?v=3543ee2e:947:35)
+    at useScope (http://localhost:5173/node_modules/.vite/deps/@radix-ui_react-select.js?v=634bf548:70:20)
+    at SelectProvider (http://localhost:5173/node_modules/.vite/deps/@radix-ui_react-select.js?v=634bf548:4361:23)
+    at Object.react_stack_bottom_frame (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=9b02266d:18509:20)
+    at renderWithHooks (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=9b02266d:5654:24)
+    at updateFunctionComponent (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=9b02266d:7475:21)
+    at beginWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=9b02266d:8525:20)
+    at runWithFiberInDEV (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=9b02266d:997:72)
+    at performUnitOfWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=9b02266d:12561:98)
+    at workLoopConcurrentByScheduler (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=9b02266d:12557:11) The above error occurred in the <SelectProvider> component. React will try to recreate this component tree from scratch using the error boundary you provided, CatchBoundaryImpl. @ http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=9b02266d:7000
+[    2543ms] [WARNING] Warning: Error in route match: __root__/ @ http://localhost:5173/node_modules/@tanstack/react-router/dist/esm/Match.js?v=9b02266d:88
+[    5612ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=3543ee2e:20102
+[    6127ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://localhost:8000/api/v1/connectors/types:0
+[    6128ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://localhost:8000/api/v1/connectors:0
+[    6129ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://localhost:8000/api/v1/sites:0
+[    6492ms] [VERBOSE] [DOM] Input elements should have autocomplete attributes (suggested: "current-password"): (More info: https://goo.gl/9p2vKq) @ http://localhost:5173/login:0
+[    6667ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=3543ee2e:20102
+[ 3004649ms] [LOG] [vite] server connection lost. Polling for restart... @ http://localhost:5173/@vite/client:864
+[ 3005044ms] [VERBOSE] [DOM] Input elements should have autocomplete attributes (suggested: "current-password"): (More info: https://goo.gl/9p2vKq) @ http://localhost:5173/login:0
+[ 3005485ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=3543ee2e:20102
+[ 4270781ms] [LOG] [vite] server connection lost. Polling for restart... @ http://localhost:5173/@vite/client:864
+[ 4271148ms] [VERBOSE] [DOM] Input elements should have autocomplete attributes (suggested: "current-password"): (More info: https://goo.gl/9p2vKq) @ http://localhost:5173/login:0
+[ 4271172ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=3543ee2e:20102
+[ 4912623ms] [LOG] [vite] server connection lost. Polling for restart... @ http://localhost:5173/@vite/client:864
+[ 4912973ms] [VERBOSE] [DOM] Input elements should have autocomplete attributes (suggested: "current-password"): (More info: https://goo.gl/9p2vKq) @ http://localhost:5173/login:0
+[ 4913197ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=3543ee2e:20102
+[ 5553607ms] [LOG] [vite] server connection lost. Polling for restart... @ http://localhost:5173/@vite/client:864
+[ 5554121ms] [VERBOSE] [DOM] Input elements should have autocomplete attributes (suggested: "current-password"): (More info: https://goo.gl/9p2vKq) @ http://localhost:5173/login:0
+[ 5554275ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=3543ee2e:20102

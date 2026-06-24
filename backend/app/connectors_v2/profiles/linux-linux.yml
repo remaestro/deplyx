@@ -1,0 +1,36 @@
+name: linux-linux
+vendor: linux
+os: linux
+device_role: switch
+transports:
+- type: ssh
+  priority: 10
+  device_type: linux
+commands:
+  show_version: show version
+  show_interfaces: show interfaces
+  show_ip_route: show ip route
+command_groups:
+  system:
+    refs:
+    - show_version
+  interfaces:
+    refs:
+    - show_interfaces
+  routing:
+    refs:
+    - show_ip_route
+  all:
+    refs:
+    - show_version
+    - show_interfaces
+    - show_ip_route
+neo4j_labels:
+  device: Device
+  interface: Interface
+fallback:
+  transport: ssh
+  device_type: linux
+  commands:
+  - show version
+  - show interfaces

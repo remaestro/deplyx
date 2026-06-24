@@ -17,9 +17,47 @@ export type IncidentSeverity = "blocker" | "warning" | "info";
 export type RiskFactor = {
   label: string;
   severity: IncidentSeverity;
+  probability?: "low" | "medium" | "high";
   policy?: string;
   reason?: string;
   evidence?: string[];
+};
+
+export type ValidationCheck = {
+  name: string;
+  label: string;
+  status: "pass" | "fail" | "warn" | "skip";
+  detail?: string;
+  evidence?: string[];
+};
+
+export type PathInfo = {
+  next_hop?: string | null;
+  hops: string[];
+  hop_count?: number | null;
+  rtt_ms?: number | null;
+};
+
+export type PreChangeValidation = {
+  supported: boolean;
+  kind?: string;
+  reason?: string;
+  error?: string | null;
+  device?: { id: string; hostname?: string; ip?: string };
+  route_change?: { prefix: string; mask: string; cidr: string; old_next_hop?: string | null; new_next_hop: string };
+  checks: ValidationCheck[];
+  path_comparison?: { current: PathInfo; proposed: PathInfo; delta?: { hop_count?: string; rtt_ms?: string } };
+  route_table?: { before?: string; proposed?: string };
+  evidence_collected?: string[];
+  collected_at?: string;
+};
+
+export type AiRecommendation = {
+  verdict: "approve" | "approve_with_validations" | "reject";
+  confidence?: number;
+  reasons?: string[];
+  residual_risks?: string[];
+  required_validations?: string[];
 };
 
 export type ConfigDiffLine = { kind: "add" | "remove" | "context"; text: string };
@@ -69,6 +107,8 @@ export type ImpactAnalysis = {
   recent_activity: ActivityItem[];
   similar: SimilarStats;
   traffic_sparkline: number[];
+  pre_change_validation?: PreChangeValidation;
+  recommendation?: AiRecommendation;
 };
 
 export type Change = {
@@ -105,6 +145,7 @@ export type AuditEntry = {
 
 export type Connector = {
   id: number;
+  site_id: number | null;
   name: string;
   connector_type: string;
   sync_mode: "pull" | "webhook" | "on-demand";
@@ -112,6 +153,25 @@ export type Connector = {
   last_sync_at: string | null;
   status: "active" | "inactive" | "error";
   last_error: string | null;
+};
+
+export type Site = {
+  id: number;
+  organization_id: number;
+  name: string;
+  slug: string;
+  location: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type Organization = {
+  id: number;
+  name: string;
+  slug: string;
+  created_at: string;
+  updated_at: string;
+  sites: Site[];
 };
 
 export type Policy = {

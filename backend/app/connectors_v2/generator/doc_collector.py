@@ -335,6 +335,8 @@ commands:
   show_cdp: "show cdp neighbors detail"
   show_lldp: "show lldp neighbors detail"
   show_bgp: "show ip bgp summary"
+  show_access_list: "show access-list"
+  show_http_status: "show ip http server status"
   show_arp: "show arp"
 command_groups:
   system:
@@ -347,12 +349,16 @@ command_groups:
     refs: ["show_vlan", "show_mac"]
   topology:
     refs: ["show_cdp", "show_lldp"]
+  security:
+    refs: ["show_access_list"]
+  services:
+    refs: ["show_http_status"]
   endpoints:
     refs: ["show_arp"]
   all:
     refs: ["show_version", "show_interfaces", "show_ip_route",
            "show_vlan", "show_mac", "show_cdp", "show_lldp",
-           "show_bgp", "show_arp"]
+           "show_bgp", "show_access_list", "show_http_status", "show_arp"]
 neo4j_labels:
   device: "Device"
   interface: "Interface"

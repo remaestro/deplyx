@@ -28,6 +28,7 @@ async def analyze_impact(
     change_type: str | None = None,
     environment: str | None = None,
     title: str | None = None,
+    live_validation: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Run impact analysis — LLM-powered when Gemini is available, otherwise
     falls back to rule-based Neo4j traversal."""
@@ -79,6 +80,8 @@ async def analyze_impact(
                     "target_node_ids": target_node_ids,
                     "redundancy_analysis": redundancy_hint,
                 }
+                if live_validation and live_validation.get("supported"):
+                    change_details["live_pre_change_validation"] = live_validation
                 t_llm = time.monotonic()
                 llm_result = await llm_service.analyze_with_llm(topology, change_details)
                 t_llm_done = time.monotonic() - t_llm
@@ -113,6 +116,10 @@ async def analyze_impact(
 
     t_total = time.monotonic() - t0
     logger.info("[IMPACT-DIAG] TOTAL: %.1fs, llm_powered=%s", t_total, result["llm_powered"])
+
+    # Attach live pre-change validation results (real device evidence)
+    if live_validation is not None:
+        result["pre_change_validation"] = live_validation
 
     return result
 
@@ -201,6 +208,9 @@ def _build_llm_first_response(
         result["risk_factors"] = risk_factors
     if services:
         result["services"] = services
+    recommendation = llm_result.get("recommendation")
+    if isinstance(recommendation, dict):
+        result["recommendation"] = recommendation
 
     return result
 

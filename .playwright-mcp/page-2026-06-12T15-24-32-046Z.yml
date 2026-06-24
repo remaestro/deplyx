@@ -1,0 +1,75 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e3]:
+      - generic [ref=e4]:
+        - img [ref=e6]
+        - generic [ref=e8]: Deplyx
+      - generic [ref=e9]:
+        - generic [ref=e10]:
+          - img [ref=e11]
+          - text: Site
+        - combobox [ref=e15] [cursor=pointer]:
+          - generic: No site
+          - img [ref=e16]
+        - combobox [ref=e18]
+      - navigation [ref=e19]:
+        - generic [ref=e20]:
+          - generic [ref=e21]: Operations
+          - list [ref=e22]:
+            - listitem [ref=e23]:
+              - link "Dashboard" [ref=e24] [cursor=pointer]:
+                - /url: /
+                - img [ref=e25]
+                - text: Dashboard
+            - listitem [ref=e30]:
+              - link "Changes" [ref=e31] [cursor=pointer]:
+                - /url: /changes
+                - img [ref=e32]
+                - text: Changes
+            - listitem [ref=e36]:
+              - link "Topology" [ref=e37] [cursor=pointer]:
+                - /url: /graph-v3
+                - img [ref=e38]
+                - text: Topology
+        - generic [ref=e42]:
+          - generic [ref=e43]: Configuration
+          - list [ref=e44]:
+            - listitem [ref=e45]:
+              - link "Connectors" [ref=e46] [cursor=pointer]:
+                - /url: /connectors
+                - img [ref=e47]
+                - text: Connectors
+            - listitem [ref=e49]:
+              - link "Policies" [ref=e50] [cursor=pointer]:
+                - /url: /policies
+                - img [ref=e51]
+                - text: Policies
+            - listitem [ref=e54]:
+              - link "Audit Log" [ref=e55] [cursor=pointer]:
+                - /url: /audit-log
+                - img [ref=e56]
+                - text: Audit Log
+      - generic [ref=e60]:
+        - generic [ref=e61]: U
+        - button "Sign out" [ref=e62]:
+          - img [ref=e63]
+    - main [ref=e66]:
+      - generic [ref=e67]:
+        - generic [ref=e68]:
+          - heading "Connectors" [level=1] [ref=e69]
+          - paragraph [ref=e70]: Loading…
+        - generic [ref=e71]:
+          - button "Sync all" [ref=e72]:
+            - img [ref=e73]
+            - text: Sync all
+          - button "Add connector" [ref=e78]:
+            - img [ref=e79]
+            - text: Add connector
+      - generic [ref=e80]:
+        - button "connectors" [ref=e81]: connectors
+        - button "setup" [ref=e83]
+      - generic [ref=e84]:
+        - combobox [ref=e85]:
+          - option "All types" [selected]
+        - paragraph [ref=e86]: Loading connectors…
+  - region "Notifications alt+T"

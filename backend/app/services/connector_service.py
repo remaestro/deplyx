@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.connectors.base import BaseConnector
 from app.connectors_v2.connector import UnifiedConnector
+from app.graph.site_context import site_scope
 from app.models.connector import Connector
 from app.services import change_service
 from app.utils.logging import get_logger
@@ -41,10 +42,11 @@ def _get_v2_types() -> set[str]:
                     data = yaml.safe_load(fh)
                 if not data or not data.get("vendor"):
                     continue
-                stem = f.stem
-                prefix = stem.split("-", 1)[0]
+                stem = f.stem          # ex: "cisco-ios"
+                types.add(stem)        # "cisco-ios"
+                prefix = stem.split("-", 1)[0]  # ex: "cisco"
                 if prefix:
-                    types.add(prefix)
+                    types.add(prefix)  # "cisco"
             except Exception:
                 continue
 
@@ -222,22 +224,23 @@ async def execute_connector_operation(
                 "context": context or {},
                 "target": target or {},
             }
-            if hasattr(instance, "run") and callable(getattr(instance, "run")):
-                logger.warning("  [exec_op] connector=%s — calling instance.run(%s)", connector.id, operation)
-                raw_result = await asyncio.wait_for(instance.run(request), timeout=300)
-            else:
-                payload_data = payload or {}
-                if operation == "sync":
-                    logger.warning("  [exec_op] connector=%s — calling instance.sync()", connector.id)
-                    raw_result = await asyncio.wait_for(instance.sync(), timeout=300)
-                elif operation == "validate":
-                    raw_result = await asyncio.wait_for(instance.validate_change(payload_data), timeout=90)
-                elif operation == "simulate":
-                    raw_result = await asyncio.wait_for(instance.simulate_change(payload_data), timeout=90)
-                elif operation == "apply":
-                    raw_result = await asyncio.wait_for(instance.apply_change(payload_data), timeout=90)
+            with site_scope(connector.site_id):
+                if hasattr(instance, "run") and callable(getattr(instance, "run")):
+                    logger.warning("  [exec_op] connector=%s — calling instance.run(%s)", connector.id, operation)
+                    raw_result = await asyncio.wait_for(instance.run(request), timeout=300)
                 else:
-                    raw_result = {"status": "error", "error": f"Unsupported connector operation: {operation}"}
+                    payload_data = payload or {}
+                    if operation == "sync":
+                        logger.warning("  [exec_op] connector=%s — calling instance.sync()", connector.id)
+                        raw_result = await asyncio.wait_for(instance.sync(), timeout=300)
+                    elif operation == "validate":
+                        raw_result = await asyncio.wait_for(instance.validate_change(payload_data), timeout=90)
+                    elif operation == "simulate":
+                        raw_result = await asyncio.wait_for(instance.simulate_change(payload_data), timeout=90)
+                    elif operation == "apply":
+                        raw_result = await asyncio.wait_for(instance.apply_change(payload_data), timeout=90)
+                    else:
+                        raw_result = {"status": "error", "error": f"Unsupported connector operation: {operation}"}
             logger.warning("  [exec_op] connector=%s op=%s — returned status=%s  (%.0fms)", connector.id, operation, raw_result.get('status','?'), (perf_counter()-started)*1000)
     except asyncio.TimeoutError:
         elapsed = perf_counter() - started
@@ -322,8 +325,20 @@ async def get_connector(db: AsyncSession, connector_id: int) -> Connector | None
     return result.scalar_one_or_none()
 
 
-async def list_connectors(db: AsyncSession) -> list[Connector]:
-    result = await db.execute(select(Connector).order_by(Connector.id))
+async def find_connector_by_host(db: AsyncSession, host: str) -> Connector | None:
+    """Retourne le connecteur dont config['host'] correspond à l'IP/hostname donné."""
+    result = await db.execute(select(Connector))
+    for connector in result.scalars().all():
+        if isinstance(connector.config, dict) and connector.config.get("host") == host:
+            return connector
+    return None
+
+
+async def list_connectors(db: AsyncSession, site_id: int | None = None) -> list[Connector]:
+    stmt = select(Connector).order_by(Connector.id)
+    if site_id is not None:
+        stmt = stmt.where(Connector.site_id == site_id)
+    result = await db.execute(stmt)
     return list(result.scalars().all())
 
 

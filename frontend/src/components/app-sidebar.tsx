@@ -1,10 +1,14 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
-  LayoutDashboard, GitPullRequest, Layers, Plug, ShieldCheck, FileText, LogOut, Activity, Loader2,
+  LayoutDashboard, GitPullRequest, Layers, Plug, ShieldCheck, FileText, LogOut, Activity, Loader2, Building2,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import { useSyncContext } from "@/lib/sync-context";
+import { useSite } from "@/lib/site-context";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 
 const sections = [
   {
@@ -29,6 +33,7 @@ export function AppSidebar() {
   const { user, logout } = useAuth();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { syncCount } = useSyncContext();
+  const { sites, selectedSiteId, setSite } = useSite();
 
   return (
     <aside className="flex h-screen w-60 shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground">
@@ -37,6 +42,28 @@ export function AppSidebar() {
           <Activity className="size-4" />
         </div>
         <span className="text-sm font-semibold tracking-tight">Deplyx</span>
+      </div>
+
+      <div className="border-b border-sidebar-border px-3 py-2.5">
+        <div className="mb-1 flex items-center gap-1.5 px-0.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+          <Building2 className="size-3" />
+          Site
+        </div>
+        <Select
+          value={selectedSiteId != null ? String(selectedSiteId) : undefined}
+          onValueChange={(v) => setSite(Number(v))}
+        >
+          <SelectTrigger className="h-8 w-full text-xs">
+            <SelectValue placeholder={sites.length ? "Select a site" : "No site"} />
+          </SelectTrigger>
+          <SelectContent>
+            {sites.map((s) => (
+              <SelectItem key={s.id} value={String(s.id)} className="text-xs">
+                {s.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <nav className="flex-1 overflow-y-auto px-2 py-4">

@@ -24,6 +24,7 @@ class ImpactAnalyzer(Protocol):
         change_type: str | None,
         environment: str | None,
         title: str | None,
+        live_validation: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         ...
 

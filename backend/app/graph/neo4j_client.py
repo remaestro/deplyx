@@ -6,6 +6,7 @@ from neo4j import AsyncGraphDatabase
 
 from app.core.config import settings
 from app.graph.errors import Neo4jCircuitOpenError, Neo4jQueryTimeoutError
+from app.graph.site_context import current_site_id
 from app.utils.logging import get_logger
 
 logger = get_logger(__name__)
@@ -112,6 +113,9 @@ class Neo4jClient:
         return rows[0]["n"] if rows else {}
 
     async def merge_node(self, label: str, id_value: str, props: dict[str, Any]) -> dict[str, Any]:
+        site_id = current_site_id.get()
+        if site_id is not None:
+            props = {**props, "site_id": props.get("site_id", site_id)}
         cypher = f"MERGE (n:{label} {{id: $id}}) SET n += $props SET n.last_seen = timestamp() RETURN n"
         rows = await self.run_write(cypher, {"id": id_value, "props": props})
         return rows[0]["n"] if rows else {}
@@ -121,9 +125,12 @@ class Neo4jClient:
         rows = await self.run_query(cypher, {"id": id_value})
         return rows[0]["n"] if rows else None
 
-    async def get_all_nodes(self, label: str) -> list[dict[str, Any]]:
-        cypher = f"MATCH (n:{label}) RETURN n ORDER BY n.id"
-        rows = await self.run_query(cypher)
+    async def get_all_nodes(self, label: str, site_id: int | None = None) -> list[dict[str, Any]]:
+        cypher = (
+            f"MATCH (n:{label}) WHERE ($site_id IS NULL OR n.site_id = $site_id) "
+            "RETURN n ORDER BY n.id"
+        )
+        rows = await self.run_query(cypher, {"site_id": site_id})
         return [r["n"] for r in rows]
 
     async def update_node(self, label: str, id_value: str, props: dict[str, Any]) -> dict[str, Any] | None:
@@ -269,9 +276,10 @@ class Neo4jClient:
 
     # ── Full topology ──────────────────────────────────────────────────
 
-    async def get_full_topology(self) -> dict[str, Any]:
+    async def get_full_topology(self, site_id: int | None = None) -> dict[str, Any]:
         nodes_cypher = """
         MATCH (n)
+        WHERE ($site_id IS NULL OR n.site_id = $site_id)
         RETURN n.id as id,
                coalesce(n.display_name, n.label, n.hostname, n.name, n.id) as label,
                n.display_name as display_name,
@@ -280,11 +288,12 @@ class Neo4jClient:
         """
         edges_cypher = (
             "MATCH (a)-[r]->(b) "
+            "WHERE ($site_id IS NULL OR (a.site_id = $site_id AND b.site_id = $site_id)) "
             "RETURN a.id as source, b.id as target, type(r) as rel_type, properties(r) as properties, "
             "a.id + '-' + type(r) + '-' + b.id as id"
         )
-        nodes = await self.run_query(nodes_cypher)
-        edges = await self.run_query(edges_cypher)
+        nodes = await self.run_query(nodes_cypher, {"site_id": site_id})
+        edges = await self.run_query(edges_cypher, {"site_id": site_id})
         return {"nodes": nodes, "edges": edges}
 
     # ── Action-aware impact queries ────────────────────────────────────

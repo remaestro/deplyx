@@ -17,7 +17,8 @@ const sparkData = Array.from({ length: 14 }, (_, i) => ({ d: i, v: 22 + Math.rou
 function Dashboard() {
   const [range, setRange] = useState("7d");
   const { data: kpis } = useQuery(kpisQuery());
-  const { data: changes = [] } = useQuery(changesQuery());
+  const { data: changesRaw = [] } = useQuery(changesQuery());
+  const changes = Array.isArray(changesRaw) ? changesRaw : [];
   const { data: rawAudit } = useQuery(auditQuery());
   const audit = Array.isArray(rawAudit) ? rawAudit : [];
 

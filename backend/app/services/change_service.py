@@ -99,6 +99,7 @@ async def list_changes(
     env_filter: str | None = None,
     type_filter: str | None = None,
     created_by: int | None = None,
+    site_id: int | None = None,
 ) -> list[Change]:
     stmt = select(Change).order_by(Change.created_at.desc())
     if status_filter:
@@ -109,6 +110,8 @@ async def list_changes(
         stmt = stmt.where(Change.change_type == type_filter)
     if created_by is not None:
         stmt = stmt.where(Change.created_by == created_by)
+    if site_id is not None:
+        stmt = stmt.where(Change.site_id == site_id)
     result = await db.execute(stmt)
     return list(result.scalars().all())
 

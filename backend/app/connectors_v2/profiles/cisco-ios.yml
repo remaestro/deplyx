@@ -1,72 +1,95 @@
 name: cisco-ios
 vendor: cisco
 os: ios
+device_role: switch
 match_banner:
-  - "Cisco"
-  - "IOS"
-match_cmd_output:
   - "cisco"
-  - "ios"
-  - "Cisco IOS Software"
-
+match_cmd_output:
+  - "cisco ios software"
+  - "cisco ios"
 transports:
-  - type: ssh
-    priority: 10
-    device_type: cisco_ios
-  - type: ssh
-    priority: 5
-    device_type: cisco_ios_telnet
-  - type: ssh
-    priority: 5
-    device_type: cisco_ios_telnet
-
+- type: ssh
+  priority: 10
+  device_type: cisco_ios
 commands:
-  show_version: "show version"
-  show_interfaces: "show interfaces"
-  show_ip_route: "show ip route"
-  show_vlan: "show vlan brief"
-  show_mac: "show mac address-table"
-  show_cdp: "show cdp neighbors detail"
-  show_lldp: "show lldp neighbors detail"
-  show_bgp: "show ip bgp summary"
-  show_ospf: "show ip ospf neighbor"
-  show_spanning_tree: "show spanning-tree"
-  show_ip_int_brief: "show ip interface brief"
-  show_standby: "show standby brief"
-  show_vrrp: "show vrrp brief"
-  show_etherchannel: "show etherchannel summary"
-  show_redundancy: "show redundancy"
-  show_ip_interface: "show ip interface"
-  show_access_list: "show access-list"
-  show_http_status: "show ip http server status"
-  show_arp: "show arp"
-
+  show_version: show version
+  show_interfaces: show interfaces
+  show_ip_route: show ip route
+  show_vlan: show vlan brief
+  show_mac: show mac address-table
+  show_cdp: show cdp neighbors detail
+  show_lldp: show lldp neighbors detail
+  show_bgp: show ip bgp summary
+  show_ospf: show ip ospf neighbor
+  show_spanning_tree: show spanning-tree
+  show_ip_int_brief: show ip interface brief
+  show_standby: show standby brief
+  show_vrrp: show vrrp brief
+  show_etherchannel: show etherchannel summary
+  show_redundancy: show redundancy
+  show_ip_interface: show ip interface
+  show_access_list: show access-list
+  show_http_status: show ip http server status
+  show_arp: show arp
 command_groups:
   system:
-    refs: ["show_version", "show_ip_int_brief"]
+    refs:
+    - show_version
+    - show_ip_int_brief
   interfaces:
-    refs: ["show_interfaces", "show_ip_int_brief"]
+    refs:
+    - show_interfaces
+    - show_ip_int_brief
   routing:
-    refs: ["show_ip_route", "show_bgp", "show_ospf"]
+    refs:
+    - show_ip_route
+    - show_bgp
+    - show_ospf
   switching:
-    refs: ["show_vlan", "show_mac", "show_spanning_tree"]
+    refs:
+    - show_vlan
+    - show_mac
+    - show_spanning_tree
   topology:
-    refs: ["show_cdp", "show_lldp"]
+    refs:
+    - show_cdp
+    - show_lldp
   redundancy:
-    refs: ["show_standby", "show_vrrp", "show_etherchannel", "show_redundancy"]
+    refs:
+    - show_standby
+    - show_vrrp
+    - show_etherchannel
+    - show_redundancy
   security:
-    refs: ["show_ip_interface", "show_access_list"]
+    refs:
+    - show_ip_interface
+    - show_access_list
   services:
-    refs: ["show_http_status"]
+    refs:
+    - show_http_status
   endpoints:
-    refs: ["show_arp"]
+    refs:
+    - show_arp
   all:
-    refs: ["show_version", "show_interfaces", "show_ip_route",
-           "show_vlan", "show_mac", "show_cdp", "show_lldp", "show_bgp",
-           "show_ospf", "show_spanning_tree", "show_standby", "show_vrrp",
-           "show_etherchannel", "show_redundancy", "show_ip_interface",
-           "show_access_list"]
-
+    refs:
+    - show_version
+    - show_interfaces
+    - show_ip_route
+    - show_vlan
+    - show_mac
+    - show_cdp
+    - show_lldp
+    - show_bgp
+    - show_ospf
+    - show_spanning_tree
+    - show_standby
+    - show_vrrp
+    - show_etherchannel
+    - show_redundancy
+    - show_ip_interface
+    - show_access_list
+    - show_http_status
+    - show_arp
 parsers:
   show_version: textfsm
   show_interfaces: textfsm
@@ -83,17 +106,15 @@ parsers:
   show_access_list: textfsm
   show_http_status: textfsm
   show_arp: textfsm
-
 neo4j_labels:
-  device: "Device"
-  interface: "Interface"
-  route: "Route"
-  vlan: "VLAN"
-  bgp_peer: "BGPPeer"
-
+  device: Device
+  interface: Interface
+  route: Route
+  vlan: VLAN
+  bgp_peer: BGPPeer
 fallback:
   transport: ssh
-  device_type: cisco_ios_telnet
+  device_type: cisco_ios
   commands:
-    - "show version"
-    - "show interfaces"
+  - show version
+  - show interfaces

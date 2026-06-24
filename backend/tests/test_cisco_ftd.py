@@ -1,6 +1,6 @@
 import pytest
 
-from app.connectors import cisco_ftd
+from app.connectors_v2.lib import cisco_ftd
 
 
 @pytest.mark.asyncio

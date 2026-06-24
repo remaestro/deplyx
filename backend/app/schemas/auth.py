@@ -22,5 +22,6 @@ class UserResponse(BaseModel):
     email: str
     role: str
     is_active: bool
+    organization_id: int | None = None
 
     model_config = {"from_attributes": True}

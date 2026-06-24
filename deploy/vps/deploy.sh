@@ -101,6 +101,7 @@ tar czf "${TARBALL}" \
     backend \
     frontend \
     lab \
+    ops \
     deploy \
     docker-compose.prod.yml \
     .env.production

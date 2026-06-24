@@ -44,12 +44,12 @@ services:
     env_file:
       - .env
     environment:
-      - VITE_API_BASE_URL=http://localhost:8000/api/v1
+      - VITE_API_BASE_URL=http://localhost:${BACKEND_PORT:-8100}/api/v1
     volumes:
       - ./frontend/src:/app/src
       - ./frontend/public:/app/public
     ports:
-      - "${FRONTEND_PORT:-5173}:8080"
+      - "${FRONTEND_PORT:-5180}:5173"
     depends_on:
       - backend
 
@@ -114,7 +114,7 @@ services:
     image: redis:7-alpine
     container_name: deplyx-redis
     ports:
-      - "6379:6379"
+      - "${REDIS_HOST_PORT:-6379}:6379"
     volumes:
       - redis_data:/data
 

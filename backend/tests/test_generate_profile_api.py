@@ -25,7 +25,11 @@ def tmp_profile() -> str:
 async def test_generate_profile_manual_mode(
     client: AsyncClient, tmp_profile: str
 ) -> None:
-    """Mode manuel : vendor + os_name doit générer un profil."""
+    """Mode manuel : vendor + os_name doit retourner un profil.
+
+    Pour un vendeur/OS connu (cisco/ios), le profil existant est réutilisé
+    (match-first) sans appel LLM. Le chemin retourné est le profil canonique.
+    """
     await client.post(
         "/api/v1/auth/register",
         json={"email": "gen-admin@deplyx.io", "password": "Admin123!", "role": "admin"},
@@ -48,7 +52,8 @@ async def test_generate_profile_manual_mode(
     assert data["profile"]["vendor"] == "cisco"
     assert data["profile"]["os"] == "ios"
     assert len(data["yaml_str"]) > 0
-    assert data["path"] == tmp_profile
+    # match-first: le profil canonique existant est retourné, pas le tmp_profile
+    assert data["path"].endswith("cisco-ios.yml")
 
 
 @pytest.mark.asyncio

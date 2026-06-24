@@ -4,16 +4,25 @@
 
 import type {
   Change, AuditEntry, Connector, Policy, Topology, Kpis, ImpactPayload,
+  Organization, Site,
 } from "./types";
 
 const BASE_URL =
   (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(/\/$/, "") ??
   "/api/v1";
 
+export const SITE_KEY = "deplyx.site";
+
 function authHeader(): Record<string, string> {
   if (typeof window === "undefined") return {};
   const token = window.localStorage.getItem("deplyx_token");
   return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+function siteHeader(): Record<string, string> {
+  if (typeof window === "undefined") return {};
+  const siteId = window.localStorage.getItem(SITE_KEY);
+  return siteId ? { "X-Deplyx-Site": siteId } : {};
 }
 
 const AUTH_KEY = "deplyx.auth";
@@ -35,13 +44,14 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     headers: {
       "Content-Type": "application/json",
       ...authHeader(),
+      ...siteHeader(),
       ...(init.headers ?? {}),
     },
   });
-  if (res.status === 401) {
+  if (res.status === 401 || res.status === 403) {
     clearSession();
     if (typeof window !== "undefined") window.location.href = "/login";
-    throw new ApiError(401, "Unauthorized");
+    throw new ApiError(res.status, res.status === 403 ? "Forbidden" : "Unauthorized");
   }
   if (res.status === 204) return undefined as T;
   return (await res.json()) as T;
@@ -84,12 +94,17 @@ export const api = {
 
   // Connectors
   listConnectors: () => request<Connector[]>("/connectors"),
+  listConnectorTypes: () => request<string[]>("/connectors/types"),
   syncConnector: (id: number) =>
     request<Connector>(`/connectors/${id}/sync`, { method: "POST" }),
   deleteConnector: (id: number) =>
     request<void>(`/connectors/${id}`, { method: "DELETE" }),
   createConnector: (input: Partial<Connector>) =>
     request<Connector>("/connectors", { method: "POST", body: JSON.stringify(input) }),
+  generateProfile: (input: { host: string; username?: string; password?: string; api_username?: string; api_password?: string; overwrite?: boolean }) =>
+    request<{ status: string; profile: Record<string, unknown>; path?: string; connector?: { id: number; name: string; connector_type: string }; errors?: string[] }>(
+      "/connectors/generate-profile", { method: "POST", body: JSON.stringify(input) }
+    ),
 
   // Policies
   listPolicies: () => request<Policy[]>("/policies"),
@@ -112,4 +127,17 @@ export const api = {
 
   // Topology graph
   topology: () => request<Topology>("/graph/topology"),
+
+  // Organizations & Sites
+  listOrganizations: () => request<Organization[]>("/organizations"),
+  createOrganization: (input: { name: string; slug?: string }) =>
+    request<Organization>("/organizations", { method: "POST", body: JSON.stringify(input) }),
+  listSites: (organizationId?: number) =>
+    request<Site[]>(`/sites${organizationId ? `?organization_id=${organizationId}` : ""}`),
+  createSite: (input: { name: string; slug?: string; location?: string; organization_id?: number }) =>
+    request<Site>("/sites", { method: "POST", body: JSON.stringify(input) }),
+  updateSite: (id: number, input: { name?: string; slug?: string; location?: string }) =>
+    request<Site>(`/sites/${id}`, { method: "PUT", body: JSON.stringify(input) }),
+  deleteSite: (id: number) =>
+    request<void>(`/sites/${id}`, { method: "DELETE" }),
 };

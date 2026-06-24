@@ -72,6 +72,7 @@ class Change(TimestampMixin, Base):
     analysis_last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
     analysis_trace_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     created_by: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    site_id: Mapped[int | None] = mapped_column(ForeignKey("sites.id"), index=True, nullable=True)
     reject_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     impacted_components: Mapped[list["ChangeImpactedComponent"]] = relationship(

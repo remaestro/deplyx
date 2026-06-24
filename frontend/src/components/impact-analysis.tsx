@@ -1,9 +1,10 @@
 import { useState } from "react";
-import type { Change, ImpactAnalysis } from "@/lib/types";
+import type { Change, ImpactAnalysis, PreChangeValidation, AiRecommendation } from "@/lib/types";
 
 import {
   Sparkles, RotateCw, ShieldAlert, CheckCircle2, XCircle, AlertTriangle,
   GitBranch, Activity, Users, Clock, ArrowRight, Radio, ChevronDown,
+  ClipboardCheck, Route as RouteIcon, Gauge,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -31,6 +32,9 @@ export function ImpactAnalysis({ change, onReanalyze }: { change: Change; onRean
         </button>
       </div>
 
+      {/* Row 0 — AI recommendation (senior reviewer verdict) */}
+      {a.recommendation && <Recommendation rec={a.recommendation} />}
+
       {/* Row 1 — blast radius + risk waterfall */}
       <div className="grid grid-cols-1 gap-3 xl:grid-cols-3">
         <div className="xl:col-span-2">
@@ -39,6 +43,13 @@ export function ImpactAnalysis({ change, onReanalyze }: { change: Change; onRean
         <PredictedIncidents items={a.risk_factors} />
       </div>
 
+      {/* Row 2 — live pre-change validations + path before/after */}
+      {a.pre_change_validation?.supported && (
+        <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
+          <PreChangeChecks v={a.pre_change_validation} />
+          <PathComparison v={a.pre_change_validation} />
+        </div>
+      )}
 
       {/* Row 3 — services */}
       <Services services={a.services ?? []} />
@@ -135,6 +146,12 @@ const SEV_STYLE = {
   info:    { dot: "bg-muted-foreground", text: "text-muted-foreground", chip: "bg-muted text-muted-foreground border-border", label: "Side-effect", Icon: Activity },
 } as const;
 
+const PROBA_STYLE = {
+  high:   "bg-destructive/15 text-destructive border-destructive/30",
+  medium: "bg-warning/15 text-warning border-warning/30",
+  low:    "bg-success/15 text-success border-success/30",
+} as const;
+
 function PredictedIncidents({ items }: { items: ImpactAnalysis["risk_factors"] }) {
   const [open, setOpen] = useState<string | null>(items[0]?.label ?? null);
   const counts = items.reduce<Record<string, number>>((acc, i) => ({ ...acc, [i.severity]: (acc[i.severity] ?? 0) + 1 }), {});
@@ -174,6 +191,11 @@ function PredictedIncidents({ items }: { items: ImpactAnalysis["risk_factors"] }
               >
                 <sev.Icon className={`mt-0.5 size-3.5 shrink-0 ${sev.text}`} />
                 <span className="flex-1 text-[12px] leading-snug">{f.label}</span>
+                {f.probability && (
+                  <span className={`shrink-0 rounded border px-1.5 py-0.5 text-[9px] uppercase tracking-wider ${PROBA_STYLE[f.probability]}`} title="Probability of occurrence">
+                    P·{f.probability}
+                  </span>
+                )}
                 <span className={`shrink-0 rounded border px-1.5 py-0.5 text-[9px] uppercase tracking-wider ${sev.chip}`}>{sev.label}</span>
                 <ChevronDown className={`mt-0.5 size-3 shrink-0 text-muted-foreground transition-transform ${isOpen ? "" : "-rotate-90"}`} />
               </button>
@@ -315,6 +337,175 @@ function Preflight({ items }: { items: ImpactAnalysis["preflight"] }) {
         })}
       </div>
     </Card>
+  );
+}
+
+/* -------------------- AI recommendation -------------------- */
+
+const VERDICT_STYLE = {
+  approve: { cls: "border-success/40 bg-success/10 text-success", label: "APPROVE", Icon: CheckCircle2 },
+  approve_with_validations: { cls: "border-warning/40 bg-warning/10 text-warning", label: "APPROVE WITH VALIDATIONS", Icon: AlertTriangle },
+  reject: { cls: "border-destructive/40 bg-destructive/10 text-destructive", label: "REJECT", Icon: XCircle },
+} as const;
+
+function Recommendation({ rec }: { rec: AiRecommendation }) {
+  const v = VERDICT_STYLE[rec.verdict] ?? VERDICT_STYLE.approve_with_validations;
+  return (
+    <div className={`rounded-md border px-4 py-3 ${v.cls}`}>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <v.Icon className="size-4" />
+          <span className="text-sm font-semibold tracking-wide">Recommendation: {v.label}</span>
+        </div>
+        {typeof rec.confidence === "number" && (
+          <span className="inline-flex items-center gap-1.5 rounded-md bg-background/60 px-2 py-1 text-[11px] text-foreground">
+            <Gauge className="size-3" /> Confidence {rec.confidence}%
+          </span>
+        )}
+      </div>
+      <div className="mt-2 grid grid-cols-1 gap-3 text-[12px] md:grid-cols-2">
+        {rec.reasons && rec.reasons.length > 0 && (
+          <div>
+            <div className="mb-1 text-[9px] uppercase tracking-wider opacity-70">Reasons</div>
+            <ul className="space-y-0.5 text-foreground/90">
+              {rec.reasons.map((r, i) => (
+                <li key={i} className="before:mr-1.5 before:content-['•']">{r}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+        <div className="space-y-2">
+          {rec.residual_risks && rec.residual_risks.length > 0 && (
+            <div>
+              <div className="mb-1 text-[9px] uppercase tracking-wider opacity-70">Residual risk</div>
+              <ul className="space-y-0.5 text-foreground/80">
+                {rec.residual_risks.map((r, i) => (
+                  <li key={i} className="before:mr-1.5 before:content-['•']">{r}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {rec.required_validations && rec.required_validations.length > 0 && (
+            <div>
+              <div className="mb-1 text-[9px] uppercase tracking-wider opacity-70">Required validations at execution</div>
+              <ul className="space-y-0.5 text-foreground/80">
+                {rec.required_validations.map((r, i) => (
+                  <li key={i} className="before:mr-1.5 before:content-['•']">{r}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* -------------------- Live pre-change validations -------------------- */
+
+const CHECK_STYLE = {
+  pass: { Icon: CheckCircle2, color: "text-success" },
+  fail: { Icon: XCircle, color: "text-destructive" },
+  warn: { Icon: AlertTriangle, color: "text-warning" },
+  skip: { Icon: Clock, color: "text-muted-foreground" },
+} as const;
+
+function PreChangeChecks({ v }: { v: PreChangeValidation }) {
+  const passed = v.checks.filter((c) => c.status === "pass").length;
+  const failed = v.checks.filter((c) => c.status === "fail").length;
+  return (
+    <Card
+      title="Pre-change validation (live)"
+      icon={<ClipboardCheck className="size-3.5" />}
+      subtitle={
+        <span>
+          {passed}/{v.checks.length} passed{failed > 0 ? ` · ${failed} failed` : ""}
+          {v.device?.hostname ? ` · collected on ${v.device.hostname} via SSH` : ""}
+        </span>
+      }
+    >
+      <div className="space-y-1.5">
+        {v.checks.map((c) => {
+          const s = CHECK_STYLE[c.status] ?? CHECK_STYLE.skip;
+          return (
+            <div key={c.name} className="rounded-md border border-border bg-background/40 px-2.5 py-1.5 text-xs">
+              <div className="flex items-start gap-2">
+                <s.Icon className={`mt-0.5 size-3.5 shrink-0 ${s.color}`} />
+                <div className="min-w-0 flex-1">
+                  <div className="font-medium">{c.label}</div>
+                  {c.detail && <div className="mt-0.5 text-[10px] text-muted-foreground">{c.detail}</div>}
+                  {c.evidence && c.evidence.filter(Boolean).length > 0 && (
+                    <pre className="mt-1 overflow-auto rounded bg-background/60 px-2 py-1 font-mono text-[10px] text-muted-foreground">
+                      {c.evidence.filter(Boolean).join("\n")}
+                    </pre>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      {v.evidence_collected && v.evidence_collected.length > 0 && (
+        <div className="mt-2 flex flex-wrap items-center gap-1 text-[10px] text-muted-foreground">
+          <span className="uppercase tracking-wider">Evidence:</span>
+          {v.evidence_collected.map((e) => (
+            <span key={e} className="rounded bg-muted px-1.5 py-0.5 font-mono">{e}</span>
+          ))}
+        </div>
+      )}
+    </Card>
+  );
+}
+
+/* -------------------- Path before / after -------------------- */
+
+function PathComparison({ v }: { v: PreChangeValidation }) {
+  const pc = v.path_comparison;
+  if (!pc) return null;
+  return (
+    <Card title="Path — current vs proposed" icon={<RouteIcon className="size-3.5" />}
+      subtitle={pc.delta && (pc.delta.hop_count || pc.delta.rtt_ms)
+        ? `Δ hops ${pc.delta.hop_count ?? "—"} · Δ RTT ${pc.delta.rtt_ms ?? "—"}`
+        : undefined}
+    >
+      <div className="space-y-3">
+        <PathRow label="Current" info={pc.current} tone="muted" />
+        <PathRow label="Proposed" info={pc.proposed} tone="primary" />
+        {v.route_table && (v.route_table.before || v.route_table.proposed) && (
+          <div>
+            <div className="mb-1 text-[9px] uppercase tracking-wider text-muted-foreground">Route table</div>
+            <pre className="overflow-auto rounded-md border border-border bg-background/60 p-2 font-mono text-[10px] leading-relaxed">
+              {v.route_table.before && <div className="text-destructive">- {v.route_table.before}</div>}
+              {v.route_table.proposed && <div className="text-success">+ {v.route_table.proposed}</div>}
+            </pre>
+          </div>
+        )}
+      </div>
+    </Card>
+  );
+}
+
+function PathRow({ label, info, tone }: { label: string; info: NonNullable<PreChangeValidation["path_comparison"]>["current"]; tone: "muted" | "primary" }) {
+  return (
+    <div className="rounded-md border border-border bg-background/40 px-2.5 py-2">
+      <div className="mb-1 flex items-center justify-between text-[10px] uppercase tracking-wider text-muted-foreground">
+        <span>{label}</span>
+        <span className="flex items-center gap-2 font-mono normal-case">
+          {info.hop_count != null && <span>{info.hop_count} hop{info.hop_count > 1 ? "s" : ""}</span>}
+          {info.rtt_ms != null && <span>RTT {info.rtt_ms}ms</span>}
+        </span>
+      </div>
+      <div className="flex flex-wrap items-center gap-1 text-xs">
+        {info.hops.map((h, i) => (
+          <span key={i} className="flex items-center gap-1">
+            {i > 0 && <ArrowRight className="size-3 text-muted-foreground" />}
+            <span className={`rounded px-1.5 py-0.5 font-mono text-[11px] ${
+              tone === "primary" && i > 0 ? "bg-primary/15 text-primary" : "bg-muted text-foreground/90"
+            }`}>{h}</span>
+          </span>
+        ))}
+      </div>
+    </div>
   );
 }
 

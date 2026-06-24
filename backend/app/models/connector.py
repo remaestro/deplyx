@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, Integer, String, Text, func
+from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, func
 from sqlalchemy.dialects.postgresql import JSON
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -11,6 +11,9 @@ class Connector(TimestampMixin, Base):
     __tablename__ = "connectors"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    site_id: Mapped[int | None] = mapped_column(
+        ForeignKey("sites.id"), index=True, nullable=True
+    )
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     connector_type: Mapped[str] = mapped_column(String(32), nullable=False)  # paloalto | fortinet | cisco | aws | azure
     config: Mapped[dict] = mapped_column(JSON, default=dict)  # host, credentials (should be encrypted in prod)

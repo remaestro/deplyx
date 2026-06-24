@@ -139,6 +139,24 @@ firewalls/rules or alternate network paths. You MUST use this data to:
   protection is less critical than one that becomes a single point of failure
 - Mention redundancy in `risk_assessment.factors` and `mitigations`
 
+## Live pre-change validation data (HIGHEST-VALUE EVIDENCE)
+
+The change details may include a `live_pre_change_validation` object. This contains \
+REAL command outputs collected over SSH from the actual target device minutes before \
+this analysis (ping to the new next-hop, ARP table lookup, `show ip route`, route \
+recursion, interface status). This is GROUND TRUTH — it outranks any hypothesis you \
+derive from the static topology snapshot. You MUST:
+- If a live check PASSED (e.g. next-hop reachable, ARP already learned), do NOT emit a \
+  hypothetical risk contradicting it ("next-hop may be unreachable"). Either drop that \
+  risk entirely or downgrade it to "info" with probability "low", citing the passing \
+  check in `evidence` (e.g. "ICMP success 100%, RTT avg 1ms — verified live").
+- If a live check FAILED (e.g. next-hop unreachable, no route recursion), raise it as a \
+  "blocker" with probability "high" and quote the real command output in `evidence`.
+- If a check is "warn" or "skip", you may keep a "warning" but reference the actual state.
+- Use `path_comparison` (current vs proposed hops and live-measured RTT) to judge whether \
+  the change actually achieves its stated goal.
+- Base your `recommendation` primarily on these live checks; mention them in `reasons`.
+
 Return a JSON object with EXACTLY this structure (no markdown, no extra keys).
 Each incident listed under `risk_factors` MUST be a concrete, wire-level consequence
 of the change — not a generic risk statement.
@@ -148,9 +166,10 @@ of the change — not a generic risk statement.
     {
       "label": "<concise description of the concrete issue, e.g. 'Return traffic routes asymmetrically via FTD-EDGE-02 → half-open sessions dropped' or 'New rule shadowed by upstream deny on DMZ-INBOUND:12'>",
       "severity": "blocker|warning|info",
+      "probability": "low|medium|high",
       "policy": "<optional: name of the policy or ACL that detected this>",
       "reason": "<optional: longer explanation of why this happens and what the impact is>",
-      "evidence": ["<optional: raw evidence lines, e.g. show access-list output>"]
+      "evidence": ["<optional: raw evidence lines, e.g. show access-list output or live validation results>"]
     }
   ],
   "services": [
@@ -167,8 +186,24 @@ of the change — not a generic risk statement.
     "total_impacted": <number>,
     "directly_impacted_ids": ["<node id>", ...],
     "indirectly_impacted_ids": ["<node id>", ...]
+  },
+  "recommendation": {
+    "verdict": "approve|approve_with_validations|reject",
+    "confidence": <0-100 integer — how confident you are, based on how much real evidence was available>,
+    "reasons": ["<short factual reason, e.g. 'New next-hop 10.0.0.1 verified reachable (ICMP 100%, RTT 1ms)'>", ...],
+    "residual_risks": ["<risk that remains even if approved, e.g. 'R5 remains a single point of failure'>", ...],
+    "required_validations": ["<only for approve_with_validations: what must be checked at execution time>", ...]
   }
 }
+
+Recommendation rules (write it like a senior reviewer would):
+- "approve": all live checks pass, risks are low-probability or mitigated.
+- "approve_with_validations": fundamentally sound but specific execution-time checks needed.
+- "reject": a blocker exists (live check failed, shadowed rule, unreachable next-hop, no rollback).
+- `confidence` reflects evidence coverage: live validation present and conclusive → 85-95; \
+graph-only analysis → 50-70; sparse topology data → below 50.
+- `probability` on each risk factor = likelihood the incident actually occurs (not its impact). \
+A risk contradicted by live evidence is "low". A risk confirmed by a failed live check is "high".
 
 Severity rules:
 - "blocker" = the change WILL fail at deploy time (e.g. rule shadowed, syntax error, ACL order). These must be resolved before approval.

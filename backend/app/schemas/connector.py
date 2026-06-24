@@ -20,6 +20,7 @@ class ConnectorUpdate(BaseModel):
 
 class ConnectorRead(BaseModel):
     id: int
+    site_id: int | None = None
     name: str
     connector_type: str
     config: dict
@@ -51,6 +52,8 @@ class ProfileGenerateRequest(BaseModel):
     os_name: str | None = None
     username: str | None = None
     password: str | None = None
+    api_username: str | None = None
+    api_password: str | None = None
     snmp_community: str = "public"
     output_path: str | None = None
     overwrite: bool = False
@@ -62,6 +65,7 @@ class ProfileGenerateResult(BaseModel):
     path: str | None = None
     yaml_str: str = ""
     errors: list[str] = Field(default_factory=list)
+    connector: dict[str, Any] | None = None
 
 
 class ConnectorOperationError(BaseModel):

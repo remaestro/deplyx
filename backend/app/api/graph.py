@@ -4,8 +4,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.core.rbac import Role, require_role
 from app.core.security import get_current_user
+from app.core.tenancy import resolve_optional_site
 from app.graph.neo4j_client import neo4j_client
 from app.graph.seed import seed_graph
+from app.models.organization import Site
 from app.schemas.graph import (
     ApplicationCreate,
     ApplicationRead,
@@ -42,8 +44,8 @@ router = APIRouter(prefix="/graph", tags=["graph"])
 
 
 @router.get("/devices", response_model=list[dict])
-async def list_devices(_=Depends(get_current_user)):
-    return await graph_service.list_devices()
+async def list_devices(site: Site | None = Depends(resolve_optional_site)):
+    return await graph_service.list_devices(site_id=site.id if site else None)
 
 
 @router.post("/devices", response_model=dict, status_code=status.HTTP_201_CREATED)
@@ -415,9 +417,11 @@ async def create_relationship(body: RelationshipCreate, _=Depends(require_role(R
 async def get_topology(
     center: str | None = Query(None, description="Center node ID for subgraph"),
     depth: int = Query(3, ge=1, le=10, description="Traversal depth"),
-    _=Depends(get_current_user),
+    site: Site | None = Depends(resolve_optional_site),
 ):
-    return await graph_service.get_topology(center_id=center, depth=depth)
+    return await graph_service.get_topology(
+        center_id=center, depth=depth, site_id=site.id if site else None
+    )
 
 
 @router.post("/topology/erase")

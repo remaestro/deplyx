@@ -1,5 +1,6 @@
 from app.celery_app import celery_app, run_async
 from app.services.pipeline_services import get_impact_analyzer
+from app.services import prechange_service
 from app.tasks.pipeline.base import with_change
 
 
@@ -9,6 +10,11 @@ def compute_impact(self, context: dict):
     change_id = context["change_id"]
 
     async def _do(db, change):
+        # Live pre-change validation (real device commands) — best effort
+        live_validation = await prechange_service.run_prechange_validation(
+            db, change, context.get("target_components", [])
+        )
+
         analyzer = get_impact_analyzer()
         impact = await analyzer.analyze(
             target_node_ids=context.get("target_components", []),
@@ -16,6 +22,7 @@ def compute_impact(self, context: dict):
             change_type=context.get("change_type"),
             environment=context.get("environment"),
             title=context.get("title"),
+            live_validation=live_validation,
         )
         change.impact_cache = impact
         await db.flush()

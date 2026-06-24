@@ -1,0 +1,33 @@
+- generic [active] [ref=e1]:
+  - main [ref=e2]:
+    - generic [ref=e7]:
+      - generic [ref=e8]:
+        - img [ref=e10]
+        - generic [ref=e12]: Deplyx
+      - generic [ref=e13]:
+        - heading "Ship network changes without surprises." [level=2] [ref=e14]:
+          - text: Ship network changes
+          - text: without surprises.
+        - paragraph [ref=e15]: Topology-aware impact analysis, risk scoring, and policy gates — all in one orchestration plane for your network & security teams.
+        - generic [ref=e16]:
+          - generic [ref=e17]: 22 connectors
+          - generic [ref=e18]: Graph-aware
+          - generic [ref=e19]: Policy engine
+      - generic [ref=e20]: © Deplyx — Demo build
+    - generic [ref=e22]:
+      - heading "Sign in to your workspace" [level=1] [ref=e23]
+      - paragraph [ref=e24]: Use any email/password to enter the demo.
+      - generic [ref=e25]:
+        - generic [ref=e26]:
+          - generic [ref=e27]: Email
+          - textbox "Email" [ref=e28]: admin@deplyx.io
+        - generic [ref=e29]:
+          - generic [ref=e30]: Password
+          - textbox "Password" [ref=e31]: Admin123!
+        - button "Sign in" [ref=e32]:
+          - text: Sign in
+          - img [ref=e33]
+      - paragraph [ref=e35]:
+        - text: New here?
+        - button "Create an account" [ref=e36]
+  - region "Notifications alt+T"

@@ -69,6 +69,8 @@ commands:
   show_cdp: "<commande>"
   show_lldp: "<commande>"
   show_bgp: "<commande>"
+  show_access_list: "<commande>"
+  show_http_status: "<commande de statut des services, ex: show ip http server status>"
   show_arp: "<commande>"
 command_groups:
   system:
@@ -81,12 +83,16 @@ command_groups:
     refs: ["show_vlan", "show_mac"]
   topology:
     refs: ["show_cdp", "show_lldp"]
+  security:
+    refs: ["show_access_list"]
+  services:
+    refs: ["show_http_status"]
   endpoints:
     refs: ["show_arp"]
   all:
     refs: ["show_version", "show_interfaces", "show_ip_route",
            "show_vlan", "show_mac", "show_cdp", "show_lldp",
-           "show_bgp", "show_arp"]
+           "show_bgp", "show_access_list", "show_http_status", "show_arp"]
 neo4j_labels:
   device: "Device"
   interface: "Interface"
@@ -106,7 +112,7 @@ fallback:
 2. `match_banner` et `match_cmd_output` doivent contenir des mots-clés qui permettent d'identifier ce constructeur/OS.
 3. Le `device_type` du transport SSH doit être un type Netmiko valide.
 4. Les commandes dans `commands` doivent utiliser des noms courts en snake_case.
-5. `command_groups` doit organiser les commandes par catégorie fonctionnelle.
+5. `command_groups` doit organiser les commandes par catégorie fonctionnelle. Inclure TOUJOURS un groupe ``services`` (commande de statut des services applicatifs, ex: ``show ip http server status``) car il alimente la couche APPLICATION de la topologie, et un groupe ``security`` (ACL/règles) si l'équipement le supporte.
 6. Si l'OS est un firewall (FTD, FortiOS, PAN-OS), utiliser ``device_role: firewall``.
 7. Si l'OS est un OS de switch (IOS, NX-OS), utiliser ``device_role: switch``.
 8. Si l'OS est un OS de routeur (IOS-XR, VyOS), utiliser ``device_role: router``.
@@ -126,6 +132,8 @@ async def generate_profile(
     os_name: str | None = None,
     username: str | None = None,
     password: str | None = None,
+    api_username: str | None = None,
+    api_password: str | None = None,
     snmp_community: str = "public",
     output_path: str | Path | None = None,
     llm_api_key: str | None = None,
@@ -183,6 +191,8 @@ async def generate_profile(
                 host,
                 username=username,
                 password=password,
+                api_username=api_username,
+                api_password=api_password,
                 snmp_community=snmp_community,
                 http_probe=True,
             )
@@ -195,10 +205,6 @@ async def generate_profile(
                 len(scan_result.get("commands_echouees", [])),
             )
 
-            # Si on a des commandes validées, on les passe au LLM
-            validated = scan_result.get("commands_valides", [])
-            if validated:
-                doc.setdefault("commands_validees", validated)
         except Exception as exc:
             result["errors"].append(f"scan: {exc}")
             logger.warning("Scan failed for %s: %s", host, exc)
@@ -207,16 +213,37 @@ async def generate_profile(
     vendor = scan_result.get("vendor") or vendor
     os_name = scan_result.get("os") or os_name
 
-    if not vendor:
+    # ── Fail-fast : vendor non identifié ou générique ────────────
+    if not vendor or vendor.lower() == "generic":
         result["status"] = "error"
         result["errors"].append(
-            "Impossible d'identifier le constructeur. "
-            "Fournissez vendor= ou un host accessible."
+            "Device not identified — could not determine vendor from scan. "
+            "Check SSH/API credentials and device reachability."
         )
         return result
 
+    # ── Match-first : profil existant → skip LLM ─────────────────
+    existing_path = _PROFILES_DIR / f"{vendor}-{os_name or 'generic'}.yml"
+    if existing_path.exists():
+        try:
+            with open(existing_path) as fh:
+                profile_data = yaml.safe_load(fh) or {}
+            result["profile"] = profile_data
+            result["yaml_str"] = yaml.safe_dump(profile_data, default_flow_style=False, sort_keys=False)
+            result["path"] = str(existing_path)
+            logger.info("Profil existant réutilisé: %s", existing_path.name)
+            return result
+        except Exception as exc:
+            logger.warning("Lecture profil existant échouée (%s): %s — LLM fallback", existing_path, exc)
+
     # ── Phase 2 : Collecte documentation ────────────────────────
     doc = collect_device_info(vendor, os_name)
+
+    # Injecter les commandes validées par le scan SSH dans la doc
+    validated = scan_result.get("commands_valides", [])
+    if validated:
+        doc.setdefault("commands_validees", validated)
+
     logger.info(
         "Doc collectée pour %s/%s: %d commands, %d templates",
         vendor, os_name or "?",
@@ -246,7 +273,7 @@ async def generate_profile(
     if not llm_response:
         logger.warning("LLM n'a pas généré de profil, utilisation du fallback")
         result["errors"].append("LLM n'a pas généré de profil — fallback utilisé")
-        fallback_device_type = doc.get("device_types_netmiko", [None])[0] or "unknown"
+        fallback_device_type = (doc.get("device_types_netmiko") or [None])[0] or "unknown"
         llm_response = _generate_fallback_profile(
             vendor, os_name or "", [fallback_device_type]
         )
@@ -259,7 +286,7 @@ async def generate_profile(
         logger.debug("Réponse LLM brute:\n%s", llm_response)
         result["errors"].append(f"Parsing YAML: {exc} — fallback utilisé")
         # Fallback sur le profil minimal
-        fallback_device_type = doc.get("device_types_netmiko", [None])[0] or "unknown"
+        fallback_device_type = (doc.get("device_types_netmiko") or [None])[0] or "unknown"
         llm_response = _generate_fallback_profile(
             vendor, os_name or "", [fallback_device_type]
         )

@@ -9,6 +9,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.rbac import Role, require_role
+from app.core.tenancy import get_current_site
+from app.models.organization import Site
 
 _log = logging.getLogger("deplyx.api.connectors")
 _log.setLevel(logging.DEBUG)
@@ -32,17 +34,35 @@ router = APIRouter(prefix="/connectors", tags=["connectors"])
 async def create_connector(
     body: ConnectorCreate,
     db: AsyncSession = Depends(get_db),
+    site: Site = Depends(get_current_site),
     _=Depends(require_role(Role.ADMIN)),
 ):
-    return await connector_service.create_connector(db, body.model_dump())
+    data = body.model_dump()
+    data["site_id"] = site.id
+    return await connector_service.create_connector(db, data)
 
 
 @router.get("", response_model=list[ConnectorRead])
 async def list_connectors(
     db: AsyncSession = Depends(get_db),
+    site: Site = Depends(get_current_site),
     _=Depends(require_role(Role.ADMIN, Role.NETWORK)),
 ):
-    return await connector_service.list_connectors(db)
+    return await connector_service.list_connectors(db, site_id=site.id)
+
+
+@router.get("/types")
+async def list_connector_types(
+    _=Depends(require_role(Role.ADMIN, Role.NETWORK)),
+):
+    """Retourne la liste des types de connecteurs disponibles (depuis les profils YAML)."""
+    from pathlib import Path
+    profiles_dir = Path(__file__).resolve().parent.parent / "connectors_v2" / "profiles"
+    types = sorted(
+        f.stem for f in profiles_dir.glob("*.yml")
+        if f.stem not in ("generic-generic",)
+    )
+    return types
 
 
 @router.get("/{connector_id}", response_model=ConnectorRead)
@@ -279,13 +299,16 @@ async def connector_sync_history(
 @router.post("/generate-profile", response_model=ProfileGenerateResult)
 async def generate_connector_profile(
     body: ProfileGenerateRequest,
+    db: AsyncSession = Depends(get_db),
     _=Depends(require_role(Role.ADMIN)),
 ):
-    """Génère un profil YAML pour un constructeur/OS.
+    """Génère un profil YAML pour un constructeur/OS et crée le connecteur.
 
     Deux modes :
     - **Mode auto** : fournir ``host`` (avec optionnellement username/password)
+      → scanne l'équipement, génère le YAML, **crée le connecteur** dans la BDD.
     - **Mode manuel** : fournir ``vendor`` et ``os_name``
+      → génère le YAML uniquement.
     """
     from app.connectors_v2.generator import generate_profile
 
@@ -295,6 +318,8 @@ async def generate_connector_profile(
         os_name=body.os_name,
         username=body.username,
         password=body.password,
+        api_username=body.api_username,
+        api_password=body.api_password,
         snmp_community=body.snmp_community,
         output_path=body.output_path,
         overwrite=body.overwrite,
@@ -302,5 +327,65 @@ async def generate_connector_profile(
 
     if result["status"] == "error":
         raise HTTPException(status_code=400, detail=result["errors"])
+
+    # ── Création / mise à jour du connecteur (mode auto uniquement) ─
+    if body.host and result["status"] == "ok":
+        profile = result.get("profile", {})
+        vendor = (profile.get("vendor") or "").strip().lower()
+        os_name = (profile.get("os") or "").strip().lower()
+        connector_type = f"{vendor}-{os_name}" if vendor and os_name else (vendor or "generic-ssh")
+
+        # Refuser les connecteurs non identifiés
+        if vendor == "generic" or connector_type == "generic-generic":
+            result.setdefault("errors", []).append(
+                "connector_create: device unidentified, connector not created"
+            )
+        else:
+            config = {
+                "host": body.host,
+                "username": body.username,
+                "password": body.password,
+                "api_username": body.api_username,
+                "api_password": body.api_password,
+            }
+            try:
+                # Dédup par host : mettre à jour le connecteur existant ou en créer un nouveau
+                existing = await connector_service.find_connector_by_host(db, body.host)
+                if existing:
+                    connector = await connector_service.update_connector(
+                        db, existing.id, {"config": config}
+                    )
+                    result["connector"] = {
+                        "id": connector.id,
+                        "name": connector.name,
+                        "connector_type": connector.connector_type,
+                        "updated": True,
+                    }
+                    _log.info(
+                        "Connecteur mis à jour: id=%s name=%s type=%s",
+                        connector.id, connector.name, connector.connector_type,
+                    )
+                else:
+                    connector = await connector_service.create_connector(
+                        db,
+                        {
+                            "name": body.host,
+                            "connector_type": connector_type,
+                            "config": config,
+                        },
+                    )
+                    result["connector"] = {
+                        "id": connector.id,
+                        "name": connector.name,
+                        "connector_type": connector.connector_type,
+                        "updated": False,
+                    }
+                    _log.info(
+                        "Connecteur créé: id=%s name=%s type=%s",
+                        connector.id, connector.name, connector.connector_type,
+                    )
+            except Exception as exc:
+                _log.warning("Échec create/update connecteur pour %s: %s", body.host, exc)
+                result.setdefault("errors", []).append(f"connector_create: {exc}")
 
     return result

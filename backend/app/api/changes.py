@@ -4,7 +4,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.core.rbac import Role, require_role
 from app.core.security import get_current_user
+from app.core.tenancy import get_current_site
 from app.graph.neo4j_client import neo4j_client
+from app.models.organization import Site
 from app.models.user import User
 from app.schemas.change import (
     ChangeCreate,
@@ -85,9 +87,12 @@ async def _serialize_change(change):
 async def create_change(
     body: ChangeCreate,
     db: AsyncSession = Depends(get_db),
+    site: Site = Depends(get_current_site),
     current_user: User = Depends(get_current_user),
 ):
-    change = await change_service.create_change(db, body.model_dump(), current_user.id)
+    data = body.model_dump()
+    data["site_id"] = site.id
+    change = await change_service.create_change(db, data, current_user.id)
     return await _serialize_change(change)
 
 
@@ -98,10 +103,13 @@ async def list_changes(
     change_type: str | None = Query(None, alias="type"),
     mine: bool = Query(False),
     db: AsyncSession = Depends(get_db),
+    site: Site = Depends(get_current_site),
     current_user: User = Depends(get_current_user),
 ):
     created_by = current_user.id if mine else None
-    changes = await change_service.list_changes(db, status_filter, env, change_type, created_by)
+    changes = await change_service.list_changes(
+        db, status_filter, env, change_type, created_by, site_id=site.id
+    )
     return changes
 
 

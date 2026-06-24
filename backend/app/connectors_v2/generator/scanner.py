@@ -13,8 +13,9 @@ import re
 import socket
 from typing import Any
 
-from app.connectors_v2.device_profile import DeviceProfile, fingerprint_device
+from app.connectors_v2.device_profile import DeviceProfile
 from app.connectors_v2.fingerprint import fingerprint_from_banner
+from app.connectors_v2.probes import ProbeCredentials, get_probes
 from app.utils.logging import get_logger
 
 logger = get_logger(__name__)
@@ -54,6 +55,8 @@ async def scan_device(
     username: str | None = None,
     password: str | None = None,
     enable_password: str | None = None,
+    api_username: str | None = None,
+    api_password: str | None = None,
     snmp_community: str = "public",
     http_probe: bool = True,
 ) -> dict[str, Any]:
@@ -96,33 +99,53 @@ async def scan_device(
         "commands_echouees": [],
     }
 
-    # ── Phase 1 : SSH avec credentials (cas réel) ───────────────
-    if username and password:
-        logger.info("Scan SSH authentifié pour %s", host)
-        auth_info = _scan_ssh_auth(
-            host, username, password, enable_password=enable_password
-        )
-        if auth_info.get("vendor"):
-            result.update(auth_info)
-            result["transport"] = "ssh"
-            result["source"] = "ssh_auth"
-            logger.info(
-                "SSH auth: %s → %s / %s (hostname=%s)",
-                host, result["vendor"], result["os"], result.get("hostname", "?"),
-            )
+    # ── Phase 1 : identification via les probes (credentials) ───
+    creds = ProbeCredentials(
+        host=host,
+        username=username or "",
+        password=password or "",
+        enable_password=enable_password or "",
+        api_username=api_username or "",
+        api_password=api_password or "",
+    )
 
-            # Essayer d'autres commandes pour valider le profil
-            cmds_valides, cmds_echouees = _probe_commands(
-                host, username, password, enable_password,
-                result.get("vendor", ""), result.get("os", ""),
-            )
-            result["commands_valides"] = cmds_valides
-            result["commands_echouees"] = cmds_echouees
-            logger.info(
-                "%s: %d commandes OK, %d échouées",
-                host, len(cmds_valides), len(cmds_echouees),
-            )
-            return result
+    for probe in get_probes():
+        if not probe.supports(creds):
+            continue
+        logger.info("Scan via %s probe pour %s", probe.name, host)
+        identity = probe.identify(creds)
+        if not (identity and identity.is_identified()):
+            continue
+
+        result.update(identity.to_dict())
+        logger.info(
+            "%s identified by %s: %s / %s (hostname=%s)",
+            host, probe.name, result["vendor"], result["os"], result.get("hostname", "?"),
+        )
+
+        # Optimisation SSH : si le profil existe déjà, inutile de tester
+        # toutes les commandes — on économise 30-60s de probe
+        if probe.transport == "ssh":
+            from pathlib import Path as _Path
+            _profiles_dir = _Path(__file__).resolve().parent.parent / "profiles"
+            _profile_key = f"{result['vendor']}-{result.get('os') or 'generic'}"
+            _profile_exists = (_profiles_dir / f"{_profile_key}.yml").exists()
+
+            if not _profile_exists:
+                cmds_valides, cmds_echouees = _probe_commands(
+                    host, username, password, enable_password,
+                    result.get("vendor", ""), result.get("os", ""),
+                )
+                result["commands_valides"] = cmds_valides
+                result["commands_echouees"] = cmds_echouees
+                logger.info(
+                    "%s: %d commandes OK, %d échouées",
+                    host, len(cmds_valides), len(cmds_echouees),
+                )
+            else:
+                logger.info("%s: profil %s existant, probe commandes ignoré", host, _profile_key)
+
+        return result
 
     # ── Phase 2 : Méthodes passives (secours, sans credentials) ─
     logger.info("Scan passif pour %s (aucun credentials ou échec SSH)", host)
@@ -151,84 +174,6 @@ async def scan_device(
 
     if not result.get("vendor"):
         logger.info("Aucune identification pour %s", host)
-
-    return result
-
-
-# ── SSH authentifié (fallback intrusif) ─────────────────────────────
-
-def _scan_ssh_auth(
-    host: str,
-    username: str,
-    password: str,
-    enable_password: str | None = None,
-) -> dict[str, str | None]:
-    """Connexion SSH pour identifier l'équipement et récupérer les infos système.
-
-    C'est la méthode principale — le client fournit les credentials,
-    on les utilise pour :
-      - ``show version`` (ou équivalent) → vendor, OS, hostname, version
-      - ``show running-config | include hostname`` → hostname
-    """
-    result: dict[str, str | None] = {
-        "vendor": None,
-        "os": None,
-        "os_version": None,
-        "hostname": None,
-        "model": None,
-    }
-
-    try:
-        from app.connectors_v2.fingerprint import fingerprint_from_cmd_output
-        from app.connectors_v2.transports import SSHTransport
-
-        ssh = SSHTransport(
-            host=host,
-            port=22,
-            username=username,
-            password=password,
-            enable_password=enable_password or password,
-            conn_timeout=10,
-            cmd_timeout=15,
-        )
-
-        if not ssh.connect():
-            return result
-
-        # show version → fingerprint + infos système
-        try:
-            out = ssh.run_command("show version")
-        except Exception:
-            out = ""
-
-        if out:
-            profiles = DeviceProfile.load_all()
-            fp = fingerprint_from_cmd_output(out, profiles)
-            result.update(fp)
-
-            m = re.search(r"(\S+)\s+uptime", out, re.IGNORECASE)
-            if m:
-                result["hostname"] = m.group(1)
-            m = re.search(r"Version\s+([\d.]+)", out, re.IGNORECASE)
-            if m:
-                result["os_version"] = m.group(1)
-            m = re.search(r"Processor board ID\s+(\S+)", out, re.IGNORECASE)
-            if m:
-                result["model"] = m.group(1)
-
-        # Si show version n'a pas donné d'hostname, essayer hostname
-        if not result.get("hostname"):
-            try:
-                out = ssh.run_command("hostname")
-                if out and len(out.strip()) < 100:
-                    result["hostname"] = out.strip()
-            except Exception:
-                pass
-
-        ssh.disconnect()
-
-    except Exception as exc:
-        logger.debug("SSH auth scan error for %s: %s", host, exc)
 
     return result
 
