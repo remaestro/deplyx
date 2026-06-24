@@ -43,8 +43,6 @@ services:
         VITE_LAB_API_URL: /api/v1
     container_name: deplyx-frontend
     restart: unless-stopped
-    ports:
-      - "80:8080"
     volumes:
       - ./deploy/vps/nginx.prod.conf:/etc/nginx/conf.d/default.conf:ro
     depends_on:
@@ -52,6 +50,15 @@ services:
       - lab-api
     networks:
       - deplyx
+      - edge
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=edge
+      - traefik.http.routers.deplyx.rule=Host(`deplyx.digita-energy.com`)
+      - traefik.http.routers.deplyx.entrypoints=web,websecure
+      - traefik.http.routers.deplyx.tls=true
+      - traefik.http.routers.deplyx.tls.certresolver=letsencrypt
+      - traefik.http.services.deplyx.loadbalancer.server.port=8080
 
   worker:
     image: ghcr.io/remaestro/deplyx-backend:${IMAGE_TAG:-latest}
@@ -163,3 +170,5 @@ volumes:
 networks:
   deplyx:
     driver: bridge
+  edge:
+    external: true
