@@ -2,14 +2,36 @@
 // Wraps the TanStack Start edge-style fetch handler into an HTTP server
 
 import { createServer } from "node:http";
-import { readFileSync } from "node:fs";
+import { readFileSync, existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { dirname, join } from "node:path";
+import { dirname, join, extname } from "node:path";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const PORT = parseInt(process.env.PORT || "8080", 10);
+
+// MIME types for static files
+const MIME_TYPES = {
+  ".html": "text/html; charset=utf-8",
+  ".css": "text/css; charset=utf-8",
+  ".js": "application/javascript; charset=utf-8",
+  ".mjs": "application/javascript; charset=utf-8",
+  ".json": "application/json; charset=utf-8",
+  ".png": "image/png",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".gif": "image/gif",
+  ".svg": "image/svg+xml",
+  ".ico": "image/x-icon",
+  ".woff": "font/woff",
+  ".woff2": "font/woff2",
+  ".ttf": "font/ttf",
+  ".eot": "application/vnd.ms-fontobject",
+  ".webp": "image/webp",
+};
+
+const CLIENT_DIR = join(__dirname, "dist", "client");
 
 async function start() {
   // Import the built server module
@@ -18,7 +40,22 @@ async function start() {
 
   const server = createServer(async (req, res) => {
     try {
-      // Build a Request object from the Node.js IncomingMessage
+      const urlPath = new URL(req.url || "/", "http://localhost").pathname;
+
+      // ── Serve static files from dist/client/ ───────────────
+      if (req.method === "GET" && !urlPath.startsWith("/api/")) {
+        const filePath = join(CLIENT_DIR, urlPath === "/" ? "index.html" : urlPath);
+        if (existsSync(filePath)) {
+          const ext = extname(filePath);
+          const mime = MIME_TYPES[ext] || "application/octet-stream";
+          const content = readFileSync(filePath);
+          res.writeHead(200, { "Content-Type": mime, "Cache-Control": ext === ".html" ? "no-cache" : "public, max-age=31536000, immutable" });
+          res.end(content);
+          return;
+        }
+      }
+
+      // ── Fallback: SSR handler ──────────────────────────────
       const protocol = req.socket.encrypted ? "https" : "http";
       const host = req.headers.host || "localhost";
       const url = new URL(req.url || "/", `${protocol}://${host}`);
