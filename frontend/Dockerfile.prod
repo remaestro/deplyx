@@ -26,6 +26,11 @@ COPY --from=builder /app/dist /app/dist
 # Copy server entry point
 COPY server-entry.mjs /app/server-entry.mjs
 
+# Copy package files and install production dependencies only
+# (needed by the built SSR server for packages like h3-v2, @tanstack/*, react, etc.)
+COPY package.json package-lock.json* ./
+RUN npm ci --no-audit --no-fund --omit=dev && npm cache clean --force
+
 EXPOSE 8080
 
 CMD ["node", "server-entry.mjs"]
