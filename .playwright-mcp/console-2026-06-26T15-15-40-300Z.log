@@ -67,3 +67,723 @@ https://react.dev/link/hydration-mismatch
 [    2130ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://localhost:8100/api/v1/sites:0
 [    2867ms] [VERBOSE] [DOM] Input elements should have autocomplete attributes (suggested: "current-password"): (More info: https://goo.gl/9p2vKq) @ http://localhost:5173/login:0
 [    3001ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:20102
+[ 2363237ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:20102
+[ 2363424ms] Error: Hydration failed because the server rendered HTML didn't match the client. As a result this tree will be regenerated on the client. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <SelectProvider scope={undefined} required={undefined} trigger={null} ...>
+      <SelectCollectionProvider scope={undefined}>
+        <SelectCollectionProviderProvider scope={undefined} itemMap={Map} collectionRef={{current:null}}>
+          <SelectProvider scope={undefined} onNativeOptionAdd={function} onNativeOptionRemove={function}>
+            <_c className="h-8 w-full...">
+              <SelectTrigger ref={null} className={"flex ite..."}>
+                <PopperAnchor asChild={true} __scopePopper={{Popper:[...]}}>
+                  <Primitive.div data-radix-popper-side={undefined} data-radix-popper-align={undefined} asChild={true} ...>
+                    <Primitive.div.Slot data-radix-popper-side={undefined} data-radix-popper-align={undefined} ...>
+                      <Primitive.button type="button" role="combobox" aria-controls={undefined} aria-expanded={false} ...>
+                        <button
+                          type="button"
+                          role="combobox"
+                          aria-controls={undefined}
+                          aria-expanded={false}
+                          aria-required={undefined}
+                          aria-autocomplete="none"
+                          dir="ltr"
+                          data-state="closed"
+                          disabled={false}
+                          data-disabled={undefined}
++                         data-placeholder={undefined}
+-                         data-placeholder=""
+                          className={"flex items-center justify-between whitespace-nowrap rounded-md border border-in..."}
+                          onClick={function handleEvent}
+                          onPointerDown={function handleEvent}
+                          onKeyDown={function handleEvent}
+                          data-radix-popper-side={undefined}
+                          data-radix-popper-align={undefined}
+                          ref={function}
+                        >
+                          <SelectValue placeholder="No site">
+                            <Primitive.span asChild={undefined} ref={function} style={{...}}>
+                              <span style={{...}} ref={function}>
+-                               No site
+                          ...
+            ...
+            ...
+
+    at throwOnHydrationMismatch (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:3920:13)
+    at popHydrationState (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:4028:11)
+    at completeWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:8998:19)
+    at runWithFiberInDEV (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:997:72)
+    at completeUnitOfWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:12669:22)
+    at performUnitOfWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:12575:29)
+    at workLoopSync (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:12424:43)
+    at renderRootSync (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:12408:13)
+    at performWorkOnRoot (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:11766:189)
+    at performSyncWorkOnRoot (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:13517:9)
+[ 2551200ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:20102
+[ 2551437ms] Error: Hydration failed because the server rendered HTML didn't match the client. As a result this tree will be regenerated on the client. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <SelectProvider scope={undefined} required={undefined} trigger={null} ...>
+      <SelectCollectionProvider scope={undefined}>
+        <SelectCollectionProviderProvider scope={undefined} itemMap={Map} collectionRef={{current:null}}>
+          <SelectProvider scope={undefined} onNativeOptionAdd={function} onNativeOptionRemove={function}>
+            <_c className="h-8 w-full...">
+              <SelectTrigger ref={null} className={"flex ite..."}>
+                <PopperAnchor asChild={true} __scopePopper={{Popper:[...]}}>
+                  <Primitive.div data-radix-popper-side={undefined} data-radix-popper-align={undefined} asChild={true} ...>
+                    <Primitive.div.Slot data-radix-popper-side={undefined} data-radix-popper-align={undefined} ...>
+                      <Primitive.button type="button" role="combobox" aria-controls={undefined} aria-expanded={false} ...>
+                        <button
+                          type="button"
+                          role="combobox"
+                          aria-controls={undefined}
+                          aria-expanded={false}
+                          aria-required={undefined}
+                          aria-autocomplete="none"
+                          dir="ltr"
+                          data-state="closed"
+                          disabled={false}
+                          data-disabled={undefined}
++                         data-placeholder={undefined}
+-                         data-placeholder=""
+                          className={"flex items-center justify-between whitespace-nowrap rounded-md border border-in..."}
+                          onClick={function handleEvent}
+                          onPointerDown={function handleEvent}
+                          onKeyDown={function handleEvent}
+                          data-radix-popper-side={undefined}
+                          data-radix-popper-align={undefined}
+                          ref={function}
+                        >
+                          <SelectValue placeholder="No site">
+                            <Primitive.span asChild={undefined} ref={function} style={{...}}>
+                              <span style={{...}} ref={function}>
+-                               No site
+                          ...
+            ...
+            ...
+
+    at throwOnHydrationMismatch (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:3920:13)
+    at popHydrationState (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:4028:11)
+    at completeWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:8998:19)
+    at runWithFiberInDEV (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:997:72)
+    at completeUnitOfWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:12669:22)
+    at performUnitOfWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:12575:29)
+    at workLoopSync (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:12424:43)
+    at renderRootSync (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:12408:13)
+    at performWorkOnRoot (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:11766:189)
+    at performSyncWorkOnRoot (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:13517:9)
+[ 2821601ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:20102
+[ 2821735ms] Error: Hydration failed because the server rendered HTML didn't match the client. As a result this tree will be regenerated on the client. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <SelectProvider scope={undefined} required={undefined} trigger={null} ...>
+      <SelectCollectionProvider scope={undefined}>
+        <SelectCollectionProviderProvider scope={undefined} itemMap={Map} collectionRef={{current:null}}>
+          <SelectProvider scope={undefined} onNativeOptionAdd={function} onNativeOptionRemove={function}>
+            <_c className="h-8 w-full...">
+              <SelectTrigger ref={null} className={"flex ite..."}>
+                <PopperAnchor asChild={true} __scopePopper={{Popper:[...]}}>
+                  <Primitive.div data-radix-popper-side={undefined} data-radix-popper-align={undefined} asChild={true} ...>
+                    <Primitive.div.Slot data-radix-popper-side={undefined} data-radix-popper-align={undefined} ...>
+                      <Primitive.button type="button" role="combobox" aria-controls={undefined} aria-expanded={false} ...>
+                        <button
+                          type="button"
+                          role="combobox"
+                          aria-controls={undefined}
+                          aria-expanded={false}
+                          aria-required={undefined}
+                          aria-autocomplete="none"
+                          dir="ltr"
+                          data-state="closed"
+                          disabled={false}
+                          data-disabled={undefined}
++                         data-placeholder={undefined}
+-                         data-placeholder=""
+                          className={"flex items-center justify-between whitespace-nowrap rounded-md border border-in..."}
+                          onClick={function handleEvent}
+                          onPointerDown={function handleEvent}
+                          onKeyDown={function handleEvent}
+                          data-radix-popper-side={undefined}
+                          data-radix-popper-align={undefined}
+                          ref={function}
+                        >
+                          <SelectValue placeholder="No site">
+                            <Primitive.span asChild={undefined} ref={function} style={{...}}>
+                              <span style={{...}} ref={function}>
+-                               No site
+                          ...
+            ...
+            ...
+
+    at throwOnHydrationMismatch (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:3920:13)
+    at popHydrationState (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:4028:11)
+    at completeWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:8998:19)
+    at runWithFiberInDEV (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:997:72)
+    at completeUnitOfWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:12669:22)
+    at performUnitOfWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:12575:29)
+    at workLoopSync (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:12424:43)
+    at renderRootSync (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:12408:13)
+    at performWorkOnRoot (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:11766:189)
+    at performSyncWorkOnRoot (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:13517:9)
+[ 2857635ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:20102
+[ 2858434ms] Error: Hydration failed because the server rendered HTML didn't match the client. As a result this tree will be regenerated on the client. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <SelectProvider scope={undefined} required={undefined} trigger={null} ...>
+      <SelectCollectionProvider scope={undefined}>
+        <SelectCollectionProviderProvider scope={undefined} itemMap={Map} collectionRef={{current:null}}>
+          <SelectProvider scope={undefined} onNativeOptionAdd={function} onNativeOptionRemove={function}>
+            <_c className="h-8 w-full...">
+              <SelectTrigger ref={null} className={"flex ite..."}>
+                <PopperAnchor asChild={true} __scopePopper={{Popper:[...]}}>
+                  <Primitive.div data-radix-popper-side={undefined} data-radix-popper-align={undefined} asChild={true} ...>
+                    <Primitive.div.Slot data-radix-popper-side={undefined} data-radix-popper-align={undefined} ...>
+                      <Primitive.button type="button" role="combobox" aria-controls={undefined} aria-expanded={false} ...>
+                        <button
+                          type="button"
+                          role="combobox"
+                          aria-controls={undefined}
+                          aria-expanded={false}
+                          aria-required={undefined}
+                          aria-autocomplete="none"
+                          dir="ltr"
+                          data-state="closed"
+                          disabled={false}
+                          data-disabled={undefined}
++                         data-placeholder={undefined}
+-                         data-placeholder=""
+                          className={"flex items-center justify-between whitespace-nowrap rounded-md border border-in..."}
+                          onClick={function handleEvent}
+                          onPointerDown={function handleEvent}
+                          onKeyDown={function handleEvent}
+                          data-radix-popper-side={undefined}
+                          data-radix-popper-align={undefined}
+                          ref={function}
+                        >
+                          <SelectValue placeholder="No site">
+                            <Primitive.span asChild={undefined} ref={function} style={{...}}>
+                              <span style={{...}} ref={function}>
+-                               No site
+                          ...
+            ...
+            ...
+
+    at throwOnHydrationMismatch (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:3920:13)
+    at popHydrationState (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:4028:11)
+    at completeWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:8998:19)
+    at runWithFiberInDEV (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:997:72)
+    at completeUnitOfWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:12669:22)
+    at performUnitOfWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:12575:29)
+    at workLoopSync (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:12424:43)
+    at renderRootSync (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:12408:13)
+    at performWorkOnRoot (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:11766:189)
+    at performSyncWorkOnRoot (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:13517:9)
+[ 3296295ms] [LOG] [vite] server connection lost. Polling for restart... @ http://localhost:5173/@vite/client:864
+[ 3297813ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:20102
+[ 3298523ms] Error: Hydration failed because the server rendered HTML didn't match the client. As a result this tree will be regenerated on the client. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <SelectProvider scope={undefined} required={undefined} trigger={null} ...>
+      <SelectCollectionProvider scope={undefined}>
+        <SelectCollectionProviderProvider scope={undefined} itemMap={Map} collectionRef={{current:null}}>
+          <SelectProvider scope={undefined} onNativeOptionAdd={function} onNativeOptionRemove={function}>
+            <_c className="h-8 w-full...">
+              <SelectTrigger ref={null} className={"flex ite..."}>
+                <PopperAnchor asChild={true} __scopePopper={{Popper:[...]}}>
+                  <Primitive.div data-radix-popper-side={undefined} data-radix-popper-align={undefined} asChild={true} ...>
+                    <Primitive.div.Slot data-radix-popper-side={undefined} data-radix-popper-align={undefined} ...>
+                      <Primitive.button type="button" role="combobox" aria-controls={undefined} aria-expanded={false} ...>
+                        <button
+                          type="button"
+                          role="combobox"
+                          aria-controls={undefined}
+                          aria-expanded={false}
+                          aria-required={undefined}
+                          aria-autocomplete="none"
+                          dir="ltr"
+                          data-state="closed"
+                          disabled={false}
+                          data-disabled={undefined}
++                         data-placeholder={undefined}
+-                         data-placeholder=""
+                          className={"flex items-center justify-between whitespace-nowrap rounded-md border border-in..."}
+                          onClick={function handleEvent}
+                          onPointerDown={function handleEvent}
+                          onKeyDown={function handleEvent}
+                          data-radix-popper-side={undefined}
+                          data-radix-popper-align={undefined}
+                          ref={function}
+                        >
+                          <SelectValue placeholder="No site">
+                            <Primitive.span asChild={undefined} ref={function} style={{...}}>
+                              <span style={{...}} ref={function}>
+-                               No site
+                          ...
+            ...
+            ...
+
+    at throwOnHydrationMismatch (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:3920:13)
+    at popHydrationState (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:4028:11)
+    at completeWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:8998:19)
+    at runWithFiberInDEV (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:997:72)
+    at completeUnitOfWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:12669:22)
+    at performUnitOfWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:12575:29)
+    at workLoopSync (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:12424:43)
+    at renderRootSync (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:12408:13)
+    at performWorkOnRoot (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:11766:189)
+    at performSyncWorkOnRoot (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:13517:9)
+[ 3402965ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:20102
+[ 3403090ms] Error: Hydration failed because the server rendered HTML didn't match the client. As a result this tree will be regenerated on the client. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <SelectProvider scope={undefined} required={undefined} trigger={null} ...>
+      <SelectCollectionProvider scope={undefined}>
+        <SelectCollectionProviderProvider scope={undefined} itemMap={Map} collectionRef={{current:null}}>
+          <SelectProvider scope={undefined} onNativeOptionAdd={function} onNativeOptionRemove={function}>
+            <_c className="h-8 w-full...">
+              <SelectTrigger ref={null} className={"flex ite..."}>
+                <PopperAnchor asChild={true} __scopePopper={{Popper:[...]}}>
+                  <Primitive.div data-radix-popper-side={undefined} data-radix-popper-align={undefined} asChild={true} ...>
+                    <Primitive.div.Slot data-radix-popper-side={undefined} data-radix-popper-align={undefined} ...>
+                      <Primitive.button type="button" role="combobox" aria-controls={undefined} aria-expanded={false} ...>
+                        <button
+                          type="button"
+                          role="combobox"
+                          aria-controls={undefined}
+                          aria-expanded={false}
+                          aria-required={undefined}
+                          aria-autocomplete="none"
+                          dir="ltr"
+                          data-state="closed"
+                          disabled={false}
+                          data-disabled={undefined}
++                         data-placeholder={undefined}
+-                         data-placeholder=""
+                          className={"flex items-center justify-between whitespace-nowrap rounded-md border border-in..."}
+                          onClick={function handleEvent}
+                          onPointerDown={function handleEvent}
+                          onKeyDown={function handleEvent}
+                          data-radix-popper-side={undefined}
+                          data-radix-popper-align={undefined}
+                          ref={function}
+                        >
+                          <SelectValue placeholder="No site">
+                            <Primitive.span asChild={undefined} ref={function} style={{...}}>
+                              <span style={{...}} ref={function}>
+-                               No site
+                          ...
+            ...
+            ...
+
+    at throwOnHydrationMismatch (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:3920:13)
+    at popHydrationState (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:4028:11)
+    at completeWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:8998:19)
+    at runWithFiberInDEV (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:997:72)
+    at completeUnitOfWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:12669:22)
+    at performUnitOfWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:12575:29)
+    at workLoopSync (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:12424:43)
+    at renderRootSync (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:12408:13)
+    at performWorkOnRoot (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:11766:189)
+    at performSyncWorkOnRoot (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:13517:9)
+[ 4793989ms] [LOG] [vite] server connection lost. Polling for restart... @ http://localhost:5173/@vite/client:864
+[ 4794622ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:20102
+[ 4794784ms] Error: Hydration failed because the server rendered HTML didn't match the client. As a result this tree will be regenerated on the client. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <SelectProvider scope={undefined} required={undefined} trigger={null} ...>
+      <SelectCollectionProvider scope={undefined}>
+        <SelectCollectionProviderProvider scope={undefined} itemMap={Map} collectionRef={{current:null}}>
+          <SelectProvider scope={undefined} onNativeOptionAdd={function} onNativeOptionRemove={function}>
+            <_c className="h-8 w-full...">
+              <SelectTrigger ref={null} className={"flex ite..."}>
+                <PopperAnchor asChild={true} __scopePopper={{Popper:[...]}}>
+                  <Primitive.div data-radix-popper-side={undefined} data-radix-popper-align={undefined} asChild={true} ...>
+                    <Primitive.div.Slot data-radix-popper-side={undefined} data-radix-popper-align={undefined} ...>
+                      <Primitive.button type="button" role="combobox" aria-controls={undefined} aria-expanded={false} ...>
+                        <button
+                          type="button"
+                          role="combobox"
+                          aria-controls={undefined}
+                          aria-expanded={false}
+                          aria-required={undefined}
+                          aria-autocomplete="none"
+                          dir="ltr"
+                          data-state="closed"
+                          disabled={false}
+                          data-disabled={undefined}
++                         data-placeholder={undefined}
+-                         data-placeholder=""
+                          className={"flex items-center justify-between whitespace-nowrap rounded-md border border-in..."}
+                          onClick={function handleEvent}
+                          onPointerDown={function handleEvent}
+                          onKeyDown={function handleEvent}
+                          data-radix-popper-side={undefined}
+                          data-radix-popper-align={undefined}
+                          ref={function}
+                        >
+                          <SelectValue placeholder="No site">
+                            <Primitive.span asChild={undefined} ref={function} style={{...}}>
+                              <span style={{...}} ref={function}>
+-                               No site
+                          ...
+            ...
+            ...
+
+    at throwOnHydrationMismatch (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:3920:13)
+    at popHydrationState (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:4028:11)
+    at completeWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:8998:19)
+    at runWithFiberInDEV (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:997:72)
+    at completeUnitOfWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:12669:22)
+    at performUnitOfWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:12575:29)
+    at workLoopSync (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:12424:43)
+    at renderRootSync (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:12408:13)
+    at performWorkOnRoot (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:11766:189)
+    at performSyncWorkOnRoot (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:13517:9)
+[ 4794859ms] [ERROR] Failed to load resource: the server responded with a status of 401 (Unauthorized) @ http://localhost:8100/api/v1/graph/topology:0
+[ 4794860ms] [ERROR] Failed to load resource: the server responded with a status of 401 (Unauthorized) @ http://localhost:8100/api/v1/sites:0
+[ 4795150ms] [VERBOSE] [DOM] Input elements should have autocomplete attributes (suggested: "current-password"): (More info: https://goo.gl/9p2vKq) @ http://localhost:5173/login:0
+[ 4795216ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:20102
+[ 5011260ms] [LOG] [vite] server connection lost. Polling for restart... @ http://localhost:5173/@vite/client:864
+[ 5011495ms] [VERBOSE] [DOM] Input elements should have autocomplete attributes (suggested: "current-password"): (More info: https://goo.gl/9p2vKq) @ http://localhost:5173/login:0
+[ 5011569ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:20102
+[ 5844193ms] [LOG] [vite] server connection lost. Polling for restart... @ http://localhost:5173/@vite/client:864
+[ 5844403ms] [VERBOSE] [DOM] Input elements should have autocomplete attributes (suggested: "current-password"): (More info: https://goo.gl/9p2vKq) @ http://localhost:5173/login:0
+[ 5844471ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:20102
+[10563951ms] [ERROR] Failed to load resource: the server responded with a status of 401 (Unauthorized) @ http://localhost:8100/api/v1/auth/login:0
+[10566278ms] [VERBOSE] [DOM] Input elements should have autocomplete attributes (suggested: "current-password"): (More info: https://goo.gl/9p2vKq) @ http://localhost:5173/login:0
+[10566338ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:20102
+[10574336ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:20102
+[10574570ms] Error: Hydration failed because the server rendered HTML didn't match the client. As a result this tree will be regenerated on the client. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <SelectProvider scope={undefined} required={undefined} trigger={null} ...>
+      <SelectCollectionProvider scope={undefined}>
+        <SelectCollectionProviderProvider scope={undefined} itemMap={Map} collectionRef={{current:null}}>
+          <SelectProvider scope={undefined} onNativeOptionAdd={function} onNativeOptionRemove={function}>
+            <_c className="h-8 w-full...">
+              <SelectTrigger ref={null} className={"flex ite..."}>
+                <PopperAnchor asChild={true} __scopePopper={{Popper:[...]}}>
+                  <Primitive.div data-radix-popper-side={undefined} data-radix-popper-align={undefined} asChild={true} ...>
+                    <Primitive.div.Slot data-radix-popper-side={undefined} data-radix-popper-align={undefined} ...>
+                      <Primitive.button type="button" role="combobox" aria-controls={undefined} aria-expanded={false} ...>
+                        <button
+                          type="button"
+                          role="combobox"
+                          aria-controls={undefined}
+                          aria-expanded={false}
+                          aria-required={undefined}
+                          aria-autocomplete="none"
+                          dir="ltr"
+                          data-state="closed"
+                          disabled={false}
+                          data-disabled={undefined}
++                         data-placeholder={undefined}
+-                         data-placeholder=""
+                          className={"flex items-center justify-between whitespace-nowrap rounded-md border border-in..."}
+                          onClick={function handleEvent}
+                          onPointerDown={function handleEvent}
+                          onKeyDown={function handleEvent}
+                          data-radix-popper-side={undefined}
+                          data-radix-popper-align={undefined}
+                          ref={function}
+                        >
+                          <SelectValue placeholder="No site">
+                            <Primitive.span asChild={undefined} ref={function} style={{...}}>
+                              <span style={{...}} ref={function}>
+-                               No site
+                          ...
+            ...
+            ...
+
+    at throwOnHydrationMismatch (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:3920:13)
+    at popHydrationState (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:4028:11)
+    at completeWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:8998:19)
+    at runWithFiberInDEV (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:997:72)
+    at completeUnitOfWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:12669:22)
+    at performUnitOfWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:12575:29)
+    at workLoopConcurrentByScheduler (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:12557:11)
+    at renderRootConcurrent (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:12539:71)
+    at performWorkOnRoot (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:11766:152)
+    at performWorkOnRootViaSchedulerTask (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:13505:9)
+[10574599ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://localhost:8100/api/v1/dashboard/kpis:0
+[10574599ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://localhost:8100/api/v1/changes:0
+[10574600ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://localhost:8100/api/v1/sites:0
+[10574601ms] [ERROR] Failed to load resource: the server responded with a status of 403 (Forbidden) @ http://localhost:8100/api/v1/audit-log:0
+[10575059ms] [VERBOSE] [DOM] Input elements should have autocomplete attributes (suggested: "current-password"): (More info: https://goo.gl/9p2vKq) @ http://localhost:5173/login:0
+[10575113ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:20102
+[10579201ms] [ERROR] Failed to load resource: the server responded with a status of 401 (Unauthorized) @ http://localhost:8100/api/v1/auth/login:0
+[10659131ms] [ERROR] Failed to load resource: the server responded with a status of 401 (Unauthorized) @ http://localhost:8100/api/v1/auth/login:0
+[10666201ms] [ERROR] Failed to load resource: the server responded with a status of 401 (Unauthorized) @ http://localhost:8100/api/v1/auth/login:0
+[10670206ms] [ERROR] Failed to load resource: the server responded with a status of 401 (Unauthorized) @ http://localhost:8100/api/v1/auth/login:0
+[11090888ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:20102
+[11091021ms] Error: Hydration failed because the server rendered HTML didn't match the client. As a result this tree will be regenerated on the client. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <SelectProvider scope={undefined} required={undefined} trigger={null} ...>
+      <SelectCollectionProvider scope={undefined}>
+        <SelectCollectionProviderProvider scope={undefined} itemMap={Map} collectionRef={{current:null}}>
+          <SelectProvider scope={undefined} onNativeOptionAdd={function} onNativeOptionRemove={function}>
+            <_c className="h-8 w-full...">
+              <SelectTrigger ref={null} className={"flex ite..."}>
+                <PopperAnchor asChild={true} __scopePopper={{Popper:[...]}}>
+                  <Primitive.div data-radix-popper-side={undefined} data-radix-popper-align={undefined} asChild={true} ...>
+                    <Primitive.div.Slot data-radix-popper-side={undefined} data-radix-popper-align={undefined} ...>
+                      <Primitive.button type="button" role="combobox" aria-controls={undefined} aria-expanded={false} ...>
+                        <button
+                          type="button"
+                          role="combobox"
+                          aria-controls={undefined}
+                          aria-expanded={false}
+                          aria-required={undefined}
+                          aria-autocomplete="none"
+                          dir="ltr"
+                          data-state="closed"
+                          disabled={false}
+                          data-disabled={undefined}
++                         data-placeholder={undefined}
+-                         data-placeholder=""
+                          className={"flex items-center justify-between whitespace-nowrap rounded-md border border-in..."}
+                          onClick={function handleEvent}
+                          onPointerDown={function handleEvent}
+                          onKeyDown={function handleEvent}
+                          data-radix-popper-side={undefined}
+                          data-radix-popper-align={undefined}
+                          ref={function}
+                        >
+                          <SelectValue placeholder="No site">
+                            <Primitive.span asChild={undefined} ref={function} style={{...}}>
+                              <span style={{...}} ref={function}>
+-                               No site
+                          ...
+            ...
+            ...
+
+    at throwOnHydrationMismatch (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:3920:13)
+    at popHydrationState (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:4028:11)
+    at completeWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:8998:19)
+    at runWithFiberInDEV (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:997:72)
+    at completeUnitOfWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:12669:22)
+    at performUnitOfWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:12575:29)
+    at workLoopSync (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:12424:43)
+    at renderRootSync (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:12408:13)
+    at performWorkOnRoot (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:11766:189)
+    at performSyncWorkOnRoot (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:13517:9)
+[11282388ms] [LOG] [vite] server connection lost. Polling for restart... @ http://localhost:5173/@vite/client:864
+[11282988ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:20102
+[11283159ms] Error: Hydration failed because the server rendered HTML didn't match the client. As a result this tree will be regenerated on the client. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <SelectProvider scope={undefined} required={undefined} trigger={null} ...>
+      <SelectCollectionProvider scope={undefined}>
+        <SelectCollectionProviderProvider scope={undefined} itemMap={Map} collectionRef={{current:null}}>
+          <SelectProvider scope={undefined} onNativeOptionAdd={function} onNativeOptionRemove={function}>
+            <_c className="h-8 w-full...">
+              <SelectTrigger ref={null} className={"flex ite..."}>
+                <PopperAnchor asChild={true} __scopePopper={{Popper:[...]}}>
+                  <Primitive.div data-radix-popper-side={undefined} data-radix-popper-align={undefined} asChild={true} ...>
+                    <Primitive.div.Slot data-radix-popper-side={undefined} data-radix-popper-align={undefined} ...>
+                      <Primitive.button type="button" role="combobox" aria-controls={undefined} aria-expanded={false} ...>
+                        <button
+                          type="button"
+                          role="combobox"
+                          aria-controls={undefined}
+                          aria-expanded={false}
+                          aria-required={undefined}
+                          aria-autocomplete="none"
+                          dir="ltr"
+                          data-state="closed"
+                          disabled={false}
+                          data-disabled={undefined}
++                         data-placeholder={undefined}
+-                         data-placeholder=""
+                          className={"flex items-center justify-between whitespace-nowrap rounded-md border border-in..."}
+                          onClick={function handleEvent}
+                          onPointerDown={function handleEvent}
+                          onKeyDown={function handleEvent}
+                          data-radix-popper-side={undefined}
+                          data-radix-popper-align={undefined}
+                          ref={function}
+                        >
+                          <SelectValue placeholder="No site">
+                            <Primitive.span asChild={undefined} ref={function} style={{...}}>
+                              <span style={{...}} ref={function}>
+-                               No site
+                          ...
+            ...
+            ...
+
+    at throwOnHydrationMismatch (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:3920:13)
+    at popHydrationState (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:4028:11)
+    at completeWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:8998:19)
+    at runWithFiberInDEV (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:997:72)
+    at completeUnitOfWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:12669:22)
+    at performUnitOfWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:12575:29)
+    at workLoopSync (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:12424:43)
+    at renderRootSync (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:12408:13)
+    at performWorkOnRoot (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:11766:189)
+    at performSyncWorkOnRoot (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:13517:9)
+[11904230ms] [LOG] [vite] server connection lost. Polling for restart... @ http://localhost:5173/@vite/client:864
+[11904690ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:20102
+[11904889ms] Error: Hydration failed because the server rendered HTML didn't match the client. As a result this tree will be regenerated on the client. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <SelectProvider scope={undefined} required={undefined} trigger={null} ...>
+      <SelectCollectionProvider scope={undefined}>
+        <SelectCollectionProviderProvider scope={undefined} itemMap={Map} collectionRef={{current:null}}>
+          <SelectProvider scope={undefined} onNativeOptionAdd={function} onNativeOptionRemove={function}>
+            <_c className="h-8 w-full...">
+              <SelectTrigger ref={null} className={"flex ite..."}>
+                <PopperAnchor asChild={true} __scopePopper={{Popper:[...]}}>
+                  <Primitive.div data-radix-popper-side={undefined} data-radix-popper-align={undefined} asChild={true} ...>
+                    <Primitive.div.Slot data-radix-popper-side={undefined} data-radix-popper-align={undefined} ...>
+                      <Primitive.button type="button" role="combobox" aria-controls={undefined} aria-expanded={false} ...>
+                        <button
+                          type="button"
+                          role="combobox"
+                          aria-controls={undefined}
+                          aria-expanded={false}
+                          aria-required={undefined}
+                          aria-autocomplete="none"
+                          dir="ltr"
+                          data-state="closed"
+                          disabled={false}
+                          data-disabled={undefined}
++                         data-placeholder={undefined}
+-                         data-placeholder=""
+                          className={"flex items-center justify-between whitespace-nowrap rounded-md border border-in..."}
+                          onClick={function handleEvent}
+                          onPointerDown={function handleEvent}
+                          onKeyDown={function handleEvent}
+                          data-radix-popper-side={undefined}
+                          data-radix-popper-align={undefined}
+                          ref={function}
+                        >
+                          <SelectValue placeholder="No site">
+                            <Primitive.span asChild={undefined} ref={function} style={{...}}>
+                              <span style={{...}} ref={function}>
+-                               No site
+                          ...
+            ...
+            ...
+
+    at throwOnHydrationMismatch (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:3920:13)
+    at popHydrationState (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:4028:11)
+    at completeWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:8998:19)
+    at runWithFiberInDEV (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:997:72)
+    at completeUnitOfWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:12669:22)
+    at performUnitOfWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:12575:29)
+    at workLoopSync (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:12424:43)
+    at renderRootSync (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:12408:13)
+    at performWorkOnRoot (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:11766:189)
+    at performSyncWorkOnRoot (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:13517:9)

@@ -15,10 +15,16 @@ export const Route = createFileRoute("/_authenticated/graph-v3")({
   component: TopologyPage,
 });
 
-function isMainNode(n: { id: string }): boolean {
+function isMainNode(n: { id: string; properties?: Record<string, string> }): boolean {
   if (n.id.startsWith("FTD-RULE-")) return false;
+  // Include nodes that have a known role (mapped to a layer)
+  const role = (n.properties?.role ?? "").toLowerCase();
+  if (role && ROLE_LAYER[role]) return true;
+  // Legacy prefix-based detection
   const id = n.id.toLowerCase();
-  return id.startsWith("dev-") || id.startsWith("ftd-") || id.startsWith("svc-") || id.startsWith("app-");
+  return id.startsWith("dev-") || id.startsWith("ftd-") || id.startsWith("svc-") || id.startsWith("app-")
+    || id.startsWith("hv-") || id.startsWith("san-") || id.startsWith("nas-") || id.startsWith("backup-")
+    || id.startsWith("bastion-") || id.startsWith("oob-") || id.startsWith("vcenter-");
 }
 
 // Map of role/type values → graph layer
@@ -32,7 +38,7 @@ const ROLE_LAYER: Record<string, string> = {
   hypervisor: "compute", esxi: "compute", proxmox: "compute", kvm: "compute",
   vcenter: "compute", cluster_node: "compute",
   // storage
-  storage: "storage", san: "storage", nas: "storage", backup: "storage",
+  san: "storage", nas: "storage", backup: "storage",
   fc_switch: "storage", disk_array: "storage",
   // management / OOB
   bastion: "management", oob: "management", jump_host: "management",
@@ -70,7 +76,7 @@ function shortType(n: GraphNode): string {
 }
 
 function computeLayout(nodes: GraphNode[]) {
-  const layers = { security: 80, network: 210, compute: 330, storage: 420, application: 520 } as const;
+  const layers = { security: 80, network: 210, compute: 330, storage: 420, application: 520, management: 610 } as const;
   const groups: Record<string, GraphNode[]> = { security: [], network: [], compute: [], storage: [], application: [], management: [] };
   nodes.filter(isMainNode).forEach((n) => {
     const l = layerForNode(n);
@@ -262,14 +268,15 @@ function TopologyPage() {
 
       <div className="p-8">
         <div className="overflow-hidden rounded-lg border border-border bg-card">
-          <svg viewBox="0 0 1840 750" className="block h-[750px] w-full overflow-x-auto">
+          <svg viewBox="0 0 1840 780" className="block h-[780px] w-full overflow-x-auto">
             {/* Layer bands — dynamic height to accommodate multi-row */}
             <rect x="0" y="20" width="1840" height="110" fill="oklch(0.22 0.04 350 / 0.35)" />
             <rect x="0" y="140" width="1840" height="150" fill="oklch(0.22 0.06 220 / 0.35)" />
             <rect x="0" y="300" width="1840" height="80" fill="oklch(0.22 0.04 280 / 0.35)" />
             <rect x="0" y="390" width="1840" height="80" fill="oklch(0.22 0.04 40 / 0.35)" />
-            <rect x="0" y="480" width="1840" height="250" fill="oklch(0.22 0.06 145 / 0.35)" />
-            {[["Security", 38, "oklch(0.78 0.13 350)"], ["Network", 155, "oklch(0.78 0.13 220)"], ["Compute", 315, "oklch(0.78 0.13 280)"], ["Storage", 405, "oklch(0.78 0.13 40)"], ["Application", 498, "oklch(0.78 0.13 145)"]].map(([label, y, color]) => (
+            <rect x="0" y="480" width="1840" height="100" fill="oklch(0.22 0.06 145 / 0.35)" />
+            <rect x="0" y="590" width="1840" height="140" fill="oklch(0.22 0.04 180 / 0.35)" />
+            {[["Security", 38, "oklch(0.78 0.13 350)"], ["Network", 155, "oklch(0.78 0.13 220)"], ["Compute", 315, "oklch(0.78 0.13 280)"], ["Storage", 405, "oklch(0.78 0.13 40)"], ["Application", 498, "oklch(0.78 0.13 145)"], ["Management", 590, "oklch(0.78 0.13 180)"]].map(([label, y, color]) => (
               <text key={label as string} x="14" y={y as number} fill={color as string} fontSize="10" fontFamily="JetBrains Mono" letterSpacing="0.15em">
                 {(label as string).toUpperCase()}
               </text>
