@@ -56,7 +56,12 @@ function layerForNode(n: GraphNode): string {
   if (id.startsWith("ftd-")) return "security";
   const type = (n.properties.type ?? "").toLowerCase();
   const role = (n.properties.role ?? "").toLowerCase();
-  // Check role first (our seed uses 'role'), then type
+  const zone = (n.properties.zone ?? "").toLowerCase();
+  // Check zone first (most specific physical location)
+  if (zone === "compute") return "compute";
+  if (zone === "storage") return "storage";
+  if (zone === "mgmt" || zone === "management") return "management";
+  // Check role then type
   if (role && ROLE_LAYER[role]) return ROLE_LAYER[role];
   if (type && ROLE_LAYER[type]) return ROLE_LAYER[type];
   if (type.includes("firewall") || type.includes("ftd") || type.includes("security")) return "security";

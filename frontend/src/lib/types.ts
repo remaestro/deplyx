@@ -187,10 +187,11 @@ export type Policy = {
 export type GraphNode = {
   id: string;
   label: "Device" | "Application" | "Service";
-  layer: "security" | "network" | "application";
+  layer: "security" | "network" | "compute" | "storage" | "application" | "management";
   display_name: string;
   properties: {
-    type?: string; vendor?: string; role?: string; ip?: string; criticality?: string;
+    type?: string; vendor?: string; role?: string; zone?: string;
+    ip?: string; criticality?: string;
   };
 };
 

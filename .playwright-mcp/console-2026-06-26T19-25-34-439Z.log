@@ -1,0 +1,16 @@
+[  122788ms] Error: Minified React error #418; visit https://react.dev/errors/418?args[]=HTML&args[]= for the full message or use the non-minified dev environment for full errors and additional helpful warnings.
+    at xa (https://deplyx.digita-energy.com/assets/index-k_cdISoK.js:9:31360)
+    at ei (https://deplyx.digita-energy.com/assets/index-k_cdISoK.js:9:32732)
+    at cb (https://deplyx.digita-energy.com/assets/index-k_cdISoK.js:9:86650)
+    at Zl (https://deplyx.digita-energy.com/assets/index-k_cdISoK.js:9:117772)
+    at $m (https://deplyx.digita-energy.com/assets/index-k_cdISoK.js:9:117020)
+    at gb (https://deplyx.digita-energy.com/assets/index-k_cdISoK.js:9:116005)
+    at zc (https://deplyx.digita-energy.com/assets/index-k_cdISoK.js:9:115837)
+    at Xm (https://deplyx.digita-energy.com/assets/index-k_cdISoK.js:9:112282)
+    at dp (https://deplyx.digita-energy.com/assets/index-k_cdISoK.js:9:124551)
+    at vr (https://deplyx.digita-energy.com/assets/index-k_cdISoK.js:9:123099)
+[  123085ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://deplyx.digita-energy.com/api/v1/dashboard/kpis:0
+[  123086ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://deplyx.digita-energy.com/api/v1/audit-log:0
+[  123087ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://deplyx.digita-energy.com/api/v1/sites:0
+[  123247ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://deplyx.digita-energy.com/api/v1/changes:0
+[  126002ms] [VERBOSE] [DOM] Input elements should have autocomplete attributes (suggested: "current-password"): (More info: https://goo.gl/9p2vKq) @ https://deplyx.digita-energy.com/login:0
