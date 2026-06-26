@@ -1,0 +1,111 @@
+[    2098ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:20102
+[    2754ms] Error: Hydration failed because the server rendered HTML didn't match the client. As a result this tree will be regenerated on the client. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <SelectProvider scope={undefined} required={undefined} trigger={null} ...>
+      <SelectCollectionProvider scope={undefined}>
+        <SelectCollectionProviderProvider scope={undefined} itemMap={Map} collectionRef={{current:null}}>
+          <SelectProvider scope={undefined} onNativeOptionAdd={function} onNativeOptionRemove={function}>
+            <_c className="h-8 w-full...">
+              <SelectTrigger ref={null} className={"flex ite..."}>
+                <PopperAnchor asChild={true} __scopePopper={{Popper:[...]}}>
+                  <Primitive.div data-radix-popper-side={undefined} data-radix-popper-align={undefined} asChild={true} ...>
+                    <Primitive.div.Slot data-radix-popper-side={undefined} data-radix-popper-align={undefined} ...>
+                      <Primitive.button type="button" role="combobox" aria-controls={undefined} aria-expanded={false} ...>
+                        <button
+                          type="button"
+                          role="combobox"
+                          aria-controls={undefined}
+                          aria-expanded={false}
+                          aria-required={undefined}
+                          aria-autocomplete="none"
+                          dir="ltr"
+                          data-state="closed"
+                          disabled={false}
+                          data-disabled={undefined}
++                         data-placeholder={undefined}
+-                         data-placeholder=""
+                          className={"flex items-center justify-between whitespace-nowrap rounded-md border border-in..."}
+                          onClick={function handleEvent}
+                          onPointerDown={function handleEvent}
+                          onKeyDown={function handleEvent}
+                          data-radix-popper-side={undefined}
+                          data-radix-popper-align={undefined}
+                          ref={function}
+                        >
+                          <SelectValue placeholder="No site">
+                            <Primitive.span asChild={undefined} ref={function} style={{...}}>
+                              <span style={{...}} ref={function}>
+-                               No site
+                          ...
+            ...
+            ...
+
+    at throwOnHydrationMismatch (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:3920:13)
+    at popHydrationState (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:4028:11)
+    at completeWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:8998:19)
+    at runWithFiberInDEV (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:997:72)
+    at completeUnitOfWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:12669:22)
+    at performUnitOfWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:12575:29)
+    at workLoopSync (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:12424:43)
+    at renderRootSync (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:12408:13)
+    at performWorkOnRoot (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:11766:189)
+    at performSyncWorkOnRoot (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:13517:9)
+[    3132ms] [ERROR] Access to fetch at 'http://localhost:8100/api/v1/changes' from origin 'http://localhost:5173' has been blocked by CORS policy: Response to preflight request doesn't pass access control check: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ http://localhost:5173/:0
+[    3133ms] [ERROR] Failed to load resource: net::ERR_FAILED @ http://localhost:8100/api/v1/changes:0
+[    3134ms] [ERROR] Access to fetch at 'http://localhost:8100/api/v1/audit-log' from origin 'http://localhost:5173' has been blocked by CORS policy: Response to preflight request doesn't pass access control check: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ http://localhost:5173/:0
+[    3135ms] [ERROR] Failed to load resource: net::ERR_FAILED @ http://localhost:8100/api/v1/audit-log:0
+[    3137ms] [ERROR] Access to fetch at 'http://localhost:8100/api/v1/dashboard/kpis' from origin 'http://localhost:5173' has been blocked by CORS policy: Response to preflight request doesn't pass access control check: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ http://localhost:5173/:0
+[    3137ms] [ERROR] Failed to load resource: net::ERR_FAILED @ http://localhost:8100/api/v1/dashboard/kpis:0
+[    3138ms] [ERROR] Access to fetch at 'http://localhost:8100/api/v1/sites' from origin 'http://localhost:5173' has been blocked by CORS policy: Response to preflight request doesn't pass access control check: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ http://localhost:5173/:0
+[    3138ms] [ERROR] Failed to load resource: net::ERR_FAILED @ http://localhost:8100/api/v1/sites:0
+[    4156ms] [ERROR] Access to fetch at 'http://localhost:8100/api/v1/dashboard/kpis' from origin 'http://localhost:5173' has been blocked by CORS policy: Response to preflight request doesn't pass access control check: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ http://localhost:5173/:0
+[    4156ms] [ERROR] Failed to load resource: net::ERR_FAILED @ http://localhost:8100/api/v1/dashboard/kpis:0
+[    4161ms] [ERROR] Access to fetch at 'http://localhost:8100/api/v1/audit-log' from origin 'http://localhost:5173' has been blocked by CORS policy: Response to preflight request doesn't pass access control check: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ http://localhost:5173/:0
+[    4161ms] [ERROR] Failed to load resource: net::ERR_FAILED @ http://localhost:8100/api/v1/audit-log:0
+[    4162ms] [ERROR] Access to fetch at 'http://localhost:8100/api/v1/changes' from origin 'http://localhost:5173' has been blocked by CORS policy: Response to preflight request doesn't pass access control check: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ http://localhost:5173/:0
+[    4162ms] [ERROR] Failed to load resource: net::ERR_FAILED @ http://localhost:8100/api/v1/changes:0
+[    4162ms] [ERROR] Access to fetch at 'http://localhost:8100/api/v1/sites' from origin 'http://localhost:5173' has been blocked by CORS policy: Response to preflight request doesn't pass access control check: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ http://localhost:5173/:0
+[    4162ms] [ERROR] Failed to load resource: net::ERR_FAILED @ http://localhost:8100/api/v1/sites:0
+[    6161ms] [ERROR] Access to fetch at 'http://localhost:8100/api/v1/dashboard/kpis' from origin 'http://localhost:5173' has been blocked by CORS policy: Response to preflight request doesn't pass access control check: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ http://localhost:5173/:0
+[    6161ms] [ERROR] Failed to load resource: net::ERR_FAILED @ http://localhost:8100/api/v1/dashboard/kpis:0
+[    6167ms] [ERROR] Access to fetch at 'http://localhost:8100/api/v1/changes' from origin 'http://localhost:5173' has been blocked by CORS policy: Response to preflight request doesn't pass access control check: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ http://localhost:5173/:0
+[    6167ms] [ERROR] Failed to load resource: net::ERR_FAILED @ http://localhost:8100/api/v1/changes:0
+[    6169ms] [ERROR] Access to fetch at 'http://localhost:8100/api/v1/sites' from origin 'http://localhost:5173' has been blocked by CORS policy: Response to preflight request doesn't pass access control check: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ http://localhost:5173/:0
+[    6169ms] [ERROR] Failed to load resource: net::ERR_FAILED @ http://localhost:8100/api/v1/sites:0
+[    6169ms] [ERROR] Access to fetch at 'http://localhost:8100/api/v1/audit-log' from origin 'http://localhost:5173' has been blocked by CORS policy: Response to preflight request doesn't pass access control check: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ http://localhost:5173/:0
+[    6169ms] [ERROR] Failed to load resource: net::ERR_FAILED @ http://localhost:8100/api/v1/audit-log:0
+[   10166ms] [ERROR] Access to fetch at 'http://localhost:8100/api/v1/dashboard/kpis' from origin 'http://localhost:5173' has been blocked by CORS policy: Response to preflight request doesn't pass access control check: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ http://localhost:5173/:0
+[   10166ms] [ERROR] Failed to load resource: net::ERR_FAILED @ http://localhost:8100/api/v1/dashboard/kpis:0
+[   10172ms] [ERROR] Access to fetch at 'http://localhost:8100/api/v1/changes' from origin 'http://localhost:5173' has been blocked by CORS policy: Response to preflight request doesn't pass access control check: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ http://localhost:5173/:0
+[   10172ms] [ERROR] Failed to load resource: net::ERR_FAILED @ http://localhost:8100/api/v1/changes:0
+[   10175ms] [ERROR] Access to fetch at 'http://localhost:8100/api/v1/sites' from origin 'http://localhost:5173' has been blocked by CORS policy: Response to preflight request doesn't pass access control check: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ http://localhost:5173/:0
+[   10175ms] [ERROR] Failed to load resource: net::ERR_FAILED @ http://localhost:8100/api/v1/sites:0
+[   10189ms] [ERROR] Access to fetch at 'http://localhost:8100/api/v1/audit-log' from origin 'http://localhost:5173' has been blocked by CORS policy: Response to preflight request doesn't pass access control check: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ http://localhost:5173/:0
+[   10189ms] [ERROR] Failed to load resource: net::ERR_FAILED @ http://localhost:8100/api/v1/audit-log:0
+[   63385ms] [VERBOSE] [DOM] Input elements should have autocomplete attributes (suggested: "current-password"): (More info: https://goo.gl/9p2vKq) @ http://localhost:5173/login:0
+[   63534ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:20102
+[   65086ms] [ERROR] Access to fetch at 'http://localhost:8100/api/v1/auth/login' from origin 'http://localhost:5173' has been blocked by CORS policy: Response to preflight request doesn't pass access control check: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ http://localhost:5173/login:0
+[   65086ms] [ERROR] Failed to load resource: net::ERR_FAILED @ http://localhost:8100/api/v1/auth/login:0
+[   68415ms] [ERROR] Access to fetch at 'http://localhost:8100/api/v1/auth/login' from origin 'http://localhost:5173' has been blocked by CORS policy: Response to preflight request doesn't pass access control check: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ http://localhost:5173/login:0
+[   68416ms] [ERROR] Failed to load resource: net::ERR_FAILED @ http://localhost:8100/api/v1/auth/login:0
+[   70195ms] [ERROR] Access to fetch at 'http://localhost:8100/api/v1/auth/login' from origin 'http://localhost:5173' has been blocked by CORS policy: Response to preflight request doesn't pass access control check: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ http://localhost:5173/login:0
+[   70195ms] [ERROR] Failed to load resource: net::ERR_FAILED @ http://localhost:8100/api/v1/auth/login:0
+[  396694ms] [VERBOSE] [DOM] Input elements should have autocomplete attributes (suggested: "current-password"): (More info: https://goo.gl/9p2vKq) @ http://localhost:5173/login:0
+[  396768ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:20102
+[  398763ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/auth/login:0
+[  628892ms] [VERBOSE] [DOM] Input elements should have autocomplete attributes (suggested: "current-password"): (More info: https://goo.gl/9p2vKq) @ http://localhost:5173/login:0
+[  629039ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:20102
+[  716857ms] [LOG] [vite] server connection lost. Polling for restart... @ http://localhost:5173/@vite/client:864
+[  724513ms] [VERBOSE] [DOM] Input elements should have autocomplete attributes (suggested: "current-password"): (More info: https://goo.gl/9p2vKq) @ http://localhost:5173/login:0
+[  726186ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:20102

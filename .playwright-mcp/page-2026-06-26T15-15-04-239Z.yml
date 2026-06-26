@@ -1,0 +1,122 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e3]:
+      - generic [ref=e4]:
+        - img [ref=e6]
+        - generic [ref=e8]: Deplyx
+      - generic [ref=e9]:
+        - generic [ref=e10]:
+          - img [ref=e11]
+          - text: Site
+        - combobox [ref=e15] [cursor=pointer]:
+          - generic: No site
+          - img [ref=e16]
+        - combobox [ref=e18]
+      - navigation [ref=e19]:
+        - generic [ref=e20]:
+          - generic [ref=e21]: Operations
+          - list [ref=e22]:
+            - listitem [ref=e23]:
+              - link "Dashboard" [ref=e24] [cursor=pointer]:
+                - /url: /
+                - img [ref=e25]
+                - text: Dashboard
+            - listitem [ref=e30]:
+              - link "Changes" [ref=e31] [cursor=pointer]:
+                - /url: /changes
+                - img [ref=e32]
+                - text: Changes
+            - listitem [ref=e36]:
+              - link "Topology" [ref=e37] [cursor=pointer]:
+                - /url: /graph-v3
+                - img [ref=e38]
+                - text: Topology
+        - generic [ref=e42]:
+          - generic [ref=e43]: Configuration
+          - list [ref=e44]:
+            - listitem [ref=e45]:
+              - link "Connectors" [ref=e46] [cursor=pointer]:
+                - /url: /connectors
+                - img [ref=e47]
+                - text: Connectors
+            - listitem [ref=e49]:
+              - link "Policies" [ref=e50] [cursor=pointer]:
+                - /url: /policies
+                - img [ref=e51]
+                - text: Policies
+            - listitem [ref=e54]:
+              - link "Audit Log" [ref=e55] [cursor=pointer]:
+                - /url: /audit-log
+                - img [ref=e56]
+                - text: Audit Log
+      - generic [ref=e60]:
+        - generic [ref=e61]: U
+        - button "Sign out" [ref=e62]:
+          - img [ref=e63]
+    - main [ref=e66]:
+      - generic [ref=e67]:
+        - generic [ref=e68]:
+          - heading "Dashboard" [level=1] [ref=e69]
+          - paragraph [ref=e70]: Pipeline health, risk distribution, and recent activity.
+        - generic [ref=e72]:
+          - button "24h" [ref=e73]
+          - button "7d" [ref=e74]
+          - button "30d" [ref=e75]
+          - button "All" [ref=e76]
+      - generic [ref=e77]:
+        - generic [ref=e78]:
+          - generic [ref=e79]:
+            - img [ref=e82]
+            - generic [ref=e84]: —
+            - generic [ref=e85]: Total Changes
+          - generic [ref=e88]:
+            - img [ref=e91]
+            - generic [ref=e94]: —%
+            - generic [ref=e95]: Auto-approved
+          - generic [ref=e98]:
+            - img [ref=e101]
+            - generic [ref=e104]: — min
+            - generic [ref=e105]: Avg Validation
+          - generic [ref=e108]:
+            - img [ref=e111]
+            - generic [ref=e113]: —%
+            - generic [ref=e114]: Post-change Incidents
+          - generic [ref=e117]:
+            - img [ref=e120]
+            - generic [ref=e124]: —%
+            - generic [ref=e125]: Scoring Precision
+          - generic [ref=e128]:
+            - img [ref=e131]
+            - generic [ref=e134]: —%
+            - generic [ref=e135]: Core Detected
+        - generic [ref=e138]:
+          - generic [ref=e139]:
+            - generic [ref=e140]:
+              - heading "Risk distribution" [level=3] [ref=e141]
+              - generic [ref=e142]: last 7d
+            - generic [ref=e145]:
+              - generic [ref=e146]:
+                - generic [ref=e148]: Low
+                - generic [ref=e149]: "0"
+              - generic [ref=e150]:
+                - generic [ref=e152]: Medium
+                - generic [ref=e153]: "0"
+              - generic [ref=e154]:
+                - generic [ref=e156]: High
+                - generic [ref=e157]: "0"
+          - generic [ref=e159]:
+            - heading "Changes by status" [level=3] [ref=e160]
+            - generic [ref=e161]: current pipeline
+        - generic [ref=e164]:
+          - generic [ref=e165]:
+            - generic [ref=e166]:
+              - heading "Recent changes" [level=3] [ref=e167]
+              - link "View all" [ref=e168] [cursor=pointer]:
+                - /url: /changes
+                - text: View all
+                - img [ref=e169]
+            - paragraph [ref=e172]: No changes yet.
+          - generic [ref=e173]:
+            - heading "Activity" [level=3] [ref=e175]
+            - paragraph [ref=e176]: No activity yet.
+  - region "Notifications alt+T"

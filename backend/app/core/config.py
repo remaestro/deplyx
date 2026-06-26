@@ -46,6 +46,13 @@ class Settings(BaseSettings):
         if isinstance(value, str):
             if value.strip() == "":
                 return []
+            try:
+                import json
+                parsed = json.loads(value)
+                if isinstance(parsed, list):
+                    return parsed
+            except (json.JSONDecodeError, ValueError):
+                pass
             return [origin.strip() for origin in value.split(",") if origin.strip()]
         return value
 

@@ -1,0 +1,163 @@
+[  339688ms] [ERROR] TypeError: Failed to fetch dynamically imported module: http://localhost:5173/src/routes/_authenticated.graph-v3.tsx?tsr-split=component @ http://localhost:5173/src/routes/__root.tsx:51
+[  339688ms] [ERROR] TypeError: Failed to fetch dynamically imported module: http://localhost:5173/src/routes/_authenticated.graph-v3.tsx?tsr-split=component @ http://localhost:5173/src/routes/__root.tsx:51
+[  339708ms] [ERROR] TypeError: Failed to fetch dynamically imported module: http://localhost:5173/src/routes/_authenticated.graph-v3.tsx?tsr-split=component @ http://localhost:5173/src/routes/__root.tsx:51
+[  339709ms] [ERROR] TypeError: Failed to fetch dynamically imported module: http://localhost:5173/src/routes/_authenticated.graph-v3.tsx?tsr-split=component @ http://localhost:5173/src/routes/__root.tsx:51
+[  339710ms] [ERROR] %o
+
+%s
+
+%s
+ TypeError: Failed to fetch dynamically imported module: http://localhost:5173/src/routes/_authenticated.graph-v3.tsx?tsr-split=component The above error occurred in the <Lazy> component. React will try to recreate this component tree from scratch using the error boundary you provided, CatchBoundaryImpl. @ http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=1f5427f1:7000
+[  339710ms] [WARNING] Warning: Error in route match: __root__/ @ http://localhost:5173/node_modules/@tanstack/react-router/dist/esm/Match.js?v=1f5427f1:88
+[  339729ms] [ERROR] TypeError: Failed to fetch dynamically imported module: http://localhost:5173/src/routes/_authenticated.graph-v3.tsx?tsr-split=component @ http://localhost:5173/src/routes/__root.tsx:51
+[  339729ms] [ERROR] TypeError: Failed to fetch dynamically imported module: http://localhost:5173/src/routes/_authenticated.graph-v3.tsx?tsr-split=component @ http://localhost:5173/src/routes/__root.tsx:51
+[  339749ms] [ERROR] TypeError: Failed to fetch dynamically imported module: http://localhost:5173/src/routes/_authenticated.graph-v3.tsx?tsr-split=component @ http://localhost:5173/src/routes/__root.tsx:51
+[  339750ms] [ERROR] TypeError: Failed to fetch dynamically imported module: http://localhost:5173/src/routes/_authenticated.graph-v3.tsx?tsr-split=component @ http://localhost:5173/src/routes/__root.tsx:51
+[  339751ms] [ERROR] %o
+
+%s
+
+%s
+ TypeError: Failed to fetch dynamically imported module: http://localhost:5173/src/routes/_authenticated.graph-v3.tsx?tsr-split=component The above error occurred in the <Lazy> component. React will try to recreate this component tree from scratch using the error boundary you provided, CatchBoundaryImpl. @ http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=1f5427f1:7000
+[  339751ms] [WARNING] Warning: Error in route match: __root__/ @ http://localhost:5173/node_modules/@tanstack/react-router/dist/esm/Match.js?v=1f5427f1:88
+[  392615ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=b56a6e74:20102
+[  392968ms] Error: Hydration failed because the server rendered HTML didn't match the client. As a result this tree will be regenerated on the client. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <SelectProvider scope={undefined} required={undefined} trigger={null} ...>
+      <SelectCollectionProvider scope={undefined}>
+        <SelectCollectionProviderProvider scope={undefined} itemMap={Map} collectionRef={{current:null}}>
+          <SelectProvider scope={undefined} onNativeOptionAdd={function} onNativeOptionRemove={function}>
+            <_c className="h-8 w-full...">
+              <SelectTrigger ref={null} className={"flex ite..."}>
+                <PopperAnchor asChild={true} __scopePopper={{Popper:[...]}}>
+                  <Primitive.div data-radix-popper-side={undefined} data-radix-popper-align={undefined} asChild={true} ...>
+                    <Primitive.div.Slot data-radix-popper-side={undefined} data-radix-popper-align={undefined} ...>
+                      <Primitive.button type="button" role="combobox" aria-controls={undefined} aria-expanded={false} ...>
+                        <button
+                          type="button"
+                          role="combobox"
+                          aria-controls={undefined}
+                          aria-expanded={false}
+                          aria-required={undefined}
+                          aria-autocomplete="none"
+                          dir="ltr"
+                          data-state="closed"
+                          disabled={false}
+                          data-disabled={undefined}
++                         data-placeholder={undefined}
+-                         data-placeholder=""
+                          className={"flex items-center justify-between whitespace-nowrap rounded-md border border-in..."}
+                          onClick={function handleEvent}
+                          onPointerDown={function handleEvent}
+                          onKeyDown={function handleEvent}
+                          data-radix-popper-side={undefined}
+                          data-radix-popper-align={undefined}
+                          ref={function}
+                        >
+                          <SelectValue placeholder="No site">
+                            <Primitive.span asChild={undefined} ref={function} style={{...}}>
+                              <span style={{...}} ref={function}>
+-                               No site
+                          ...
+            ...
+            ...
+
+    at throwOnHydrationMismatch (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=b56a6e74:3920:13)
+    at popHydrationState (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=b56a6e74:4028:11)
+    at completeWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=b56a6e74:8998:19)
+    at runWithFiberInDEV (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=b56a6e74:997:72)
+    at completeUnitOfWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=b56a6e74:12669:22)
+    at performUnitOfWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=b56a6e74:12575:29)
+    at workLoopSync (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=b56a6e74:12424:43)
+    at renderRootSync (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=b56a6e74:12408:13)
+    at performWorkOnRoot (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=b56a6e74:11766:189)
+    at performSyncWorkOnRoot (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=b56a6e74:13517:9)
+[  393012ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ http://localhost:5173/api/v1/graph/topology:0
+[  393019ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ http://localhost:5173/api/v1/sites:0
+[  394032ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ http://localhost:5173/api/v1/graph/topology:0
+[  394049ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ http://localhost:5173/api/v1/sites:0
+[  396102ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ http://localhost:5173/api/v1/graph/topology:0
+[  396182ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ http://localhost:5173/api/v1/sites:0
+[  400095ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=b56a6e74:20102
+[  400308ms] Error: Hydration failed because the server rendered HTML didn't match the client. As a result this tree will be regenerated on the client. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <SelectProvider scope={undefined} required={undefined} trigger={null} ...>
+      <SelectCollectionProvider scope={undefined}>
+        <SelectCollectionProviderProvider scope={undefined} itemMap={Map} collectionRef={{current:null}}>
+          <SelectProvider scope={undefined} onNativeOptionAdd={function} onNativeOptionRemove={function}>
+            <_c className="h-8 w-full...">
+              <SelectTrigger ref={null} className={"flex ite..."}>
+                <PopperAnchor asChild={true} __scopePopper={{Popper:[...]}}>
+                  <Primitive.div data-radix-popper-side={undefined} data-radix-popper-align={undefined} asChild={true} ...>
+                    <Primitive.div.Slot data-radix-popper-side={undefined} data-radix-popper-align={undefined} ...>
+                      <Primitive.button type="button" role="combobox" aria-controls={undefined} aria-expanded={false} ...>
+                        <button
+                          type="button"
+                          role="combobox"
+                          aria-controls={undefined}
+                          aria-expanded={false}
+                          aria-required={undefined}
+                          aria-autocomplete="none"
+                          dir="ltr"
+                          data-state="closed"
+                          disabled={false}
+                          data-disabled={undefined}
++                         data-placeholder={undefined}
+-                         data-placeholder=""
+                          className={"flex items-center justify-between whitespace-nowrap rounded-md border border-in..."}
+                          onClick={function handleEvent}
+                          onPointerDown={function handleEvent}
+                          onKeyDown={function handleEvent}
+                          data-radix-popper-side={undefined}
+                          data-radix-popper-align={undefined}
+                          ref={function}
+                        >
+                          <SelectValue placeholder="No site">
+                            <Primitive.span asChild={undefined} ref={function} style={{...}}>
+                              <span style={{...}} ref={function}>
+-                               No site
+                          ...
+            ...
+            ...
+
+    at throwOnHydrationMismatch (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=b56a6e74:3920:13)
+    at popHydrationState (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=b56a6e74:4028:11)
+    at completeWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=b56a6e74:8998:19)
+    at runWithFiberInDEV (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=b56a6e74:997:72)
+    at completeUnitOfWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=b56a6e74:12669:22)
+    at performUnitOfWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=b56a6e74:12575:29)
+    at workLoopSync (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=b56a6e74:12424:43)
+    at renderRootSync (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=b56a6e74:12408:13)
+    at performWorkOnRoot (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=b56a6e74:11766:189)
+    at performSyncWorkOnRoot (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=b56a6e74:13517:9)
+[  400341ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ http://localhost:5173/api/v1/graph/topology:0
+[  400357ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ http://localhost:5173/api/v1/sites:0
+[  401363ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ http://localhost:5173/api/v1/graph/topology:0
+[  401380ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ http://localhost:5173/api/v1/sites:0
+[  403386ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ http://localhost:5173/api/v1/graph/topology:0
+[  403403ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ http://localhost:5173/api/v1/sites:0
+[  407406ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ http://localhost:5173/api/v1/graph/topology:0
+[  407423ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ http://localhost:5173/api/v1/sites:0
+[  420839ms] [LOG] [vite] server connection lost. Polling for restart... @ http://localhost:5173/@vite/client:864
