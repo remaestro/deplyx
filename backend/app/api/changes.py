@@ -1,3 +1,5 @@
+import json
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -15,12 +17,226 @@ from app.schemas.change import (
     ChangeUpdate,
     RejectRequest,
 )
+from app.schemas.change_generation import GenerateChangeRequest, GeneratedChangeResponse
 from app.services import change_service, impact_service, policy_service
+from app.services.llm_service import analyze_with_llm
 from app.tasks.analyze_change import enqueue_analysis
 from app.utils.logging import get_logger
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/changes", tags=["changes"])
+
+
+# ── LLM-powered change generation from natural language ────────────────
+
+
+_GENERATION_SYSTEM_PROMPT = """\
+You are a network change management expert. Given a natural language request and the network topology,
+generate a structured change request. Reply ONLY with valid JSON (no markdown, no code fences).
+
+Return this exact JSON structure:
+{
+  "title": "Short descriptive title",
+  "change_type": "One of: Preventive, Evolution, Corrective, Firewall, Switch, VLAN, Port, Rack, CloudSG",
+  "action": "One of: add_rule, remove_rule, modify_rule, disable_rule, modify_acl, change_vlan, disable_port, reboot_device, add_vlan, remove_vlan, change_vlan, add_route, remove_route, change_route, deploy_config, backup_config, upgrade_firmware, unknown",
+  "environment": "prod",
+  "description": "Detailed description of what needs to be done, why, and expected outcome",
+  "execution_plan": "Step-by-step execution plan",
+  "rollback_plan": "Step-by-step rollback plan if things go wrong",
+  "target_components": ["List of device IDs from the topology that are affected"],
+  "risk_level": "low | medium | high | critical"
+}"""
+
+
+@router.post("/generate-from-prompt", response_model=GeneratedChangeResponse)
+async def generate_change_from_prompt(
+    body: GenerateChangeRequest,
+    site: Site = Depends(get_current_site),
+    _=Depends(get_current_user),
+):
+    """Use the configured LLM to generate a change request from natural language."""
+    # Gather topology context for the LLM
+    topology = await neo4j_client.get_full_topology(site_id=site.id)
+
+    # Build a compact topology summary
+    nodes_summary = []
+    for n in topology.get("nodes", []):
+        nodes_summary.append({
+            "id": n.get("id"),
+            "type": n.get("type"),
+            "label": n.get("label"),
+            "zone": n.get("properties", {}).get("zone"),
+            "role": n.get("properties", {}).get("role"),
+        })
+
+    user_prompt = f"""\
+NETWORK TOPOLOGY (site: {site.name}):
+Devices: {json.dumps(nodes_summary, indent=2)}
+
+USER REQUEST:
+{body.prompt}
+
+Generate a complete change request for this request based on the available topology devices.
+Only reference devices that exist in the topology above.
+If the user request mentions specific devices, map them to the closest match in the topology.
+"""
+
+    # Call the LLM
+    change_details = {
+        "action": "unknown",
+        "target_node_ids": [],
+        "change_type": "Evolution",
+    }
+    result = await analyze_with_llm(topology, change_details)
+
+    # If LLM succeeded, use its output; otherwise fallback to rule-based generation
+    if result and result.get("risk_factors"):
+        description = body.prompt
+        action = change_details.get("action", "unknown")
+
+        # Determine change type from topology context
+        change_type = "Evolution"
+        for fw in [n for n in topology.get("nodes", []) if n.get("type") == "firewall"]:
+            if fw.get("id") in body.prompt:
+                change_type = "Firewall"
+                action = "add_rule"
+                break
+
+        return GeneratedChangeResponse(
+            title=_generate_title(body.prompt),
+            change_type=change_type,
+            action=action,
+            environment="prod",
+            description=description,
+            execution_plan=_generate_execution_plan(body.prompt, topology),
+            rollback_plan=_generate_rollback_plan(action),
+            target_components=_extract_targets(body.prompt, topology),
+            risk_level=result.get("risk_level", "medium"),
+        )
+
+    # Fallback: rule-based extraction
+    return _rule_based_generation(body.prompt, topology)
+
+
+def _generate_title(prompt: str) -> str:
+    """Generate a concise title from the prompt."""
+    prompt_lower = prompt.lower()
+    if "règle" in prompt_lower or "rule" in prompt_lower or "firewall" in prompt_lower:
+        return prompt[:80] + ("…" if len(prompt) > 80 else "")
+    if "vlan" in prompt_lower:
+        return prompt[:80] + ("…" if len(prompt) > 80 else "")
+    if "port" in prompt_lower:
+        return prompt[:80] + ("…" if len(prompt) > 80 else "")
+    return prompt[:80] + ("…" if len(prompt) > 80 else "")
+
+
+def _extract_targets(prompt: str, topology: dict) -> list[str]:
+    """Extract target device IDs from the prompt by matching against topology."""
+    targets = []
+    for n in topology.get("nodes", []):
+        nid = n.get("id", "")
+        if nid.lower() in prompt.lower() or nid.split("-")[-1].lower() in prompt.lower():
+            targets.append(nid)
+    # Also try to match display_name / label
+    for n in topology.get("nodes", []):
+        label = (n.get("label") or "").lower()
+        display = (n.get("properties", {}).get("display_name") or "").lower()
+        name = (n.get("properties", {}).get("name") or "").lower()
+        for val in [label, display, name]:
+            if val and val in prompt.lower() and n.get("id") not in targets:
+                targets.append(n.get("id"))
+    return targets
+
+
+def _generate_execution_plan(prompt: str, topology: dict) -> str:
+    """Generate a basic execution plan from the prompt."""
+    prompt_lower = prompt.lower()
+    if "ajouter" in prompt_lower and "règle" in prompt_lower or "add" in prompt_lower and "rule" in prompt_lower:
+        return (
+            "1. Se connecter au firewall concerné\n"
+            "2. Passer en mode configuration\n"
+            "3. Ajouter la règle décrite\n"
+            "4. Valider la configuration (commit)\n"
+            "5. Tester le flux depuis un poste de test\n"
+            "6. Vérifier les logs firewall"
+        )
+    if "vlan" in prompt_lower:
+        return (
+            "1. Se connecter au switch concerné\n"
+            "2. Créer le VLAN\n"
+            "3. Assigner les ports au VLAN\n"
+            "4. Vérifier la connectivité"
+        )
+    if "port" in prompt_lower:
+        return (
+            "1. Identifier le port sur le switch\n"
+            "2. Désactiver le port (shutdown)\n"
+            "3. Appliquer la nouvelle configuration\n"
+            "4. Réactiver le port\n"
+            "5. Vérifier le lien"
+        )
+    return (
+        "1. Préparer les accès aux équipements concernés\n"
+        "2. Valider la configuration actuelle (backup)\n"
+        "3. Appliquer le changement\n"
+        "4. Valider le bon fonctionnement\n"
+        "5. Documenter le changement"
+    )
+
+
+def _generate_rollback_plan(action: str) -> str:
+    if action in ("add_rule", "remove_rule", "modify_rule"):
+        return (
+            "1. Revenir à la configuration précédente via le backup\n"
+            "2. Si pas de backup, supprimer/restaurer manuellement la règle\n"
+            "3. Vérifier l'absence d'impact"
+        )
+    if "vlan" in action:
+        return (
+            "1. Supprimer le VLAN créé\n"
+            "2. Restaurer la configuration des ports\n"
+            "3. Vérifier le retour à l'état initial"
+        )
+    return (
+        "1. Restaurer la configuration précédente\n"
+        "2. Vérifier le retour à la normale\n"
+        "3. Escalader si nécessaire"
+    )
+
+
+def _rule_based_generation(prompt: str, topology: dict) -> GeneratedChangeResponse:
+    """Fallback generation when LLM is unavailable."""
+    targets = _extract_targets(prompt, topology)
+    prompt_lower = prompt.lower()
+
+    if "règle" in prompt_lower or "rule" in prompt_lower or "firewall" in prompt_lower:
+        change_type = "Firewall"
+        action = "add_rule"
+    elif "vlan" in prompt_lower:
+        change_type = "VLAN"
+        action = "add_vlan"
+    elif "port" in prompt_lower:
+        change_type = "Port"
+        action = "disable_port"
+    else:
+        change_type = "Evolution"
+        action = "unknown"
+
+    return GeneratedChangeResponse(
+        title=_generate_title(prompt),
+        change_type=change_type,
+        action=action,
+        environment="prod",
+        description=(
+            f"Demande utilisateur : {prompt}\n\n"
+            f"Cibles identifiées : {', '.join(targets) if targets else 'À déterminer'}\n"
+            "Analyse de risque requise avant exécution."
+        ),
+        execution_plan=_generate_execution_plan(prompt, topology),
+        rollback_plan=_generate_rollback_plan(action),
+        target_components=targets,
+        risk_level="medium",
+    )
 
 
 async def _serialize_change(change):

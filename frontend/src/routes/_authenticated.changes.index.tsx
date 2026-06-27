@@ -32,7 +32,10 @@ function ChangesList() {
       qc.invalidateQueries({ queryKey: ["changes"] });
       setDrawerOpen(false);
     },
-    onError: () => toast.error("Failed to create change"),
+    onError: (err) => {
+      const msg = err?.message || "Failed to create change";
+      toast.error(msg);
+    },
   });
 
   const envs = useMemo(() => Array.from(new Set(items.map((c) => c.environment))), [items]);
@@ -225,13 +228,46 @@ function KanbanView({ items }: { items: Change[] }) {
 }
 
 function CreateDrawer({ onClose, onCreate }: { onClose: () => void; onCreate: (c: Partial<Change>) => void }) {
+  const [mode, setMode] = useState<"manual" | "ai">("manual");
   const [step, setStep] = useState(0);
+  const [prompt, setPrompt] = useState("");
+  const [generating, setGenerating] = useState(false);
   const [form, setForm] = useState({
     title: "", change_type: "Firewall", action: "add_rule", environment: "prod",
     description: "", execution_plan: "", rollback_plan: "",
     maintenance_window_start: "", maintenance_window_end: "",
     target_components: "",
   });
+
+  const handleGenerate = async () => {
+    if (!prompt.trim()) return;
+    setGenerating(true);
+    try {
+      const result = await api.generateChangeFromPrompt(prompt);
+      // Set default maintenance window (now → +1h) if not provided
+      const now = new Date();
+      const later = new Date(now.getTime() + 3600_000);
+      setForm({
+        title: result.title,
+        change_type: result.change_type,
+        action: result.action,
+        environment: result.environment,
+        description: result.description,
+        execution_plan: result.execution_plan,
+        rollback_plan: result.rollback_plan,
+        maintenance_window_start: now.toISOString().slice(0, 16),
+        maintenance_window_end: later.toISOString().slice(0, 16),
+        target_components: result.target_components.join(", "),
+      });
+      setMode("manual");
+      setStep(0);
+      toast.success("Change generated from prompt!");
+    } catch (e) {
+      toast.error("Failed to generate change from prompt");
+    } finally {
+      setGenerating(false);
+    }
+  };
 
   const submit = () => {
     onCreate({
@@ -240,9 +276,7 @@ function CreateDrawer({ onClose, onCreate }: { onClose: () => void; onCreate: (c
       description: form.description, execution_plan: form.execution_plan, rollback_plan: form.rollback_plan,
       maintenance_window_start: form.maintenance_window_start || new Date().toISOString(),
       maintenance_window_end: form.maintenance_window_end || new Date(Date.now() + 3600_000).toISOString(),
-      impacted_components: form.target_components.split(",").map((t) => t.trim()).filter(Boolean).map((t) => ({
-        graph_node_id: t, component_type: "Device", impact_level: "direct" as const, display_name: t,
-      })),
+      target_components: form.target_components.split(",").map((t) => t.trim()).filter(Boolean),
     });
   };
 
@@ -254,80 +288,130 @@ function CreateDrawer({ onClose, onCreate }: { onClose: () => void; onCreate: (c
       <aside className="flex w-full max-w-md flex-col border-l border-border bg-card">
         <header className="flex items-center justify-between border-b border-border px-5 py-3">
           <div>
-            <h2 className="text-sm font-semibold">Create change</h2>
-            <p className="text-[11px] text-muted-foreground">Step {step + 1} of 3 · {labels[step]}</p>
+            <h2 className="text-sm font-semibold">
+              {mode === "ai" ? "AI-assisted change" : "Create change"}
+            </h2>
+            <p className="text-[11px] text-muted-foreground">
+              {mode === "ai" ? "Describe your change in natural language" : `Step ${step + 1} of 3 · ${labels[step]}`}
+            </p>
           </div>
-          <button onClick={onClose} className="rounded p-1 hover:bg-accent"><X className="size-4" /></button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setMode(mode === "ai" ? "manual" : "ai")}
+              className={`rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors ${
+                mode === "ai" ? "bg-primary/20 text-primary" : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {mode === "ai" ? "AI ✦" : "AI ✦"}
+            </button>
+            <button onClick={onClose} className="rounded p-1 hover:bg-accent"><X className="size-4" /></button>
+          </div>
         </header>
 
-        <div className="flex gap-1 px-5 pt-3">
-          {labels.map((_, i) => (
-            <div key={i} className={`h-1 flex-1 rounded-full ${i <= step ? "bg-primary" : "bg-muted"}`} />
-          ))}
-        </div>
+        {mode === "ai" ? (
+          <>
+            <div className="flex-1 space-y-3 overflow-y-auto p-5 text-sm">
+              <Field label="Describe the change you want to make">
+                <textarea
+                  value={prompt}
+                  onChange={(e) => setPrompt(e.target.value)}
+                  rows={8}
+                  placeholder="Ex: Ajouter une règle firewall pour autoriser le trafic HTTP depuis le load balancer vers les serveurs web en DMZ&#10;&#10;Ex: Create a new VLAN 100 for the guest network on the access switches&#10;&#10;Ex: Désactiver le port Gi1/0/1 sur le switch d'accès pour maintenance"
+                  className="w-full resize-none rounded-md border border-border bg-background p-3 text-sm outline-none focus:border-ring"
+                />
+              </Field>
+              {generating && (
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <span className="inline-block size-3 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                  Analysing topology and generating change...
+                </div>
+              )}
+            </div>
+            <footer className="flex items-center justify-end gap-2 border-t border-border px-5 py-3">
+              <button onClick={onClose} className="rounded-md px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground">
+                Cancel
+              </button>
+              <button
+                onClick={handleGenerate}
+                disabled={!prompt.trim() || generating}
+                className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-40"
+              >
+                {generating ? "Generating…" : "Generate change"}
+              </button>
+            </footer>
+          </>
+        ) : (
+          <>
+            <div className="flex gap-1 px-5 pt-3">
+              {labels.map((_, i) => (
+                <div key={i} className={`h-1 flex-1 rounded-full ${i <= step ? "bg-primary" : "bg-muted"}`} />
+              ))}
+            </div>
 
-        <div className="flex-1 space-y-3 overflow-y-auto p-5 text-sm">
-          {step === 0 && (
-            <>
-              <Field label="Title">
-                <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className={inputCls} />
-              </Field>
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="Type">
-                  <select value={form.change_type} onChange={(e) => setForm({ ...form, change_type: e.target.value })} className={inputCls}>
-                    {["Preventive", "Evolution", "Corrective", "Firewall", "Switch", "VLAN", "Port", "Rack", "CloudSG"].map((s) => <option key={s}>{s}</option>)}
-                  </select>
-                </Field>
-                <Field label="Environment">
-                  <select value={form.environment} onChange={(e) => setForm({ ...form, environment: e.target.value })} className={inputCls}>
-                    {["prod", "pre-prod", "Prod", "Preprod", "DC1", "DC2"].map((s) => <option key={s}>{s}</option>)}
-                  </select>
-                </Field>
-              </div>
-              <Field label="Action">
-                <input value={form.action} onChange={(e) => setForm({ ...form, action: e.target.value })} className={inputCls} />
-              </Field>
-              <Field label="Target components (comma-separated IDs)">
-                <input value={form.target_components} onChange={(e) => setForm({ ...form, target_components: e.target.value })} placeholder="ftd-01, sw-core-1" className={inputCls} />
-              </Field>
-              <Field label="Description">
-                <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={3} className={inputCls} />
-              </Field>
-            </>
-          )}
-          {step === 1 && (
-            <>
-              <Field label="Execution plan">
-                <textarea value={form.execution_plan} onChange={(e) => setForm({ ...form, execution_plan: e.target.value })} rows={6} className={`${inputCls} font-mono`} />
-              </Field>
-              <Field label="Rollback plan">
-                <textarea value={form.rollback_plan} onChange={(e) => setForm({ ...form, rollback_plan: e.target.value })} rows={6} className={`${inputCls} font-mono`} />
-              </Field>
-            </>
-          )}
-          {step === 2 && (
-            <>
-              <Field label="Maintenance window — start">
-                <input type="datetime-local" value={form.maintenance_window_start} onChange={(e) => setForm({ ...form, maintenance_window_start: e.target.value })} className={inputCls} />
-              </Field>
-              <Field label="Maintenance window — end">
-                <input type="datetime-local" value={form.maintenance_window_end} onChange={(e) => setForm({ ...form, maintenance_window_end: e.target.value })} className={inputCls} />
-              </Field>
-            </>
-          )}
-        </div>
+            <div className="flex-1 space-y-3 overflow-y-auto p-5 text-sm">
+              {step === 0 && (
+                <>
+                  <Field label="Title">
+                    <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className={inputCls} />
+                  </Field>
+                  <div className="grid grid-cols-2 gap-3">
+                    <Field label="Type">
+                      <select value={form.change_type} onChange={(e) => setForm({ ...form, change_type: e.target.value })} className={inputCls}>
+                        {["Preventive", "Evolution", "Corrective", "Firewall", "Switch", "VLAN", "Port", "Rack", "CloudSG"].map((s) => <option key={s}>{s}</option>)}
+                      </select>
+                    </Field>
+                    <Field label="Environment">
+                      <select value={form.environment} onChange={(e) => setForm({ ...form, environment: e.target.value })} className={inputCls}>
+                        {["prod", "pre-prod", "Prod", "Preprod", "DC1", "DC2"].map((s) => <option key={s}>{s}</option>)}
+                      </select>
+                    </Field>
+                  </div>
+                  <Field label="Action">
+                    <input value={form.action} onChange={(e) => setForm({ ...form, action: e.target.value })} className={inputCls} />
+                  </Field>
+                  <Field label="Target components (comma-separated IDs)">
+                    <input value={form.target_components} onChange={(e) => setForm({ ...form, target_components: e.target.value })} placeholder="ftd-01, sw-core-1" className={inputCls} />
+                  </Field>
+                  <Field label="Description">
+                    <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={3} className={inputCls} />
+                  </Field>
+                </>
+              )}
+              {step === 1 && (
+                <>
+                  <Field label="Execution plan">
+                    <textarea value={form.execution_plan} onChange={(e) => setForm({ ...form, execution_plan: e.target.value })} rows={6} className={`${inputCls} font-mono`} />
+                  </Field>
+                  <Field label="Rollback plan">
+                    <textarea value={form.rollback_plan} onChange={(e) => setForm({ ...form, rollback_plan: e.target.value })} rows={6} className={`${inputCls} font-mono`} />
+                  </Field>
+                </>
+              )}
+              {step === 2 && (
+                <>
+                  <Field label="Maintenance window — start">
+                    <input type="datetime-local" value={form.maintenance_window_start} onChange={(e) => setForm({ ...form, maintenance_window_start: e.target.value })} className={inputCls} />
+                  </Field>
+                  <Field label="Maintenance window — end">
+                    <input type="datetime-local" value={form.maintenance_window_end} onChange={(e) => setForm({ ...form, maintenance_window_end: e.target.value })} className={inputCls} />
+                  </Field>
+                </>
+              )}
+            </div>
 
-        <footer className="flex items-center justify-between border-t border-border px-5 py-3">
-          <button
-            onClick={() => setStep(Math.max(0, step - 1))} disabled={step === 0}
-            className="rounded-md px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground disabled:opacity-40"
-          >Back</button>
-          {step < 2 ? (
-            <button onClick={() => setStep(step + 1)} className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:opacity-90">Next</button>
-          ) : (
-            <button onClick={submit} className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:opacity-90">Create</button>
-          )}
-        </footer>
+            <footer className="flex items-center justify-between border-t border-border px-5 py-3">
+              <button
+                onClick={() => setStep(Math.max(0, step - 1))} disabled={step === 0}
+                className="rounded-md px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground disabled:opacity-40"
+              >Back</button>
+              {step < 2 ? (
+                <button onClick={() => setStep(step + 1)} className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:opacity-90">Next</button>
+              ) : (
+                <button onClick={submit} className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:opacity-90">Create</button>
+              )}
+            </footer>
+          </>
+        )}
       </aside>
     </div>
   );

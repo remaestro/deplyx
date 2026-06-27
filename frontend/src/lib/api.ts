@@ -68,6 +68,15 @@ export const api = {
   getChange: (id: string) => request<Change>(`/changes/${id}`),
   createChange: (input: Partial<Change>) =>
     request<Change>("/changes", { method: "POST", body: JSON.stringify(input) }),
+  generateChangeFromPrompt: (prompt: string) =>
+    request<{
+      title: string; change_type: string; action: string; environment: string;
+      description: string; execution_plan: string; rollback_plan: string;
+      target_components: string[]; risk_level: string | null;
+    }>("/changes/generate-from-prompt", {
+      method: "POST",
+      body: JSON.stringify({ prompt }),
+    }),
   updateChange: (id: string, input: Partial<Change>) =>
     request<Change>(`/changes/${id}`, { method: "PATCH", body: JSON.stringify(input) }),
   approveChange: (id: string) =>

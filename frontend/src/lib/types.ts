@@ -131,6 +131,7 @@ export type Change = {
   created_at: string;
   reject_reason?: string | null;
   impacted_components: ImpactedComponent[];
+  target_components?: string[];
   analysis?: ImpactAnalysis;
 };
 
