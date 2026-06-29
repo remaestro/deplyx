@@ -140,7 +140,7 @@ function ChangeDetail() {
               </Field>
               <Field label="Target components" wide>
                 <div className="flex flex-wrap gap-1.5">
-                  {change.impacted_components.length ? change.impacted_components.map((c) => (
+                  {(change.impacted_components ?? []).length ? (change.impacted_components ?? []).map((c) => (
                     <span key={c.graph_node_id} className="rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[11px]">
                       {c.display_name}
                     </span>

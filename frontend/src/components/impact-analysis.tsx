@@ -40,7 +40,7 @@ export function ImpactAnalysis({ change, onReanalyze }: { change: Change; onRean
         <div className="xl:col-span-2">
           <BlastRadius change={change} />
         </div>
-        <PredictedIncidents items={a.risk_factors} />
+        <PredictedIncidents items={a.risk_factors ?? []} />
       </div>
 
       {/* Row 2 — live pre-change validations + path before/after */}
@@ -65,9 +65,10 @@ function BlastRadius({ change }: { change: Change }) {
     if (id.startsWith("FTD-RULE-")) return false;
     return id.startsWith("DEV-") || id.startsWith("FTD-") || id.startsWith("SVC-") || id.startsWith("APP-");
   };
-  const direct = change.impacted_components.filter((c) => c.impact_level === "direct" && isMain(c.graph_node_id));
-  const indirect = change.impacted_components.filter((c) => c.impact_level === "indirect" && isMain(c.graph_node_id));
-  const hidden = change.impacted_components.length - direct.length - indirect.length;
+  const comps = change.impacted_components ?? [];
+  const direct = comps.filter((c) => c.impact_level === "direct" && isMain(c.graph_node_id));
+  const indirect = comps.filter((c) => c.impact_level === "indirect" && isMain(c.graph_node_id));
+  const hidden = comps.length - direct.length - indirect.length;
   const cx = 220, cy = 150;
 
   return (

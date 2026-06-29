@@ -1004,3 +1004,717 @@ https://react.dev/link/hydration-mismatch
     at renderRootSync (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:12408:13)
     at performWorkOnRoot (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:11766:189)
     at performSyncWorkOnRoot (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:13517:9)
+[78949801ms] [LOG] [vite] server connection lost. Polling for restart... @ http://localhost:5173/@vite/client:864
+[78951211ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:20102
+[78951537ms] Error: Hydration failed because the server rendered HTML didn't match the client. As a result this tree will be regenerated on the client. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <SelectProvider scope={undefined} required={undefined} trigger={null} ...>
+      <SelectCollectionProvider scope={undefined}>
+        <SelectCollectionProviderProvider scope={undefined} itemMap={Map} collectionRef={{current:null}}>
+          <SelectProvider scope={undefined} onNativeOptionAdd={function} onNativeOptionRemove={function}>
+            <_c className="h-8 w-full...">
+              <SelectTrigger ref={null} className={"flex ite..."}>
+                <PopperAnchor asChild={true} __scopePopper={{Popper:[...]}}>
+                  <Primitive.div data-radix-popper-side={undefined} data-radix-popper-align={undefined} asChild={true} ...>
+                    <Primitive.div.Slot data-radix-popper-side={undefined} data-radix-popper-align={undefined} ...>
+                      <Primitive.button type="button" role="combobox" aria-controls={undefined} aria-expanded={false} ...>
+                        <button
+                          type="button"
+                          role="combobox"
+                          aria-controls={undefined}
+                          aria-expanded={false}
+                          aria-required={undefined}
+                          aria-autocomplete="none"
+                          dir="ltr"
+                          data-state="closed"
+                          disabled={false}
+                          data-disabled={undefined}
++                         data-placeholder={undefined}
+-                         data-placeholder=""
+                          className={"flex items-center justify-between whitespace-nowrap rounded-md border border-in..."}
+                          onClick={function handleEvent}
+                          onPointerDown={function handleEvent}
+                          onKeyDown={function handleEvent}
+                          data-radix-popper-side={undefined}
+                          data-radix-popper-align={undefined}
+                          ref={function}
+                        >
+                          <SelectValue placeholder="No site">
+                            <Primitive.span asChild={undefined} ref={function} style={{...}}>
+                              <span style={{...}} ref={function}>
+-                               No site
+                          ...
+            ...
+            ...
+
+    at throwOnHydrationMismatch (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:3920:13)
+    at popHydrationState (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:4028:11)
+    at completeWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:8998:19)
+    at runWithFiberInDEV (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:997:72)
+    at completeUnitOfWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:12669:22)
+    at performUnitOfWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:12575:29)
+    at workLoopSync (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:12424:43)
+    at renderRootSync (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:12408:13)
+    at performWorkOnRoot (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:11766:189)
+    at performSyncWorkOnRoot (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:13517:9)
+[78951580ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/changes/e1d47311-3238-44ab-9624-5ee66ef8dd78:0
+[78951581ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/sites:0
+[78952585ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/changes/e1d47311-3238-44ab-9624-5ee66ef8dd78:0
+[78952585ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/sites:0
+[78954588ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/changes/e1d47311-3238-44ab-9624-5ee66ef8dd78:0
+[78954588ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/sites:0
+[78958592ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/changes/e1d47311-3238-44ab-9624-5ee66ef8dd78:0
+[78958592ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/sites:0
+[82382257ms] [LOG] [vite] server connection lost. Polling for restart... @ http://localhost:5173/@vite/client:864
+[82382976ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:20102
+[82383114ms] Error: Hydration failed because the server rendered HTML didn't match the client. As a result this tree will be regenerated on the client. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <SelectProvider scope={undefined} required={undefined} trigger={null} ...>
+      <SelectCollectionProvider scope={undefined}>
+        <SelectCollectionProviderProvider scope={undefined} itemMap={Map} collectionRef={{current:null}}>
+          <SelectProvider scope={undefined} onNativeOptionAdd={function} onNativeOptionRemove={function}>
+            <_c className="h-8 w-full...">
+              <SelectTrigger ref={null} className={"flex ite..."}>
+                <PopperAnchor asChild={true} __scopePopper={{Popper:[...]}}>
+                  <Primitive.div data-radix-popper-side={undefined} data-radix-popper-align={undefined} asChild={true} ...>
+                    <Primitive.div.Slot data-radix-popper-side={undefined} data-radix-popper-align={undefined} ...>
+                      <Primitive.button type="button" role="combobox" aria-controls={undefined} aria-expanded={false} ...>
+                        <button
+                          type="button"
+                          role="combobox"
+                          aria-controls={undefined}
+                          aria-expanded={false}
+                          aria-required={undefined}
+                          aria-autocomplete="none"
+                          dir="ltr"
+                          data-state="closed"
+                          disabled={false}
+                          data-disabled={undefined}
++                         data-placeholder={undefined}
+-                         data-placeholder=""
+                          className={"flex items-center justify-between whitespace-nowrap rounded-md border border-in..."}
+                          onClick={function handleEvent}
+                          onPointerDown={function handleEvent}
+                          onKeyDown={function handleEvent}
+                          data-radix-popper-side={undefined}
+                          data-radix-popper-align={undefined}
+                          ref={function}
+                        >
+                          <SelectValue placeholder="No site">
+                            <Primitive.span asChild={undefined} ref={function} style={{...}}>
+                              <span style={{...}} ref={function}>
+-                               No site
+                          ...
+            ...
+            ...
+
+    at throwOnHydrationMismatch (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:3920:13)
+    at popHydrationState (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:4028:11)
+    at completeWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:8998:19)
+    at runWithFiberInDEV (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:997:72)
+    at completeUnitOfWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:12669:22)
+    at performUnitOfWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:12575:29)
+    at workLoopSync (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:12424:43)
+    at renderRootSync (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:12408:13)
+    at performWorkOnRoot (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:11766:189)
+    at performSyncWorkOnRoot (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:13517:9)
+[82383148ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/changes/e1d47311-3238-44ab-9624-5ee66ef8dd78:0
+[82383149ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/sites:0
+[82384152ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/changes/e1d47311-3238-44ab-9624-5ee66ef8dd78:0
+[82384153ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/sites:0
+[82386156ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/changes/e1d47311-3238-44ab-9624-5ee66ef8dd78:0
+[82386156ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/sites:0
+[82390159ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/changes/e1d47311-3238-44ab-9624-5ee66ef8dd78:0
+[82390159ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/sites:0
+[83096596ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:20102
+[83096724ms] Error: Hydration failed because the server rendered HTML didn't match the client. As a result this tree will be regenerated on the client. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <SelectProvider scope={undefined} required={undefined} trigger={null} ...>
+      <SelectCollectionProvider scope={undefined}>
+        <SelectCollectionProviderProvider scope={undefined} itemMap={Map} collectionRef={{current:null}}>
+          <SelectProvider scope={undefined} onNativeOptionAdd={function} onNativeOptionRemove={function}>
+            <_c className="h-8 w-full...">
+              <SelectTrigger ref={null} className={"flex ite..."}>
+                <PopperAnchor asChild={true} __scopePopper={{Popper:[...]}}>
+                  <Primitive.div data-radix-popper-side={undefined} data-radix-popper-align={undefined} asChild={true} ...>
+                    <Primitive.div.Slot data-radix-popper-side={undefined} data-radix-popper-align={undefined} ...>
+                      <Primitive.button type="button" role="combobox" aria-controls={undefined} aria-expanded={false} ...>
+                        <button
+                          type="button"
+                          role="combobox"
+                          aria-controls={undefined}
+                          aria-expanded={false}
+                          aria-required={undefined}
+                          aria-autocomplete="none"
+                          dir="ltr"
+                          data-state="closed"
+                          disabled={false}
+                          data-disabled={undefined}
++                         data-placeholder={undefined}
+-                         data-placeholder=""
+                          className={"flex items-center justify-between whitespace-nowrap rounded-md border border-in..."}
+                          onClick={function handleEvent}
+                          onPointerDown={function handleEvent}
+                          onKeyDown={function handleEvent}
+                          data-radix-popper-side={undefined}
+                          data-radix-popper-align={undefined}
+                          ref={function}
+                        >
+                          <SelectValue placeholder="No site">
+                            <Primitive.span asChild={undefined} ref={function} style={{...}}>
+                              <span style={{...}} ref={function}>
+-                               No site
+                          ...
+            ...
+            ...
+
+    at throwOnHydrationMismatch (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:3920:13)
+    at popHydrationState (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:4028:11)
+    at completeWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:8998:19)
+    at runWithFiberInDEV (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:997:72)
+    at completeUnitOfWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:12669:22)
+    at performUnitOfWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:12575:29)
+    at workLoopSync (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:12424:43)
+    at renderRootSync (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:12408:13)
+    at performWorkOnRoot (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:11766:189)
+    at performSyncWorkOnRoot (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:13517:9)
+[83096755ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/changes/e1d47311-3238-44ab-9624-5ee66ef8dd78:0
+[83096755ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/sites:0
+[83097758ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/changes/e1d47311-3238-44ab-9624-5ee66ef8dd78:0
+[83097758ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/sites:0
+[83099351ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/dashboard/kpis:0
+[83099351ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/changes:0
+[83099351ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/audit-log:0
+[83099760ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/sites:0
+[83100353ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/dashboard/kpis:0
+[83100353ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/changes:0
+[83100354ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/audit-log:0
+[83100828ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/graph/topology:0
+[83101830ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/graph/topology:0
+[83103364ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:20102
+[83103470ms] Error: Hydration failed because the server rendered HTML didn't match the client. As a result this tree will be regenerated on the client. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <SelectProvider scope={undefined} required={undefined} trigger={null} ...>
+      <SelectCollectionProvider scope={undefined}>
+        <SelectCollectionProviderProvider scope={undefined} itemMap={Map} collectionRef={{current:null}}>
+          <SelectProvider scope={undefined} onNativeOptionAdd={function} onNativeOptionRemove={function}>
+            <_c className="h-8 w-full...">
+              <SelectTrigger ref={null} className={"flex ite..."}>
+                <PopperAnchor asChild={true} __scopePopper={{Popper:[...]}}>
+                  <Primitive.div data-radix-popper-side={undefined} data-radix-popper-align={undefined} asChild={true} ...>
+                    <Primitive.div.Slot data-radix-popper-side={undefined} data-radix-popper-align={undefined} ...>
+                      <Primitive.button type="button" role="combobox" aria-controls={undefined} aria-expanded={false} ...>
+                        <button
+                          type="button"
+                          role="combobox"
+                          aria-controls={undefined}
+                          aria-expanded={false}
+                          aria-required={undefined}
+                          aria-autocomplete="none"
+                          dir="ltr"
+                          data-state="closed"
+                          disabled={false}
+                          data-disabled={undefined}
++                         data-placeholder={undefined}
+-                         data-placeholder=""
+                          className={"flex items-center justify-between whitespace-nowrap rounded-md border border-in..."}
+                          onClick={function handleEvent}
+                          onPointerDown={function handleEvent}
+                          onKeyDown={function handleEvent}
+                          data-radix-popper-side={undefined}
+                          data-radix-popper-align={undefined}
+                          ref={function}
+                        >
+                          <SelectValue placeholder="No site">
+                            <Primitive.span asChild={undefined} ref={function} style={{...}}>
+                              <span style={{...}} ref={function}>
+-                               No site
+                          ...
+            ...
+            ...
+
+    at throwOnHydrationMismatch (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:3920:13)
+    at popHydrationState (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:4028:11)
+    at completeWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:8998:19)
+    at runWithFiberInDEV (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:997:72)
+    at completeUnitOfWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:12669:22)
+    at performUnitOfWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:12575:29)
+    at workLoopSync (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:12424:43)
+    at renderRootSync (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:12408:13)
+    at performWorkOnRoot (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:11766:189)
+    at performSyncWorkOnRoot (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:13517:9)
+[83103500ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/graph/topology:0
+[83103500ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/sites:0
+[83104503ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/graph/topology:0
+[83104503ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/sites:0
+[83106505ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/graph/topology:0
+[83106505ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/sites:0
+[83108653ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:20102
+[83108797ms] Error: Hydration failed because the server rendered HTML didn't match the client. As a result this tree will be regenerated on the client. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <SelectProvider scope={undefined} required={undefined} trigger={null} ...>
+      <SelectCollectionProvider scope={undefined}>
+        <SelectCollectionProviderProvider scope={undefined} itemMap={Map} collectionRef={{current:null}}>
+          <SelectProvider scope={undefined} onNativeOptionAdd={function} onNativeOptionRemove={function}>
+            <_c className="h-8 w-full...">
+              <SelectTrigger ref={null} className={"flex ite..."}>
+                <PopperAnchor asChild={true} __scopePopper={{Popper:[...]}}>
+                  <Primitive.div data-radix-popper-side={undefined} data-radix-popper-align={undefined} asChild={true} ...>
+                    <Primitive.div.Slot data-radix-popper-side={undefined} data-radix-popper-align={undefined} ...>
+                      <Primitive.button type="button" role="combobox" aria-controls={undefined} aria-expanded={false} ...>
+                        <button
+                          type="button"
+                          role="combobox"
+                          aria-controls={undefined}
+                          aria-expanded={false}
+                          aria-required={undefined}
+                          aria-autocomplete="none"
+                          dir="ltr"
+                          data-state="closed"
+                          disabled={false}
+                          data-disabled={undefined}
++                         data-placeholder={undefined}
+-                         data-placeholder=""
+                          className={"flex items-center justify-between whitespace-nowrap rounded-md border border-in..."}
+                          onClick={function handleEvent}
+                          onPointerDown={function handleEvent}
+                          onKeyDown={function handleEvent}
+                          data-radix-popper-side={undefined}
+                          data-radix-popper-align={undefined}
+                          ref={function}
+                        >
+                          <SelectValue placeholder="No site">
+                            <Primitive.span asChild={undefined} ref={function} style={{...}}>
+                              <span style={{...}} ref={function}>
+-                               No site
+                          ...
+            ...
+            ...
+
+    at throwOnHydrationMismatch (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:3920:13)
+    at popHydrationState (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:4028:11)
+    at completeWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:8998:19)
+    at runWithFiberInDEV (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:997:72)
+    at completeUnitOfWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:12669:22)
+    at performUnitOfWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:12575:29)
+    at workLoopSync (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:12424:43)
+    at renderRootSync (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:12408:13)
+    at performWorkOnRoot (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:11766:189)
+    at performSyncWorkOnRoot (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:13517:9)
+[83108838ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/graph/topology:0
+[83108838ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/sites:0
+[83109842ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/graph/topology:0
+[83109842ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/sites:0
+[83112218ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/graph/topology:0
+[83112218ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/sites:0
+[83116220ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/graph/topology:0
+[83116221ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/sites:0
+[84399346ms] [LOG] [vite] server connection lost. Polling for restart... @ http://localhost:5173/@vite/client:864
+[84399939ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:20102
+[84400245ms] Error: Hydration failed because the server rendered HTML didn't match the client. As a result this tree will be regenerated on the client. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <SelectProvider scope={undefined} required={undefined} trigger={null} ...>
+      <SelectCollectionProvider scope={undefined}>
+        <SelectCollectionProviderProvider scope={undefined} itemMap={Map} collectionRef={{current:null}}>
+          <SelectProvider scope={undefined} onNativeOptionAdd={function} onNativeOptionRemove={function}>
+            <_c className="h-8 w-full...">
+              <SelectTrigger ref={null} className={"flex ite..."}>
+                <PopperAnchor asChild={true} __scopePopper={{Popper:[...]}}>
+                  <Primitive.div data-radix-popper-side={undefined} data-radix-popper-align={undefined} asChild={true} ...>
+                    <Primitive.div.Slot data-radix-popper-side={undefined} data-radix-popper-align={undefined} ...>
+                      <Primitive.button type="button" role="combobox" aria-controls={undefined} aria-expanded={false} ...>
+                        <button
+                          type="button"
+                          role="combobox"
+                          aria-controls={undefined}
+                          aria-expanded={false}
+                          aria-required={undefined}
+                          aria-autocomplete="none"
+                          dir="ltr"
+                          data-state="closed"
+                          disabled={false}
+                          data-disabled={undefined}
++                         data-placeholder={undefined}
+-                         data-placeholder=""
+                          className={"flex items-center justify-between whitespace-nowrap rounded-md border border-in..."}
+                          onClick={function handleEvent}
+                          onPointerDown={function handleEvent}
+                          onKeyDown={function handleEvent}
+                          data-radix-popper-side={undefined}
+                          data-radix-popper-align={undefined}
+                          ref={function}
+                        >
+                          <SelectValue placeholder="No site">
+                            <Primitive.span asChild={undefined} ref={function} style={{...}}>
+                              <span style={{...}} ref={function}>
+-                               No site
+                          ...
+            ...
+            ...
+
+    at throwOnHydrationMismatch (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:3920:13)
+    at popHydrationState (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:4028:11)
+    at completeWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:8998:19)
+    at runWithFiberInDEV (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:997:72)
+    at completeUnitOfWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:12669:22)
+    at performUnitOfWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:12575:29)
+    at workLoopSync (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:12424:43)
+    at renderRootSync (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:12408:13)
+    at performWorkOnRoot (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:11766:189)
+    at performSyncWorkOnRoot (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:13517:9)
+[84400283ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/graph/topology:0
+[84400284ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/sites:0
+[84401413ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/graph/topology:0
+[84401413ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/sites:0
+[84403416ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/graph/topology:0
+[84403416ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/sites:0
+[84407420ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/graph/topology:0
+[84407421ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/sites:0
+[89391517ms] [LOG] [vite] server connection lost. Polling for restart... @ http://localhost:5173/@vite/client:864
+[89391945ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:20102
+[89392058ms] Error: Hydration failed because the server rendered HTML didn't match the client. As a result this tree will be regenerated on the client. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <SelectProvider scope={undefined} required={undefined} trigger={null} ...>
+      <SelectCollectionProvider scope={undefined}>
+        <SelectCollectionProviderProvider scope={undefined} itemMap={Map} collectionRef={{current:null}}>
+          <SelectProvider scope={undefined} onNativeOptionAdd={function} onNativeOptionRemove={function}>
+            <_c className="h-8 w-full...">
+              <SelectTrigger ref={null} className={"flex ite..."}>
+                <PopperAnchor asChild={true} __scopePopper={{Popper:[...]}}>
+                  <Primitive.div data-radix-popper-side={undefined} data-radix-popper-align={undefined} asChild={true} ...>
+                    <Primitive.div.Slot data-radix-popper-side={undefined} data-radix-popper-align={undefined} ...>
+                      <Primitive.button type="button" role="combobox" aria-controls={undefined} aria-expanded={false} ...>
+                        <button
+                          type="button"
+                          role="combobox"
+                          aria-controls={undefined}
+                          aria-expanded={false}
+                          aria-required={undefined}
+                          aria-autocomplete="none"
+                          dir="ltr"
+                          data-state="closed"
+                          disabled={false}
+                          data-disabled={undefined}
++                         data-placeholder={undefined}
+-                         data-placeholder=""
+                          className={"flex items-center justify-between whitespace-nowrap rounded-md border border-in..."}
+                          onClick={function handleEvent}
+                          onPointerDown={function handleEvent}
+                          onKeyDown={function handleEvent}
+                          data-radix-popper-side={undefined}
+                          data-radix-popper-align={undefined}
+                          ref={function}
+                        >
+                          <SelectValue placeholder="No site">
+                            <Primitive.span asChild={undefined} ref={function} style={{...}}>
+                              <span style={{...}} ref={function}>
+-                               No site
+                          ...
+            ...
+            ...
+
+    at throwOnHydrationMismatch (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:3920:13)
+    at popHydrationState (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:4028:11)
+    at completeWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:8998:19)
+    at runWithFiberInDEV (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:997:72)
+    at completeUnitOfWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:12669:22)
+    at performUnitOfWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:12575:29)
+    at workLoopSync (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:12424:43)
+    at renderRootSync (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:12408:13)
+    at performWorkOnRoot (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:11766:189)
+    at performSyncWorkOnRoot (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:13517:9)
+[89392091ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/graph/topology:0
+[89392091ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/sites:0
+[89393095ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/graph/topology:0
+[89393095ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/sites:0
+[89395098ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/graph/topology:0
+[89395098ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/sites:0
+[89399102ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/graph/topology:0
+[89399103ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/sites:0
+[161432155ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/sites:0
+[161432155ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/graph/topology:0
+[161433157ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/sites:0
+[161433157ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/graph/topology:0
+[161435161ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/sites:0
+[161435161ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/graph/topology:0
+[161439167ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/sites:0
+[161439168ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/graph/topology:0
+[165094788ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/sites:0
+[165094789ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/graph/topology:0
+[165095791ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/sites:0
+[165095792ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/graph/topology:0
+[165097795ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/sites:0
+[165097795ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/graph/topology:0
+[165101803ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/sites:0
+[165101803ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/graph/topology:0
+[168756449ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/sites:0
+[168756449ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/graph/topology:0
+[168757454ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/graph/topology:0
+[168757454ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/sites:0
+[168759456ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/graph/topology:0
+[168759456ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/sites:0
+[168763462ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/graph/topology:0
+[168763462ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/sites:0
+[170066840ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/sites:0
+[170066840ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/graph/topology:0
+[170067844ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/sites:0
+[170067844ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/graph/topology:0
+[170069848ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/sites:0
+[170069848ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/graph/topology:0
+[170073851ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/sites:0
+[170073865ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/graph/topology:0
+[170077635ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/sites:0
+[170077635ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/graph/topology:0
+[170078639ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/sites:0
+[170078639ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/graph/topology:0
+[170080642ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/sites:0
+[170080642ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/graph/topology:0
+[170084646ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/sites:0
+[170084658ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/graph/topology:0
+[170372983ms] [LOG] [vite] server connection lost. Polling for restart... @ http://localhost:5173/@vite/client:864
+[170373575ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:20102
+[170373759ms] Error: Hydration failed because the server rendered HTML didn't match the client. As a result this tree will be regenerated on the client. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <SelectProvider scope={undefined} required={undefined} trigger={null} ...>
+      <SelectCollectionProvider scope={undefined}>
+        <SelectCollectionProviderProvider scope={undefined} itemMap={Map} collectionRef={{current:null}}>
+          <SelectProvider scope={undefined} onNativeOptionAdd={function} onNativeOptionRemove={function}>
+            <_c className="h-8 w-full...">
+              <SelectTrigger ref={null} className={"flex ite..."}>
+                <PopperAnchor asChild={true} __scopePopper={{Popper:[...]}}>
+                  <Primitive.div data-radix-popper-side={undefined} data-radix-popper-align={undefined} asChild={true} ...>
+                    <Primitive.div.Slot data-radix-popper-side={undefined} data-radix-popper-align={undefined} ...>
+                      <Primitive.button type="button" role="combobox" aria-controls={undefined} aria-expanded={false} ...>
+                        <button
+                          type="button"
+                          role="combobox"
+                          aria-controls={undefined}
+                          aria-expanded={false}
+                          aria-required={undefined}
+                          aria-autocomplete="none"
+                          dir="ltr"
+                          data-state="closed"
+                          disabled={false}
+                          data-disabled={undefined}
++                         data-placeholder={undefined}
+-                         data-placeholder=""
+                          className={"flex items-center justify-between whitespace-nowrap rounded-md border border-in..."}
+                          onClick={function handleEvent}
+                          onPointerDown={function handleEvent}
+                          onKeyDown={function handleEvent}
+                          data-radix-popper-side={undefined}
+                          data-radix-popper-align={undefined}
+                          ref={function}
+                        >
+                          <SelectValue placeholder="No site">
+                            <Primitive.span asChild={undefined} ref={function} style={{...}}>
+                              <span style={{...}} ref={function}>
+-                               No site
+                          ...
+            ...
+            ...
+
+    at throwOnHydrationMismatch (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:3920:13)
+    at popHydrationState (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:4028:11)
+    at completeWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:8998:19)
+    at runWithFiberInDEV (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:997:72)
+    at completeUnitOfWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:12669:22)
+    at performUnitOfWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:12575:29)
+    at workLoopSync (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:12424:43)
+    at renderRootSync (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:12408:13)
+    at performWorkOnRoot (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:11766:189)
+    at performSyncWorkOnRoot (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:13517:9)
+[170373795ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/graph/topology:0
+[170373796ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/sites:0
+[170374799ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/graph/topology:0
+[170374799ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/sites:0
+[170376802ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/graph/topology:0
+[170376802ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/sites:0
+[170380807ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/graph/topology:0
+[170380808ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/sites:0
+[171224798ms] [ERROR] Failed to load resource: net::ERR_NETWORK_CHANGED @ https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap:0
+[173356018ms] [LOG] [vite] server connection lost. Polling for restart... @ http://localhost:5173/@vite/client:864
+[184591725ms] [ERROR] Failed to load resource: net::ERR_INTERNET_DISCONNECTED @ https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap:0
+[184595962ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:20102
+[184596686ms] Error: Hydration failed because the server rendered HTML didn't match the client. As a result this tree will be regenerated on the client. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <SelectProvider scope={undefined} required={undefined} trigger={null} ...>
+      <SelectCollectionProvider scope={undefined}>
+        <SelectCollectionProviderProvider scope={undefined} itemMap={Map} collectionRef={{current:null}}>
+          <SelectProvider scope={undefined} onNativeOptionAdd={function} onNativeOptionRemove={function}>
+            <_c className="h-8 w-full...">
+              <SelectTrigger ref={null} className={"flex ite..."}>
+                <PopperAnchor asChild={true} __scopePopper={{Popper:[...]}}>
+                  <Primitive.div data-radix-popper-side={undefined} data-radix-popper-align={undefined} asChild={true} ...>
+                    <Primitive.div.Slot data-radix-popper-side={undefined} data-radix-popper-align={undefined} ...>
+                      <Primitive.button type="button" role="combobox" aria-controls={undefined} aria-expanded={false} ...>
+                        <button
+                          type="button"
+                          role="combobox"
+                          aria-controls={undefined}
+                          aria-expanded={false}
+                          aria-required={undefined}
+                          aria-autocomplete="none"
+                          dir="ltr"
+                          data-state="closed"
+                          disabled={false}
+                          data-disabled={undefined}
++                         data-placeholder={undefined}
+-                         data-placeholder=""
+                          className={"flex items-center justify-between whitespace-nowrap rounded-md border border-in..."}
+                          onClick={function handleEvent}
+                          onPointerDown={function handleEvent}
+                          onKeyDown={function handleEvent}
+                          data-radix-popper-side={undefined}
+                          data-radix-popper-align={undefined}
+                          ref={function}
+                        >
+                          <SelectValue placeholder="No site">
+                            <Primitive.span asChild={undefined} ref={function} style={{...}}>
+                              <span style={{...}} ref={function}>
+-                               No site
+                          ...
+            ...
+            ...
+
+    at throwOnHydrationMismatch (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:3920:13)
+    at popHydrationState (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:4028:11)
+    at completeWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:8998:19)
+    at runWithFiberInDEV (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:997:72)
+    at completeUnitOfWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:12669:22)
+    at performUnitOfWork (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:12575:29)
+    at workLoopSync (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:12424:43)
+    at renderRootSync (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:12408:13)
+    at performWorkOnRoot (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:11766:189)
+    at performSyncWorkOnRoot (http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=adacdeea:13517:9)
+[184596730ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/graph/topology:0
+[184596732ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/sites:0
+[184597765ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/graph/topology:0
+[184597765ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/sites:0
+[184599778ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/graph/topology:0
+[184599778ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/sites:0
+[184603786ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/graph/topology:0
+[184603786ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/sites:0
+[237390428ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/sites:0
+[237390429ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/graph/topology:0
+[237391433ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/sites:0
+[237391434ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/graph/topology:0
+[237393438ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/sites:0
+[237393438ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/graph/topology:0
+[237394654ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/sites:0
+[237394656ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/graph/topology:0
+[237878710ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/sites:0
+[237878710ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/graph/topology:0
+[237879713ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/sites:0
+[237879713ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/graph/topology:0
+[237881716ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/sites:0
+[237881716ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/graph/topology:0
+[237885718ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/sites:0
+[237885718ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/graph/topology:0
+[237952957ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/sites:0
+[237952957ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/graph/topology:0
+[237953961ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/sites:0
+[237953961ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/graph/topology:0
+[237955967ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/sites:0
+[237955967ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/graph/topology:0
+[237960024ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/sites:0
+[237960039ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8100/api/v1/graph/topology:0

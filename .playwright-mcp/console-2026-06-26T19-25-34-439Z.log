@@ -84,3 +84,196 @@
     at Xm (https://deplyx.digita-energy.com/assets/index-B3LhVaiw.js:9:112282)
     at dp (https://deplyx.digita-energy.com/assets/index-B3LhVaiw.js:9:124551)
     at vr (https://deplyx.digita-energy.com/assets/index-B3LhVaiw.js:9:123099)
+[67429264ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://deplyx.digita-energy.com/api/v1/sites:0
+[67429275ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://deplyx.digita-energy.com/api/v1/changes:0
+[67430958ms] [VERBOSE] [DOM] Input elements should have autocomplete attributes (suggested: "current-password"): (More info: https://goo.gl/9p2vKq) @ https://deplyx.digita-energy.com/login:0
+[69405206ms] [ERROR] Failed to load resource: net::ERR_NETWORK_IO_SUSPENDED @ https://deplyx.digita-energy.com/api/v1/graph/topology:0
+[69644274ms] [ERROR] Failed to load resource: net::ERR_NETWORK_CHANGED @ https://deplyx.digita-energy.com/api/v1/graph/topology:0
+[139126156ms] [ERROR] Failed to load resource: net::ERR_NETWORK_CHANGED @ https://deplyx.digita-energy.com/api/v1/sites:0
+[139126157ms] [ERROR] Failed to load resource: net::ERR_NETWORK_CHANGED @ https://deplyx.digita-energy.com/api/v1/graph/topology:0
+[150097234ms] [ERROR] Failed to load resource: net::ERR_TIMED_OUT @ https://deplyx.digita-energy.com/api/v1/sites:0
+[150097415ms] [ERROR] Failed to load resource: net::ERR_NETWORK_CHANGED @ https://deplyx.digita-energy.com/api/v1/graph/topology:0
+[153759187ms] [ERROR] Failed to load resource: net::ERR_NETWORK_CHANGED @ https://deplyx.digita-energy.com/api/v1/graph/topology:0
+[153759187ms] [ERROR] Failed to load resource: net::ERR_NETWORK_CHANGED @ https://deplyx.digita-energy.com/api/v1/sites:0
+[155064709ms] [ERROR] Failed to load resource: net::ERR_NETWORK_CHANGED @ https://deplyx.digita-energy.com/api/v1/graph/topology:0
+[155064709ms] [ERROR] Failed to load resource: net::ERR_NETWORK_CHANGED @ https://deplyx.digita-energy.com/api/v1/sites:0
+[155080444ms] [ERROR] Failed to load resource: net::ERR_NETWORK_CHANGED @ https://deplyx.digita-energy.com/api/v1/sites:0
+[155080445ms] [ERROR] Failed to load resource: net::ERR_NETWORK_CHANGED @ https://deplyx.digita-energy.com/api/v1/graph/topology:0
+[155135098ms] [ERROR] Failed to load resource: net::ERR_TIMED_OUT @ https://deplyx.digita-energy.com/api/v1/sites:0
+[155158764ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_TIMED_OUT @ https://deplyx.digita-energy.com/api/v1/graph/topology:0
+[155159750ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_TIMED_OUT @ https://deplyx.digita-energy.com/api/v1/sites:0
+[155189833ms] [ERROR] Failed to load resource: net::ERR_TIMED_OUT @ https://deplyx.digita-energy.com/api/v1/sites:0
+[222396104ms] [ERROR] Failed to load resource: net::ERR_NETWORK_CHANGED @ https://deplyx.digita-energy.com/api/v1/sites:0
+[222396115ms] [ERROR] Failed to load resource: net::ERR_NETWORK_CHANGED @ https://deplyx.digita-energy.com/api/v1/graph/topology:0
+[222430528ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://deplyx.digita-energy.com/api/v1/sites:0
+[222430541ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://deplyx.digita-energy.com/api/v1/graph/topology:0
+[222463622ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap:0
+[222463698ms] [VERBOSE] [DOM] Input elements should have autocomplete attributes (suggested: "current-password"): (More info: https://goo.gl/9p2vKq) @ https://deplyx.digita-energy.com/login:0
+[222494844ms] [ERROR] Failed to load resource: net::ERR_HTTP2_PING_FAILED @ https://deplyx.digita-energy.com/assets/index-B3LhVaiw.js:0
+[222495974ms] [VERBOSE] [DOM] Input elements should have autocomplete attributes (suggested: "current-password"): (More info: https://goo.gl/9p2vKq) @ https://deplyx.digita-energy.com/login?:0
+[223055326ms] Error: Minified React error #418; visit https://react.dev/errors/418?args[]=HTML&args[]= for the full message or use the non-minified dev environment for full errors and additional helpful warnings.
+    at xa (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:31360)
+    at ei (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:32732)
+    at cb (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:86650)
+    at Zl (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:117772)
+    at $m (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:117020)
+    at gb (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:116005)
+    at zc (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:115837)
+    at Xm (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:112282)
+    at dp (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:124551)
+    at vr (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:123099)
+[223134659ms] [ERROR] Failed to load resource: the server responded with a status of 405 () @ https://deplyx.digita-energy.com/api/v1/changes/generate-from-prompt:0
+[224003333ms] Error: Minified React error #418; visit https://react.dev/errors/418?args[]=HTML&args[]= for the full message or use the non-minified dev environment for full errors and additional helpful warnings.
+    at xa (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:31360)
+    at ei (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:32732)
+    at cb (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:86650)
+    at Zl (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:117772)
+    at $m (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:117020)
+    at gb (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:116005)
+    at zc (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:115837)
+    at Xm (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:112282)
+    at dp (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:124551)
+    at vr (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:123099)
+[224006683ms] [ERROR] TypeError: Cannot read properties of undefined (reading '0')
+    at ke (https://deplyx.digita-energy.com/assets/_authenticated.changes._id-BydE3Ksu.js:1:8818)
+    at Zu (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:48086)
+    at uc (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:70882)
+    at xm (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:81214)
+    at $m (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:116959)
+    at gb (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:116005)
+    at zc (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:115837)
+    at Xm (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:112282)
+    at dp (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:124551)
+    at vr (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:123099) @ https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:11
+[224006692ms] [ERROR] TypeError: Cannot read properties of undefined (reading '0')
+    at ke (https://deplyx.digita-energy.com/assets/_authenticated.changes._id-BydE3Ksu.js:1:8818)
+    at Zu (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:48086)
+    at uc (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:70882)
+    at xm (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:81214)
+    at $m (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:116959)
+    at gb (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:116005)
+    at zc (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:115837)
+    at Xm (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:112630)
+    at dp (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:124551)
+    at vr (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:123099) @ https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:11
+[224006695ms] [ERROR] TypeError: Cannot read properties of undefined (reading '0')
+    at ke (https://deplyx.digita-energy.com/assets/_authenticated.changes._id-BydE3Ksu.js:1:8818)
+    at Zu (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:48086)
+    at uc (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:70882)
+    at xm (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:81214)
+    at $m (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:116959)
+    at gb (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:116005)
+    at zc (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:115837)
+    at Xm (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:112630)
+    at dp (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:124551)
+    at vr (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:123099) @ https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:8
+[224013181ms] [ERROR] TypeError: Cannot read properties of undefined (reading '0')
+    at ke (https://deplyx.digita-energy.com/assets/_authenticated.changes._id-BydE3Ksu.js:1:8818)
+    at Zu (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:48086)
+    at uc (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:70882)
+    at xm (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:81214)
+    at $m (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:116959)
+    at gb (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:116005)
+    at zc (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:115837)
+    at Xm (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:112282)
+    at dp (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:124551)
+    at vr (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:123099) @ https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:11
+[224013191ms] [ERROR] TypeError: Cannot read properties of undefined (reading '0')
+    at ke (https://deplyx.digita-energy.com/assets/_authenticated.changes._id-BydE3Ksu.js:1:8818)
+    at Zu (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:48086)
+    at uc (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:70882)
+    at xm (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:81214)
+    at $m (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:116959)
+    at gb (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:116005)
+    at zc (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:115837)
+    at Xm (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:112630)
+    at dp (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:124551)
+    at vr (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:123099) @ https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:11
+[224013192ms] [ERROR] TypeError: Cannot read properties of undefined (reading '0')
+    at ke (https://deplyx.digita-energy.com/assets/_authenticated.changes._id-BydE3Ksu.js:1:8818)
+    at Zu (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:48086)
+    at uc (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:70882)
+    at xm (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:81214)
+    at $m (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:116959)
+    at gb (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:116005)
+    at zc (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:115837)
+    at Xm (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:112630)
+    at dp (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:124551)
+    at vr (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:123099) @ https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:8
+[224017778ms] [ERROR] TypeError: Cannot read properties of undefined (reading '0')
+    at ke (https://deplyx.digita-energy.com/assets/_authenticated.changes._id-BydE3Ksu.js:1:8818)
+    at Zu (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:48086)
+    at uc (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:70882)
+    at xm (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:81214)
+    at $m (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:116959)
+    at gb (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:116005)
+    at zc (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:115837)
+    at Xm (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:112282)
+    at dp (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:124551)
+    at vr (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:123099) @ https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:11
+[224017787ms] [ERROR] TypeError: Cannot read properties of undefined (reading '0')
+    at ke (https://deplyx.digita-energy.com/assets/_authenticated.changes._id-BydE3Ksu.js:1:8818)
+    at Zu (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:48086)
+    at uc (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:70882)
+    at xm (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:81214)
+    at $m (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:116959)
+    at gb (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:116005)
+    at zc (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:115837)
+    at Xm (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:112630)
+    at dp (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:124551)
+    at vr (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:123099) @ https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:11
+[224017788ms] [ERROR] TypeError: Cannot read properties of undefined (reading '0')
+    at ke (https://deplyx.digita-energy.com/assets/_authenticated.changes._id-BydE3Ksu.js:1:8818)
+    at Zu (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:48086)
+    at uc (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:70882)
+    at xm (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:81214)
+    at $m (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:116959)
+    at gb (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:116005)
+    at zc (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:115837)
+    at Xm (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:112630)
+    at dp (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:124551)
+    at vr (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:123099) @ https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:8
+[224028238ms] Error: Minified React error #418; visit https://react.dev/errors/418?args[]=HTML&args[]= for the full message or use the non-minified dev environment for full errors and additional helpful warnings.
+    at xa (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:31360)
+    at ei (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:32732)
+    at cb (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:86650)
+    at Zl (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:117772)
+    at $m (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:117020)
+    at gb (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:116005)
+    at zc (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:115837)
+    at Xm (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:112282)
+    at dp (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:124551)
+    at vr (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:123099)
+[224032248ms] [ERROR] TypeError: Cannot read properties of undefined (reading '0')
+    at ke (https://deplyx.digita-energy.com/assets/_authenticated.changes._id-BydE3Ksu.js:1:8818)
+    at Zu (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:48086)
+    at uc (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:70882)
+    at xm (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:81214)
+    at $m (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:116959)
+    at gb (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:116005)
+    at zc (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:115837)
+    at Xm (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:112282)
+    at dp (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:124551)
+    at vr (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:123099) @ https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:11
+[224032261ms] [ERROR] TypeError: Cannot read properties of undefined (reading '0')
+    at ke (https://deplyx.digita-energy.com/assets/_authenticated.changes._id-BydE3Ksu.js:1:8818)
+    at Zu (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:48086)
+    at uc (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:70882)
+    at xm (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:81214)
+    at $m (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:116959)
+    at gb (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:116005)
+    at zc (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:115837)
+    at Xm (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:112630)
+    at dp (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:124551)
+    at vr (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:123099) @ https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:11
+[224032263ms] [ERROR] TypeError: Cannot read properties of undefined (reading '0')
+    at ke (https://deplyx.digita-energy.com/assets/_authenticated.changes._id-BydE3Ksu.js:1:8818)
+    at Zu (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:48086)
+    at uc (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:70882)
+    at xm (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:81214)
+    at $m (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:116959)
+    at gb (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:116005)
+    at zc (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:115837)
+    at Xm (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:112630)
+    at dp (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:124551)
+    at vr (https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:9:123099) @ https://deplyx.digita-energy.com/assets/index-DbisVCUd.js:8
