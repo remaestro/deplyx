@@ -63,10 +63,10 @@ async def analyze_impact(
             try:
                 t_topo = time.monotonic()
                 topology = await neo4j_client.get_impact_subgraph_multi(
-                    target_node_ids, depth=4
+                    target_node_ids, depth=2
                 )
                 t_topo_done = time.monotonic() - t_topo
-                logger.info("[IMPACT-DIAG] Subgraph fetch: %.1fs (%d nodes, %d edges) — pruned to 4-hop neighborhood",
+                logger.info("[IMPACT-DIAG] Subgraph fetch: %.1fs (%d nodes, %d edges) — pruned to 2-hop neighborhood",
                             t_topo_done, len(topology.get('nodes', [])), len(topology.get('edges', [])))
 
                 # Include pre-computed redundancy data so the LLM can reason about it
