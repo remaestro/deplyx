@@ -36,7 +36,7 @@ class Settings(BaseSettings):
 
     slack_webhook_url: str = ""
     governance_threshold_artifact: str = ""
-    neo4j_query_timeout_seconds: int = 10
+    neo4j_query_timeout_seconds: int = 120
     neo4j_circuit_failure_threshold: int = 5
     neo4j_circuit_reset_seconds: int = 30
 
