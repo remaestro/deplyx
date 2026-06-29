@@ -241,7 +241,11 @@ class Neo4jClient:
     async def get_impact_subgraph_multi(self, node_ids: list[str], depth: int = 3) -> dict[str, Any]:
         """Return the merged subgraph reachable within *depth* hops from any of
         the supplied *node_ids*.  Much smaller than the full topology, which
-        makes the LLM prompt faster and cheaper."""
+        makes the LLM prompt faster and cheaper.
+
+        Nodes are processed in batches to avoid Neo4j transaction memory limits
+        when many source nodes are provided.
+        """
         if not node_ids:
             return {"nodes": [], "edges": []}
         cypher = """
@@ -269,10 +273,29 @@ class Neo4jClient:
                   properties: properties(r)
                }) AS edges
         """ % {"depth": depth}
-        rows = await self.run_query(cypher, {"ids": node_ids})
-        if rows:
-            return {"nodes": rows[0]["nodes"], "edges": rows[0]["edges"]}
-        return {"nodes": [], "edges": []}
+
+        BATCH_SIZE = 15
+        all_nodes: list[dict[str, Any]] = []
+        all_edges: list[dict[str, Any]] = []
+        seen_node_ids: set[str] = set()
+        seen_edge_keys: set[str] = set()
+
+        for i in range(0, len(node_ids), BATCH_SIZE):
+            batch = node_ids[i:i + BATCH_SIZE]
+            rows = await self.run_query(cypher, {"ids": batch})
+            if rows and rows[0].get("nodes"):
+                for node in rows[0]["nodes"]:
+                    nid = node.get("id")
+                    if nid and nid not in seen_node_ids:
+                        seen_node_ids.add(nid)
+                        all_nodes.append(node)
+                for edge in rows[0].get("edges", []):
+                    key = f"{edge.get('source', '?')}-{edge.get('rel_type', '?')}-{edge.get('target', '?')}"
+                    if key not in seen_edge_keys:
+                        seen_edge_keys.add(key)
+                        all_edges.append(edge)
+
+        return {"nodes": all_nodes, "edges": all_edges}
 
     # ── Full topology ──────────────────────────────────────────────────
 
