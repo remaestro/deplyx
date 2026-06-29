@@ -375,7 +375,7 @@ async def _call_openai_compatible(prompt: str, user_prompt: str) -> dict[str, An
             {"role": "user", "content": user_prompt},
         ],
         "temperature": 0.1,
-        "max_tokens": 8192,
+        "max_tokens": 32768,
         "response_format": {"type": "json_object"},
     }
 
